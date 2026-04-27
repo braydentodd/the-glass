@@ -1,7 +1,7 @@
 from typing import List, Optional, Any, Tuple
 from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.core.formatting import ROW_INDEXES, format_section_header, format_stat_value, format_height
-from src.publish.definitions.config import (SECTIONS_CONFIG, SUBSECTIONS, SHEET_FORMATTING, STAT_RATES, DEFAULT_STAT_RATE, SUMMARY_THRESHOLDS, ColumnContext)
+from src.publish.core.formatting import format_stat_value, format_height
+from src.publish.definitions.config import (SECTIONS_CONFIG, STAT_RATES, DEFAULT_STAT_RATE, SUMMARY_THRESHOLDS, ColumnContext)
 from src.publish.core.calculations import get_percentile_rank, evaluate_formula, calculate_entity_stats, evaluate_expression
 from src.publish.core.layout import _base_section, _format_companion
 
@@ -233,7 +233,6 @@ def build_merged_entity_row(player_id, columns_list: List[Tuple],
         
         # Link routing
         link_type = col_def.get('link')
-        fmt = col_def.get('format')
         if link_type == 'team_link' and context and 'team_gids' in context:
             team_gids = context['team_gids']
             if entity_type == 'player':

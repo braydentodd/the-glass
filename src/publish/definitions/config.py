@@ -121,7 +121,7 @@ HEADER_ROWS = {
     'columns': {
         'row_height': 21,
         'font_size': 10,
-        'description_spacer_count': 750,
+        'description_spacer_count': 1500,
         'divider_row_weight': None,
         'divider_row_direction': None,
         'divider_column_weight': 1,

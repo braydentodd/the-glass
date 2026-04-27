@@ -18,18 +18,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     # SYSTEM COLUMNS  (managed by DB / ETL engine, no provider sources)
     # ------------------------------------------------------------------
-    'theid': {
-        'type': 'SERIAL',
-        'scope': ['entity', 'stats'],
-        'nullable': False,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'update_frequency': None,
-        'domain': None,
-        'comment': None,
-        'primary_key': True,
-        'sources': None,
-    },
+    # 'id': {
+    #     'type': 'SERIAL',
+    #     'scope': ['entity', 'stats'],
+    #     'nullable': False,
+    #     'default': None,
+    #     'entity_types': ['player', 'team'],
+    #     'update_frequency': None,
+    #     'domain': None,
+    #     'comment': None,
+    #     'primary_key': True,
+    #     'sources': None,
+    # },
     # 'nba_api_id': {
     #     'type': 'VARCHAR(10)',
     #     'scope': ['entity'],

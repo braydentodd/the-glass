@@ -1,10 +1,9 @@
 from typing import List, Optional, Any, Tuple
 from src.publish.definitions.columns import TAB_COLUMNS
 from src.publish.core.formatting import ROW_INDEXES
-from src.publish.definitions.config import (SECTIONS_CONFIG, SUBSECTIONS, SHEET_FORMATTING,
-                                STAT_RATES, DEFAULT_STAT_RATE, SUMMARY_THRESHOLDS, ColumnContext)
-from src.publish.core.calculations import get_percentile_rank, evaluate_formula, calculate_entity_stats, evaluate_expression
-from src.publish.core.formatting import format_section_header, format_stat_value, format_height
+from src.publish.definitions.config import (HEADER_ROWS, SECTIONS_CONFIG, SUBSECTIONS, SHEET_FORMATTING,
+                                STAT_RATES, DEFAULT_STAT_RATE, ColumnContext)
+from src.publish.core.formatting import format_section_header
 
 
 import re
@@ -321,7 +320,6 @@ def build_tab_columns(entity: str = 'player', stats_mode: str = 'both',
         'teams': 'all_teams',
     }
     tab_key = _TAB_TYPE_KEY.get(tab_type, 'team')
-    col_entity = 'all_teams' if tab_key == 'all_teams' else entity
     pct_columns = generate_percentile_columns()
 
     def _normalize_tabs(col_def):
@@ -470,7 +468,6 @@ def build_headers(columns_list: List[Tuple], mode: str = 'per_possession',
     """
     row1, row2, row3, row3_clean = [], [], [], []
     merges = []
-    fmt = SHEET_FORMATTING
 
     cur_section = None
     sec_start = 0
@@ -584,7 +581,7 @@ def build_headers(columns_list: List[Tuple], mode: str = 'per_possession',
             row3.append('')
             row3_clean.append('')
         elif description:
-            spacer = ' ' * fmt.get('header_description_spacer_count', 750)
+            spacer = ' ' * HEADER_ROWS['columns'].get('description_spacer_count', 100)
             row3.append(f"{description}{spacer}{header_key}{spacer}{description}")
             row3_clean.append(header_key)
         else:

@@ -244,7 +244,8 @@ def build_merged_entity_row(player_id, columns_list: List[Tuple],
             if abbr and abbr in team_gids:
                 link_cells.append({
                     'col': col_idx,
-                    'uri': f"#gid={team_gids[abbr]}"
+                    'uri': f"#gid={team_gids[abbr]}",
+                    'text': str(row[col_idx])
                 })
         
         col_ctx = entry[3] if len(entry) > 3 else None

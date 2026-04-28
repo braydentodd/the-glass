@@ -862,21 +862,21 @@ def _build_percentile_shading_requests(ws_id: int,
         })
     return requests
 def _build_link_requests(ws_id: int, link_cells: list) -> list:
-    """Build cell text format requests for hyperlinks."""
+    """Build cell formula requests for hyperlinks."""
     requests = []
     for cell in link_cells:
         requests.append({
-            'repeatCell': {
+            'updateCells': {
                 'range': _range(ws_id, cell['row'], cell['row'] + 1,
                                 cell['col'], cell['col'] + 1),
-                'cell': {
-                    'userEnteredFormat': {
-                        'textFormat': {
-                            'link': {'uri': cell['uri']}
+                'rows': [{
+                    'values': [{
+                        'userEnteredValue': {
+                            'formulaValue': f'=HYPERLINK("{cell["uri"]}", "{cell["text"]}")'
                         }
-                    }
-                },
-                'fields': 'userEnteredFormat.textFormat.link',
+                    }]
+                }],
+                'fields': 'userEnteredValue',
             }
         })
     return requests

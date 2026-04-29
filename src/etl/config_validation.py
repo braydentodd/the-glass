@@ -174,6 +174,56 @@ def _validate_league_reader_sources(
     return errors
 
 
+def _validate_domain_coverage(db_columns: Dict[str, Dict]) -> List[str]:
+    """Every non-primary domain in STAT_DOMAINS must be referenced by at
+    least one DB_COLUMNS entry (otherwise the domain is dead config)."""
+    from src.core.config import STAT_DOMAINS
+
+    used = {meta.get('domain') for meta in db_columns.values() if meta.get('domain')}
+    errors: List[str] = []
+    for domain, cfg in STAT_DOMAINS.items():
+        if cfg.get('primary'):
+            continue
+        if domain not in used:
+            errors.append(
+                f"STAT_DOMAINS['{domain}']: declared but no DB_COLUMNS entry "
+                f"sets domain={domain!r}"
+            )
+    return errors
+
+
+def _validate_fk_targets(
+    stats_tables: Dict[str, Dict],
+    junction_tables: Dict[str, Dict],
+    profile_tables: Dict[str, Dict],
+) -> List[str]:
+    """Every FK ref_schema/ref_table must resolve to a known table, and the
+    on_update / on_delete actions must be in the allowed set."""
+    from src.etl.definitions import VALID_FK_ACTIONS
+
+    core_tables = set(profile_tables) | set(junction_tables)
+    errors: List[str] = []
+
+    for label, table_set in (('STATS_TABLES', stats_tables),
+                              ('JUNCTION_TABLES', junction_tables)):
+        for tname, meta in table_set.items():
+            for fk in meta.get('foreign_keys', []):
+                prefix = f"{label}['{tname}'] FK on '{fk.get('column', '?')}'"
+                if fk.get('ref_schema') == 'core' and fk.get('ref_table') not in core_tables:
+                    errors.append(
+                        f"{prefix}: references unknown table "
+                        f"core.{fk.get('ref_table')}"
+                    )
+                for action_key in ('on_update', 'on_delete'):
+                    action = fk.get(action_key)
+                    if action and action not in VALID_FK_ACTIONS:
+                        errors.append(
+                            f"{prefix}: {action_key} {action!r} not in "
+                            f"{sorted(VALID_FK_ACTIONS)}"
+                        )
+    return errors
+
+
 # ============================================================================
 # PUBLIC API
 # ============================================================================
@@ -234,6 +284,8 @@ def validate_config(
     errors.extend(_validate_source_structure(DB_COLUMNS, SOURCES))
     errors.extend(_validate_stats_primary_keys(STATS_TABLES, DB_COLUMNS))
     errors.extend(_validate_league_reader_sources(LEAGUES, SOURCES))
+    errors.extend(_validate_domain_coverage(DB_COLUMNS))
+    errors.extend(_validate_fk_targets(STATS_TABLES, JUNCTION_TABLES, PROFILE_TABLES))
 
     if endpoints:
         errors.extend(_validate_endpoint_refs(DB_COLUMNS, endpoints))
@@ -250,3 +302,59 @@ def validate_config(
         len(DB_COLUMNS), len(PROFILE_TABLES), len(STATS_TABLES), len(JUNCTION_TABLES),
     )
     return errors
+
+
+def validate_all() -> List[str]:
+    """One-call entry point that validates every ETL configuration plus all
+    registered sources' own configs.
+
+    Called from :mod:`src.etl.cli` at startup before any I/O.  Imports are
+    deferred so that importing this module does not import every source.
+
+    Raises:
+        RuntimeError: if any layer reports validation errors.
+    """
+    import importlib
+    from src.etl.definitions import SOURCES
+
+    # Cross-cuts ETL definitions + per-source ENDPOINTS (no league required).
+    validate_config()
+
+    # Per-source validation.  Each source module exposes its own
+    # ``validate_provider_config()`` that checks SOURCE_META, API_CONFIG,
+    # SEASON_TYPES, ENDPOINTS, etc. against locally-defined schemas.  We
+    # then re-run the ETL-level cross-reference check so DB_COLUMNS endpoint
+    # references resolve against the active source's ENDPOINTS dict.
+    aggregated: List[str] = []
+    for source_key in sorted(SOURCES):
+        source_meta = SOURCES[source_key]
+        try:
+            cfg_mod = importlib.import_module(f'src.etl.sources.{source_key}.config')
+        except ModuleNotFoundError:
+            # Writers (sheets, BI exporters, etc.) don't always ship a
+            # source config module; only readers must have one.
+            if source_meta.get('role') != 'reader':
+                continue
+            logger.warning(
+                'Reader source %r is missing src.etl.sources.%s.config; '
+                'skipping endpoint validation.',
+                source_key, source_key,
+            )
+            continue
+
+        if hasattr(cfg_mod, 'validate_provider_config'):
+            aggregated.extend(cfg_mod.validate_provider_config())
+
+        endpoints = getattr(cfg_mod, 'ENDPOINTS', None)
+        if endpoints is not None:
+            from src.etl.definitions import DB_COLUMNS
+            aggregated.extend(_validate_endpoint_refs(DB_COLUMNS, endpoints))
+
+    if aggregated:
+        for err in aggregated:
+            logger.error('Source config validation: %s', err)
+        raise RuntimeError(
+            f"Source config validation failed with {len(aggregated)} error(s)"
+        )
+
+    return []

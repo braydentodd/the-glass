@@ -7,10 +7,6 @@ maps display columns back to database column references.
 
 from typing import Any, Dict
 
-from src.publish.definitions.formulas import (
-    add, subtract, multiply, divide, lookup, team_average, seasons_in_query, calculate_age
-)
-
 # ============================================================================
 # COLUMN DEFINITIONS
 # ============================================================================
@@ -125,7 +121,7 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': lookup('team_id', 'teams', 'abbr')
+            'player': ('lookup', 'team_id', 'teams', 'abbr')
         }
     },
     'conf': {
@@ -193,8 +189,8 @@ TAB_COLUMNS: Dict[str, Any] = {
         'font_size': 9,
         'values': {
             'player': '{seasons_exp}',
-            'team': team_average('seasons_exp'),
-            'all_teams': team_average('seasons_exp')
+            'team': ('team_average', 'seasons_exp'),
+            'all_teams': ('team_average', 'seasons_exp')
         }
     },
     'age': {
@@ -216,9 +212,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': calculate_age('birthdate'),
-            'team': team_average(calculate_age('birthdate')),
-            'all_teams': team_average(calculate_age('birthdate'))
+            'player': ('calculate_age', 'birthdate'),
+            'team': ('team_average', ('calculate_age', 'birthdate')),
+            'all_teams': ('team_average', ('calculate_age', 'birthdate'))
         },
     },
     'ht': {
@@ -241,8 +237,8 @@ TAB_COLUMNS: Dict[str, Any] = {
         'font_size': 9,
         'values': {
             'player': '{height_ins}',
-            'team': team_average('height_ins'),
-            'all_teams': team_average('height_ins')
+            'team': ('team_average', 'height_ins'),
+            'all_teams': ('team_average', 'height_ins')
         }
     },
     'wt': {
@@ -265,8 +261,8 @@ TAB_COLUMNS: Dict[str, Any] = {
         'font_size': 9,
         'values': {
             'player': '{weight_lbs}',
-            'team': team_average('weight_lbs'),
-            'all_teams': team_average('weight_lbs')
+            'team': ('team_average', 'weight_lbs'),
+            'all_teams': ('team_average', 'weight_lbs')
         }
     },
     'ws': {
@@ -289,8 +285,8 @@ TAB_COLUMNS: Dict[str, Any] = {
         'font_size': 9,
         'values': {
             'player': '{wingspan_ins}',
-            'team': team_average('wingspan_ins'),
-            'all_teams': team_average('wingspan_ins')
+            'team': ('team_average', 'wingspan_ins'),
+            'all_teams': ('team_average', 'wingspan_ins')
         }
     },
     '🖐️': {
@@ -359,9 +355,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': seasons_in_query,
-            'team': seasons_in_query,
-            'all_teams': seasons_in_query
+            'player': ('seasons_in_query',),
+            'team': ('seasons_in_query',),
+            'all_teams': ('seasons_in_query',)
         }
     },
     'gms': {
@@ -383,9 +379,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('games', seasons_in_query),
-            'team': divide('games', seasons_in_query),
-            'all_teams': divide('games', seasons_in_query)
+            'player': ('divide', 'games', ('seasons_in_query',)),
+            'team': ('divide', 'games', ('seasons_in_query',)),
+            'all_teams': ('divide', 'games', ('seasons_in_query',))
         },
     },
     'min': {
@@ -408,9 +404,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide(divide('minutes_x10', 10), 'games'),
-            'team': divide(divide('minutes_x10', 10), 'games'),
-            'all_teams': divide(divide('minutes_x10', 10), 'games')
+            'player': ('divide', ('divide', 'minutes_x10', 10), 'games'),
+            'team': ('divide', ('divide', 'minutes_x10', 10), 'games'),
+            'all_teams': ('divide', ('divide', 'minutes_x10', 10), 'games')
         }
     },
     'pace': {
@@ -432,9 +428,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide(multiply('possessions', 40), divide('minutes_x10', 10)),
-            'team': divide(multiply('possessions', 40), divide('minutes_x10', 10)),
-            'all_teams': divide(multiply('possessions', 40), divide('minutes_x10', 10))
+            'player': ('divide', ('multiply', 'possessions', 40), ('divide', 'minutes_x10', 10)),
+            'team': ('divide', ('multiply', 'possessions', 40), ('divide', 'minutes_x10', 10)),
+            'all_teams': ('divide', ('multiply', 'possessions', 40), ('divide', 'minutes_x10', 10))
         }
     },
     'pts': {
@@ -456,10 +452,10 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': add(multiply('fg2m', 2), multiply('fg3m', 3), 'ftm'),
-            'team': add(multiply('fg2m', 2), multiply('fg3m', 3), 'ftm'),
-            'all_teams': add(multiply('fg2m', 2), multiply('fg3m', 3), 'ftm'),
-            'opponents': add(multiply('opp_fg2m', 2), multiply('opp_fg3m', 3), 'opp_ftm')
+            'player': ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'),
+            'team': ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'),
+            'all_teams': ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'),
+            'opponents': ('add', ('multiply', 'opp_fg2m', 2), ('multiply', 'opp_fg3m', 3), 'opp_ftm')
         }
     },
     'p/ta': {
@@ -481,10 +477,10 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide(add(multiply('fg2m', 2), multiply('fg3m', 3), 'ftm'), add('fg2a', 'fg3a', multiply(0.44, 'fta'))),
-            'team': divide(add(multiply('fg2m', 2), multiply('fg3m', 3), 'ftm'), add('fg2a', 'fg3a', multiply(0.44, 'fta'))),
-            'all_teams': divide(add(multiply('fg2m', 2), multiply('fg3m', 3), 'ftm'), add('fg2a', 'fg3a', multiply(0.44, 'fta'))),
-            'opponents': divide(add(multiply('opp_fg2m', 2), multiply('opp_fg3m', 3), 'opp_ftm'), add('opp_fg2a', 'opp_fg3a', multiply(0.44, 'opp_fta')))
+            'player': ('divide', ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta'))),
+            'team': ('divide', ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta'))),
+            'all_teams': ('divide', ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta'))),
+            'opponents': ('divide', ('add', ('multiply', 'opp_fg2m', 2), ('multiply', 'opp_fg3m', 3), 'opp_ftm'), ('add', 'opp_fg2a', 'opp_fg3a', ('multiply', 0.44, 'opp_fta')))
         }
     },
     '2a': {
@@ -531,10 +527,10 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(2, divide('fg2m', 'fg2a')),
-            'team': multiply(2, divide('fg2m', 'fg2a')),
-            'all_teams': multiply(2, divide('fg2m', 'fg2a')),
-            'opponents': multiply(2, divide('opp_fg2m', 'opp_fg2a'))
+            'player': ('multiply', 2, ('divide', 'fg2m', 'fg2a')),
+            'team': ('multiply', 2, ('divide', 'fg2m', 'fg2a')),
+            'all_teams': ('multiply', 2, ('divide', 'fg2m', 'fg2a')),
+            'opponents': ('multiply', 2, ('divide', 'opp_fg2m', 'opp_fg2a'))
         }
     },
     'ora': {
@@ -580,9 +576,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(2, divide('open_rim_fgm', 'open_rim_fga')),
-            'team': multiply(2, divide('open_rim_fgm', 'open_rim_fga')),
-            'all_teams': multiply(2, divide('open_rim_fgm', 'open_rim_fga'))
+            'player': ('multiply', 2, ('divide', 'open_rim_fgm', 'open_rim_fga')),
+            'team': ('multiply', 2, ('divide', 'open_rim_fgm', 'open_rim_fga')),
+            'all_teams': ('multiply', 2, ('divide', 'open_rim_fgm', 'open_rim_fga'))
         }
     },
     'cra': {
@@ -628,9 +624,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(2, divide('cont_rim_fgm', 'cont_rim_fga')),
-            'team': multiply(2, divide('cont_rim_fgm', 'cont_rim_fga')),
-            'all_teams': multiply(2, divide('cont_rim_fgm', 'cont_rim_fga'))
+            'player': ('multiply', 2, ('divide', 'cont_rim_fgm', 'cont_rim_fga')),
+            'team': ('multiply', 2, ('divide', 'cont_rim_fgm', 'cont_rim_fga')),
+            'all_teams': ('multiply', 2, ('divide', 'cont_rim_fgm', 'cont_rim_fga'))
         }
     },
     'uar': {
@@ -676,9 +672,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': subtract('cont_fg2a', 'cont_rim_fga'),
-            'team': subtract('cont_fg2a', 'cont_rim_fga'),
-            'all_teams': subtract('cont_fg2a', 'cont_rim_fga')
+            'player': ('subtract', 'cont_fg2a', 'cont_rim_fga'),
+            'team': ('subtract', 'cont_fg2a', 'cont_rim_fga'),
+            'all_teams': ('subtract', 'cont_fg2a', 'cont_rim_fga')
         }
     },
     'p/om': {
@@ -700,9 +696,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(2, divide(subtract('open_fg2m', 'open_rim_fgm'), subtract('open_fg2a', 'open_rim_fga'))),
-            'team': multiply(2, divide(subtract('open_fg2m', 'open_rim_fgm'), subtract('open_fg2a', 'open_rim_fga'))),
-            'all_teams': multiply(2, divide(subtract('open_fg2m', 'open_rim_fgm'), subtract('open_fg2a', 'open_rim_fga')))
+            'player': ('multiply', 2, ('divide', ('subtract', 'open_fg2m', 'open_rim_fgm'), ('subtract', 'open_fg2a', 'open_rim_fga'))),
+            'team': ('multiply', 2, ('divide', ('subtract', 'open_fg2m', 'open_rim_fgm'), ('subtract', 'open_fg2a', 'open_rim_fga'))),
+            'all_teams': ('multiply', 2, ('divide', ('subtract', 'open_fg2m', 'open_rim_fgm'), ('subtract', 'open_fg2a', 'open_rim_fga')))
         }
     },
     'cma': {
@@ -724,9 +720,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': subtract('cont_fg2a', 'cont_rim_fga'),
-            'team': subtract('cont_fg2a', 'cont_rim_fga'),
-            'all_teams': subtract('cont_fg2a', 'cont_rim_fga')
+            'player': ('subtract', 'cont_fg2a', 'cont_rim_fga'),
+            'team': ('subtract', 'cont_fg2a', 'cont_rim_fga'),
+            'all_teams': ('subtract', 'cont_fg2a', 'cont_rim_fga')
         }
     },
     'p/cm': {
@@ -748,9 +744,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(2, divide(subtract('cont_fg2m', 'cont_rim_fgm'), subtract('cont_fg2a', 'cont_rim_fga'))),
-            'team': multiply(2, divide(subtract('cont_fg2m', 'cont_rim_fgm'), subtract('cont_fg2a', 'cont_rim_fga'))),
-            'all_teams': multiply(2, divide(subtract('cont_fg2m', 'cont_rim_fgm'), subtract('cont_fg2a', 'cont_rim_fga')))
+            'player': ('multiply', 2, ('divide', ('subtract', 'cont_fg2m', 'cont_rim_fgm'), ('subtract', 'cont_fg2a', 'cont_rim_fga'))),
+            'team': ('multiply', 2, ('divide', ('subtract', 'cont_fg2m', 'cont_rim_fgm'), ('subtract', 'cont_fg2a', 'cont_rim_fga'))),
+            'all_teams': ('multiply', 2, ('divide', ('subtract', 'cont_fg2m', 'cont_rim_fgm'), ('subtract', 'cont_fg2a', 'cont_rim_fga')))
         }
     },
     'uam': {
@@ -772,9 +768,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': subtract('unassisted_fg2m', 'unassisted_rim_fgm'),
-            'team': subtract('unassisted_fg2m', 'unassisted_rim_fgm'),
-            'all_teams': subtract('unassisted_fgm', 'unassisted_rim_fgm')
+            'player': ('subtract', 'unassisted_fg2m', 'unassisted_rim_fgm'),
+            'team': ('subtract', 'unassisted_fg2m', 'unassisted_rim_fgm'),
+            'all_teams': ('subtract', 'unassisted_fgm', 'unassisted_rim_fgm')
         }
     },
     '3a': {
@@ -821,10 +817,10 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(3, divide('fg3m', 'fg3a')),
-            'team': multiply(3, divide('fg3m', 'fg3a')),
-            'all_teams': multiply(3, divide('fg3m', 'fg3a')),
-            'opponents': multiply(3, divide('opp_fg3m', 'opp_fg3a'))
+            'player': ('multiply', 3, ('divide', 'fg3m', 'fg3a')),
+            'team': ('multiply', 3, ('divide', 'fg3m', 'fg3a')),
+            'all_teams': ('multiply', 3, ('divide', 'fg3m', 'fg3a')),
+            'opponents': ('multiply', 3, ('divide', 'opp_fg3m', 'opp_fg3a'))
         }
     },
     'o3a': {
@@ -870,9 +866,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(3, divide('open_fg3m', 'open_fg3a')),
-            'team': multiply(3, divide('open_fg3m', 'open_fg3a')),
-            'all_teams': multiply(3, divide('open_fg3m', 'open_fg3a'))
+            'player': ('multiply', 3, ('divide', 'open_fg3m', 'open_fg3a')),
+            'team': ('multiply', 3, ('divide', 'open_fg3m', 'open_fg3a')),
+            'all_teams': ('multiply', 3, ('divide', 'open_fg3m', 'open_fg3a'))
         }
     },
     'c3a': {
@@ -918,9 +914,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(3, divide('cont_fg3m', 'cont_fg3a')),
-            'team': multiply(3, divide('cont_fg3m', 'cont_fg3a')),
-            'all_teams': multiply(3, divide('cont_fg3m', 'cont_fg3a'))
+            'player': ('multiply', 3, ('divide', 'cont_fg3m', 'cont_fg3a')),
+            'team': ('multiply', 3, ('divide', 'cont_fg3m', 'cont_fg3a')),
+            'all_teams': ('multiply', 3, ('divide', 'cont_fg3m', 'cont_fg3a'))
         }
     },
     'ua3': {
@@ -966,10 +962,10 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide(multiply(0.44, 'fta'), add('fg2a', 'fg3a', multiply(0.44, 'fta') )),
-            'team': divide(multiply(0.44, 'fta'), add('fg2a', 'fg3a', multiply(0.44, 'fta') )),
-            'all_teams': divide(multiply(0.44, 'fta'), add('fg2a', 'fg3a', multiply(0.44, 'fta') )),
-            'opponents': divide(multiply(0.44, 'opp_fta'), add('opp_fg2a', 'opp_fg3a', multiply(0.44, 'opp_fta') ))
+            'player': ('divide', ('multiply', 0.44, 'fta'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta') )),
+            'team': ('divide', ('multiply', 0.44, 'fta'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta') )),
+            'all_teams': ('divide', ('multiply', 0.44, 'fta'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta') )),
+            'opponents': ('divide', ('multiply', 0.44, 'opp_fta'), ('add', 'opp_fg2a', 'opp_fg3a', ('multiply', 0.44, 'opp_fta') ))
         }
     },
     'p/ft': {
@@ -992,10 +988,10 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('ftm', 'fta'),
-            'team': divide('ftm', 'fta'),
-            'all_teams': divide('ftm', 'fta'),
-            'opponents': divide('opp_ftm', 'opp_fta')
+            'player': ('divide', 'ftm', 'fta'),
+            'team': ('divide', 'ftm', 'fta'),
+            'all_teams': ('divide', 'ftm', 'fta'),
+            'opponents': ('divide', 'opp_ftm', 'opp_fta')
         }
     },
     'dnk': {
@@ -1065,9 +1061,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide(multiply(60, 'time_on_ball'), 'touches'),
-            'team': divide(multiply(60, 'time_on_ball'), 'touches'),
-            'all_teams': divide(multiply(60, 'time_on_ball'), 'touches')
+            'player': ('divide', ('multiply', 60, 'time_on_ball'), 'touches'),
+            'team': ('divide', ('multiply', 60, 'time_on_ball'), 'touches'),
+            'all_teams': ('divide', ('multiply', 60, 'time_on_ball'), 'touches')
         }
     },
     '%trs': {
@@ -1089,9 +1085,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide(add('fg2a', 'fg3a', multiply(0.44, 'fta')), 'touches'),
-            'team': divide(add('fg2a', 'fg3a', multiply(0.44, 'fta')), 'touches'),
-            'all_teams': divide(add('fg2a', 'fg3a', multiply(0.44, 'fta')), 'touches')
+            'player': ('divide', ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta')), 'touches'),
+            'team': ('divide', ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta')), 'touches'),
+            'all_teams': ('divide', ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta')), 'touches')
         }
     },
     '%trp': {
@@ -1113,9 +1109,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('passes', 'touches'),
-            'team': divide('passes', 'touches'),
-            'all_teams': divide('passes', 'touches')
+            'player': ('divide', 'passes', 'touches'),
+            'team': ('divide', 'passes', 'touches'),
+            'all_teams': ('divide', 'passes', 'touches')
         }
     },
     '%trt': {
@@ -1137,9 +1133,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('turnovers', 'touches'),
-            'team': divide('turnovers', 'touches'),
-            'all_teams': divide('turnovers', 'touches')
+            'player': ('divide', 'turnovers', 'touches'),
+            'team': ('divide', 'turnovers', 'touches'),
+            'all_teams': ('divide', 'turnovers', 'touches')
         }
     },
     'ast': {
@@ -1260,9 +1256,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('o_reb_pct_x1000', 1000),
-            'team': divide('o_reb_pct_x1000', 1000),
-            'all_teams': divide('o_reb_pct_x1000', 1000)
+            'player': ('divide', 'o_reb_pct_x1000', 1000),
+            'team': ('divide', 'o_reb_pct_x1000', 1000),
+            'all_teams': ('divide', 'o_reb_pct_x1000', 1000)
         }
     },
     'cor%': {
@@ -1285,9 +1281,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('cont_o_rebs', 'o_rebs'),
-            'team': divide('cont_o_rebs', 'o_rebs'),
-            'all_teams': divide('cont_o_rebs', 'o_rebs')
+            'player': ('divide', 'cont_o_rebs', 'o_rebs'),
+            'team': ('divide', 'cont_o_rebs', 'o_rebs'),
+            'all_teams': ('divide', 'cont_o_rebs', 'o_rebs')
         }
     },
     'dr%': {
@@ -1309,9 +1305,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('d_reb_pct_x1000', 1000),
-            'team': divide('d_reb_pct_x1000', 1000),
-            'all_teams': divide('d_reb_pct_x1000', 10)
+            'player': ('divide', 'd_reb_pct_x1000', 1000),
+            'team': ('divide', 'd_reb_pct_x1000', 1000),
+            'all_teams': ('divide', 'd_reb_pct_x1000', 10)
         }
     },
     'cdr%': {
@@ -1333,9 +1329,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('cont_d_rebs', 'd_rebs'),
-            'team': divide('cont_d_rebs', 'd_rebs'),
-            'all_teams': divide('cont_d_rebs', 'd_rebs')
+            'player': ('divide', 'cont_d_rebs', 'd_rebs'),
+            'team': ('divide', 'cont_d_rebs', 'd_rebs'),
+            'all_teams': ('divide', 'cont_d_rebs', 'd_rebs')
         }
     },
     'pbs': {
@@ -1381,9 +1377,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('o_dist_x10', 10),
-            'team': divide('o_dist_x10', 10),
-            'all_teams': divide('o_dist_x10', 10)
+            'player': ('divide', 'o_dist_x10', 10),
+            'team': ('divide', 'o_dist_x10', 10),
+            'all_teams': ('divide', 'o_dist_x10', 10)
         }
     },
     'ddst': {
@@ -1405,9 +1401,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('d_dist_x10', 10),
-            'team': divide('d_dist_x10', 10),
-            'all_teams': divide('d_dist_x10', 10)
+            'player': ('divide', 'd_dist_x10', 10),
+            'team': ('divide', 'd_dist_x10', 10),
+            'all_teams': ('divide', 'd_dist_x10', 10)
         }
     },
     'dra': {
@@ -1453,9 +1449,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(2, divide('d_rim_fgm', 'd_rim_fga')),
-            'team': multiply(2, divide('d_rim_fgm', 'd_rim_fga')),
-            'all_teams': multiply(2, divide('d_rim_fgm', 'd_rim_fga'))
+            'player': ('multiply', 2, ('divide', 'd_rim_fgm', 'd_rim_fga')),
+            'team': ('multiply', 2, ('divide', 'd_rim_fgm', 'd_rim_fga')),
+            'all_teams': ('multiply', 2, ('divide', 'd_rim_fgm', 'd_rim_fga'))
         }
     },
     'dma': {
@@ -1477,9 +1473,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': subtract('d_fg2a', 'd_rim_fga'),
-            'team': subtract('d_fg2a', 'd_rim_fga'),
-            'all_teams': subtract('d_fg2a', 'd_rim_fga')
+            'player': ('subtract', 'd_fg2a', 'd_rim_fga'),
+            'team': ('subtract', 'd_fg2a', 'd_rim_fga'),
+            'all_teams': ('subtract', 'd_fg2a', 'd_rim_fga')
         }
     },
     'p/dm': {
@@ -1501,9 +1497,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(2, divide(subtract('d_fg2m', 'd_rim_fgm'), subtract('d_fg2a', 'd_rim_fga'))),
-            'team': multiply(2, divide(subtract('d_fg2m', 'd_rim_fgm'), subtract('d_fg2a', 'd_rim_fga'))),
-            'all_teams': multiply(2, divide(subtract('d_fg2m', 'd_rim_fgm'), subtract('d_fg2a', 'd_rim_fga')))
+            'player': ('multiply', 2, ('divide', ('subtract', 'd_fg2m', 'd_rim_fgm'), ('subtract', 'd_fg2a', 'd_rim_fga'))),
+            'team': ('multiply', 2, ('divide', ('subtract', 'd_fg2m', 'd_rim_fgm'), ('subtract', 'd_fg2a', 'd_rim_fga'))),
+            'all_teams': ('multiply', 2, ('divide', ('subtract', 'd_fg2m', 'd_rim_fgm'), ('subtract', 'd_fg2a', 'd_rim_fga')))
         }
     },
     'd3a': {
@@ -1549,9 +1545,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': multiply(3, divide('d_fg3m', 'd_fg3a')),
-            'team': multiply(3, divide('d_fg3m', 'd_fg3a')),
-            'all_teams': multiply(3, divide('d_fg3m', 'd_fg3a'))
+            'player': ('multiply', 3, ('divide', 'd_fg3m', 'd_fg3a')),
+            'team': ('multiply', 3, ('divide', 'd_fg3m', 'd_fg3a')),
+            'all_teams': ('multiply', 3, ('divide', 'd_fg3m', 'd_fg3a'))
         }
     },
     'cont': {
@@ -1669,9 +1665,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': add('steals', 'charges_drawn'),
-            'team': add('steals', 'charges_drawn'),
-            'all_teams': add('steals', 'charges_drawn')
+            'player': ('add', 'steals', 'charges_drawn'),
+            'team': ('add', 'steals', 'charges_drawn'),
+            'all_teams': ('add', 'steals', 'charges_drawn')
         }
     },
     'fls': {
@@ -1718,9 +1714,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('wins', 'games'),
-            'team': divide('wins', 'games'),
-            'all_teams': divide('wins', 'games')
+            'player': ('divide', 'wins', 'games'),
+            'team': ('divide', 'wins', 'games'),
+            'all_teams': ('divide', 'wins', 'games')
         }
     },
     'ortg': {
@@ -1743,9 +1739,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('o_rtg_x10', 10),
-            'team': divide('o_rtg_x10', 10),
-            'all_teams': divide('o_rtg_x10', 10)
+            'player': ('divide', 'o_rtg_x10', 10),
+            'team': ('divide', 'o_rtg_x10', 10),
+            'all_teams': ('divide', 'o_rtg_x10', 10)
         }
     },
     'drtg': {
@@ -1767,9 +1763,9 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': divide('d_rtg_x10', 10),
-            'team': divide('d_rtg_x10', 10),
-            'all_teams': divide('d_rtg_x10', 10)
+            'player': ('divide', 'd_rtg_x10', 10),
+            'team': ('divide', 'd_rtg_x10', 10),
+            'all_teams': ('divide', 'd_rtg_x10', 10)
         }
     },
     'nooo': {
@@ -1791,7 +1787,7 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': subtract(divide('o_rtg_x10', 10), divide('off_o_rtg_x10', 10))
+            'player': ('subtract', ('divide', 'o_rtg_x10', 10), ('divide', 'off_o_rtg_x10', 10))
         }
     },
     'ndoo': {
@@ -1813,7 +1809,7 @@ TAB_COLUMNS: Dict[str, Any] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': subtract(divide('d_rtg_x10', 10), divide('off_d_rtg_x10', 10))
+            'player': ('subtract', ('divide', 'd_rtg_x10', 10), ('divide', 'off_d_rtg_x10', 10))
         }
     },
     'ID': {

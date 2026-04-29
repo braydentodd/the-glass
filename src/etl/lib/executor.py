@@ -1,15 +1,15 @@
 """
 The Glass - ETL Execution Engine
 
-Executes a single call group against the NBA API, routing to the correct
-strategy based on the group's execution tier:
+Executes a single call group against a configured source, routing to the
+correct strategy based on the group's execution tier:
 
-  - league_wide:  one API call returns all entities at once
-  - team / player: per-team API calls with aggregation (e.g. on/off court)
-  - team_call:    one per-team call returning player-level data
+  - league_wide:   one API call returns all entities at once
+  - team / player: per-entity API calls (with aggregation when needed)
+  - team_call:     one per-team call returning player-level data
 
-This module is the execution layer.  Orchestration (which groups to run,
-in what order, for which seasons) lives in runner.py.
+This module is the workhorse for API-driven phases.  Phase ordering lives
+in :mod:`src.etl.orchestrator`; the CLI lives in :mod:`src.etl.cli`.
 """
 
 import logging
@@ -18,8 +18,8 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
 from src.core.db import db_connection, quote_col
-from src.etl.definitions import get_table_name
-from src.etl.core.extract import (
+from src.etl.definitions import get_source_id_column, get_table_name
+from src.etl.lib.extract import (
     extract_columns_from_result,
     extract_raw_rows,
     extract_single_field,
@@ -27,9 +27,8 @@ from src.etl.core.extract import (
     get_pipeline_columns,
     get_simple_columns,
 )
-from src.etl.definitions import get_source_id_column
-from src.etl.core.load import write_entity_rows
-from src.etl.core.transform import aggregate_team_rows, execute_pipeline
+from src.etl.lib.load import write_entity_rows
+from src.etl.lib.transform import aggregate_team_rows, execute_pipeline
 
 logger = logging.getLogger(__name__)
 

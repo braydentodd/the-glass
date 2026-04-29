@@ -6,9 +6,6 @@ and spreadsheet settings across all leagues.
 """
 
 import os
-
-from src.publish.definitions.formulas import tab_subject, formatted_stats_section_name
-
 from dataclasses import dataclass
 from typing import Optional
 
@@ -189,7 +186,6 @@ TABS_CONFIG = {
         'footer_divider_row_height': 4,
     },
     'individual_team': {
-        'tab_name': tab_subject('abbr'),
         'move_to_front': False,
         'footer': 'team/opponent',
         'footer_divider_row_height': 4
@@ -198,7 +194,6 @@ TABS_CONFIG = {
 
 SECTIONS_CONFIG = {
     'entities': {
-        'display_name': tab_subject('name'),
         'menu_label': None,
         'stats_timeframe': None,
         'toggleable': False,
@@ -219,21 +214,18 @@ SECTIONS_CONFIG = {
         'visible_by_default': True
     },
     'current_stats': {
-        'display_name': formatted_stats_section_name(),
         'menu_label': 'Current Stats',
         'stats_timeframe': 'current',
         'toggleable': True,
         'visible_by_default': True
     },
     'historical_stats': {
-        'display_name': formatted_stats_section_name(),
         'menu_label': 'Historical Stats',
         'stats_timeframe': 'historical',
         'toggleable': True,
         'visible_by_default': True
     },
     'postseason_stats': {
-        'display_name': formatted_stats_section_name(),
         'menu_label': 'Postseason Stats',
         'stats_timeframe': 'historical',
         'toggleable': True,
@@ -346,12 +338,25 @@ SUMMARY_THRESHOLDS = [
 GOOGLE_SHEETS_CONFIG_SCHEMA = {
     'credentials_file': {'required': True, 'types': (str, type(None))},
     'spreadsheet_id': {'required': True, 'types': (str, type(None))},
-    'scopes': {'required': True, 'types': (list,)}
+    'scopes': {'required': True, 'types': (list,)},
 }
 
-STAT_CONSTANTS_SCHEMA = {
-    'default_per_minute': {'required': True, 'types': (float, int)},
-    'default_per_possessions': {'required': True, 'types': (float, int)}
+STAT_RATES_SCHEMA = {
+    'short_label': {'required': True, 'types': (str,)},
+    'rate':        {'required': True, 'types': (int, float, type(None))},
+    'default':     {'required': True, 'types': (bool,)},
+}
+
+TABS_CONFIG_SCHEMA = {
+    'move_to_front':             {'required': True, 'types': (bool,)},
+    'footer':                    {'required': True, 'types': (str, type(None))},
+    'footer_divider_row_height': {'required': True, 'types': (int,)},
+}
+
+SUBSECTIONS_SCHEMA = {
+    'display_name': {'required': True, 'types': (str,)},
+    'sections':     {'required': True, 'types': (list,)},
+    'tabs':         {'required': True, 'types': (list,)},
 }
 
 SHEET_FORMATTING_SCHEMA = {
@@ -361,7 +366,6 @@ SHEET_FORMATTING_SCHEMA = {
     'header_fg': {'required': True, 'types': (str,)},
     'wrap_strategy': {'required': True, 'types': (str,)},
     'hide_advanced_columns': {'required': True, 'types': (bool,)},
-    'hide_identity_section': {'required': True, 'types': (bool,)},
     'percentile_companion_width': {'required': True, 'types': (int,)},
     'percentile_companion_font_size': {'required': True, 'types': (int,)},
     'frozen_rows': {'required': True, 'types': (int,)},
@@ -370,9 +374,12 @@ SHEET_FORMATTING_SCHEMA = {
 }
 
 SECTIONS_SCHEMA = {
-    'display_name': {'required': True, 'types': (str,)},
-    'is_stats_section': {'required': True, 'types': (bool,)},
-    'toggleable': {'required': True, 'types': (bool,)}
+    'menu_label':         {'required': True,  'types': (str, type(None))},
+    # A non-None stats_timeframe identifies a section as a stats section
+    # (consumed by the publish layer to decide percentile / rate scaling).
+    'stats_timeframe':    {'required': True,  'types': (str, type(None))},
+    'toggleable':         {'required': True,  'types': (bool,)},
+    'visible_by_default': {'required': True,  'types': (bool,)},
 }
 
 COLORS_SCHEMA = {
@@ -387,9 +394,13 @@ COLOR_THRESHOLDS_SCHEMA = {
     'high': {'required': True, 'types': (int, float)}
 }
 
-MENU_CONFIG_SCHEMA = {
-    'display_name': {'required': True, 'types': (str,)},
-    'show_label': {'required': False, 'types': (str,)},
-    'hide_label': {'required': False, 'types': (str,)}
+DEFAULT_STAT_RATE = next(
+    (k for k, v in STAT_RATES.items() if v.get('default', False)),
+    'per_game',
+)
+
+PUBLISH_CONFIG = {
+    'auto_resume': True,
+    'max_retry_attempts': 3,
+    'retry_delay_seconds': 30,
 }
-DEFAULT_STAT_RATE = next((k for k, v in STAT_RATES.items() if v.get('default', False)), 'per_game')

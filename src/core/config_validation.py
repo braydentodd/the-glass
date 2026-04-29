@@ -84,12 +84,68 @@ def validate_flat_config(
     """Validate a flat config dict (keys are the attributes)."""
     return validate_entry(data, schema, config_name)
 
-def validate_core_constants() -> List[str]:
-    """Validates the core constants exported in src/core/config.py against their schema."""
-    from src.core.config import SEASON_TYPE_GROUPS, CORE_CONFIG_SCHEMA
-    
+
+def validate_scalar_dict(
+    data: Dict[Any, Any],
+    config_name: str,
+    *,
+    key_types: tuple,
+    value_types: tuple,
+) -> List[str]:
+    """Validate a key->value mapping where values are scalars (not dicts).
+
+    Used for configs like ``HISTORICAL_TIMEFRAMES`` (int->str) or
+    ``WIDTH_CLASSES`` (str->int|None) that don't fit the dict-of-dicts shape
+    but still benefit from a startup type check.
+    """
     errors: List[str] = []
-    if 'SEASON_TYPE_GROUPS' in CORE_CONFIG_SCHEMA:
-        errors.extend(validate_entry(SEASON_TYPE_GROUPS, CORE_CONFIG_SCHEMA['SEASON_TYPE_GROUPS'], "SEASON_TYPE_GROUPS"))
-        
+    for key, value in data.items():
+        if not isinstance(key, key_types):
+            kt = ', '.join(t.__name__ for t in key_types)
+            errors.append(
+                f"{config_name}: key {key!r} is {type(key).__name__}, "
+                f"expected ({kt})"
+            )
+        if not isinstance(value, value_types):
+            vt = ', '.join(t.__name__ for t in value_types)
+            errors.append(
+                f"{config_name}[{key!r}]: value is {type(value).__name__}, "
+                f"expected ({vt})"
+            )
+    return errors
+
+
+def validate_core_constants() -> List[str]:
+    """Validate every constant exported by ``src.core.config`` against its schema.
+
+    Returns a list of error strings (empty = valid).  Caller decides how to
+    surface them (typically the CLI's ``validate_all`` step).
+    """
+    from src.core.config import (
+        CORE_CONFIG_SCHEMAS,
+        SEASON_TYPE_GROUPS,
+        STAT_DOMAINS,
+    )
+
+    errors: List[str] = []
+
+    errors.extend(validate_entry(
+        SEASON_TYPE_GROUPS,
+        CORE_CONFIG_SCHEMAS['SEASON_TYPE_GROUPS'],
+        'SEASON_TYPE_GROUPS',
+    ))
+
+    domain_schema = CORE_CONFIG_SCHEMAS['STAT_DOMAINS_ENTRY']
+    errors.extend(validate_dict_config(
+        STAT_DOMAINS, domain_schema, 'STAT_DOMAINS',
+    ))
+
+    # Exactly one domain must be flagged primary; cleanup + publish rely on it.
+    primaries = [k for k, v in STAT_DOMAINS.items() if v.get('primary')]
+    if len(primaries) != 1:
+        errors.append(
+            f"STAT_DOMAINS: expected exactly one entry with primary=True, "
+            f"got {primaries!r}"
+        )
+
     return errors

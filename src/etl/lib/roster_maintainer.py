@@ -1,22 +1,23 @@
 """
-The Glass - Roster Synchronization
+The Glass - Roster Maintainer
 
-Maintains the two membership junctions in the ``core`` schema:
+Single responsibility: keep the two membership junctions in the ``core``
+schema in sync with a roster snapshot pulled from the league's reader source.
 
     core.league_rosters  : (league_id, team_id, is_active, ...)
     core.team_rosters    : (team_id,   player_id, is_active, ...)
 
-A roster sync run takes a snapshot of (team_source_id, player_source_id)
-pairs from the league's reader source, resolves each to a ``the_glass_id``
-via the corresponding ``core.*_profiles`` table, and:
+A sync run accepts a snapshot of ``(team_source_id, player_source_id)``
+pairs, resolves each to its ``the_glass_id`` via the relevant
+``core.*_profiles`` table, and:
 
     1. Upserts every (league, team) pair into league_rosters  (is_active=TRUE).
     2. Upserts every (team, player) pair into team_rosters    (is_active=TRUE).
     3. Deactivates rows that existed before but are absent from the snapshot.
 
-The module is source-agnostic: callers (typically the runner) supply the
-already-fetched roster pairs.  Source-specific endpoint logic stays in the
-respective source client.
+Source-agnostic: callers (the orchestrator) supply already-fetched pairs.
+Source-specific endpoint logic stays in each source client.  The league
+profile row itself is bootstrapped by :func:`src.etl.lib.ddl.ensure_league_profile`.
 """
 
 import logging
@@ -25,50 +26,12 @@ from typing import Any, Dict, Iterable, List, Set, Tuple
 from src.core.db import db_connection, quote_col
 from src.etl.definitions import (
     CORE_SCHEMA,
-    LEAGUES,
     THE_GLASS_ID_COLUMN,
     get_source_id_column,
 )
+from src.etl.lib.ddl import ensure_league_profile
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# League profile bootstrap
-# ---------------------------------------------------------------------------
-
-def ensure_league_profile(league_key: str, conn: Any) -> int:
-    """Ensure ``core.league_profiles`` has a row for ``league_key`` and return
-    its ``the_glass_id``.
-
-    The row's ``key`` column anchors the league_key -> the_glass_id mapping
-    and is the only stable reference between config and database.
-    """
-    if league_key not in LEAGUES:
-        raise ValueError(f"Unknown league: {league_key!r}")
-
-    league = LEAGUES[league_key]
-    with conn.cursor() as cur:
-        cur.execute(
-            f"SELECT {quote_col(THE_GLASS_ID_COLUMN)} "
-            f"FROM {CORE_SCHEMA}.league_profiles WHERE key = %s",
-            (league_key,),
-        )
-        row = cur.fetchone()
-        if row is not None:
-            return int(row[0])
-
-        cur.execute(
-            f"INSERT INTO {CORE_SCHEMA}.league_profiles (key, name, abbr) "
-            f"VALUES (%s, %s, %s) RETURNING {quote_col(THE_GLASS_ID_COLUMN)}",
-            (league_key, league['name'], league['abbr']),
-        )
-        new_id = int(cur.fetchone()[0])
-        logger.info(
-            'Registered league %r in core.league_profiles (the_glass_id=%d)',
-            league_key, new_id,
-        )
-        return new_id
 
 
 # ---------------------------------------------------------------------------

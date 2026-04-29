@@ -7,7 +7,6 @@ The pipeline engine executes multi-step transformations defined in config.
 """
 
 import logging
-import time
 from datetime import date, datetime
 from typing import Any, Callable, Dict, List, Literal, Optional
 
@@ -315,7 +314,6 @@ def _op_multi_league_extract(
 
 def _op_filter(data: Dict[int, Any], op: Dict[str, Any]) -> Dict[int, Any]:
     """Keep only entries matching filter criteria."""
-    field = op['field']
     values = set(op['values'])
     return {eid: v for eid, v in data.items() if v in values}
 

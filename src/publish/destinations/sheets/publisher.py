@@ -6,7 +6,6 @@ from the core Executor and translates them into Google Sheets batch API requests
 """
 
 import logging
-from typing import List, Tuple
 
 from src.publish.destinations.sheets.api_builder import build_formatting_requests
 from src.publish.destinations.sheets.client import get_or_create_worksheet, write_and_format
@@ -36,7 +35,7 @@ def publish_tab(
         "display_name": str
     }
     """
-    logger.info(f"    Publishing IR payload to Sheet tab: {tab_name}...")
+    logger.info('Publishing IR payload to Sheet tab: %s', tab_name)
     
     worksheet = get_or_create_worksheet(spreadsheet, tab_name, clear=not data_only)
     
@@ -54,4 +53,4 @@ def publish_tab(
         build_fn=build_formatting_requests,
     )
     
-    logger.info(f"    Successfully published {ir_payload['n_player_rows']} main rows.")
+    logger.info('Successfully published %d main rows', ir_payload['n_player_rows'])

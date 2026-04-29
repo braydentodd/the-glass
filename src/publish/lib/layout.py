@@ -1,9 +1,9 @@
 from typing import List, Optional, Any, Tuple
 from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.core.formatting import ROW_INDEXES
+from src.publish.lib.formatting import ROW_INDEXES
 from src.publish.definitions.config import (HEADER_ROWS, SECTIONS_CONFIG, SUBSECTIONS, SHEET_FORMATTING,
                                 STAT_RATES, DEFAULT_STAT_RATE, ColumnContext)
-from src.publish.core.formatting import format_section_header
+from src.publish.lib.formatting import format_section_header
 
 
 import re

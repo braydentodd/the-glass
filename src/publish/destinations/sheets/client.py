@@ -1,4 +1,3 @@
-from src.publish.core.formatting import ROW_INDEXES
 """
 The Glass - Shared Sheets Sync Utilities
 
@@ -9,6 +8,8 @@ and data writing helpers.
 
 import logging
 from decimal import Decimal
+
+from src.publish.lib.formatting import ROW_INDEXES
 from typing import Callable, Optional
 
 import gspread
@@ -167,9 +168,7 @@ def write_and_format(worksheet, columns, headers, data_rows,
     autoResizeDimensions sizes based on data only.  The real headers are
     written back in a second pass after formatting is applied.
     """
-    from src.publish.definitions.config import WIDTH_CLASSES, SHEET_FORMATTING
-
-    fmt = SHEET_FORMATTING
+    from src.publish.definitions.config import WIDTH_CLASSES
 
     n_cols = len(columns)
     filter_row = [''] * n_cols
@@ -251,5 +250,5 @@ def move_sheet_to_position(worksheet, index):
             }
         }]})
     except Exception as e:
-        logger.warning(f'  Could not move sheet to position {index}: {e}')
+        logger.warning('Could not move sheet to position %s: %s', index, e)
 

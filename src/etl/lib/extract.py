@@ -10,9 +10,9 @@ JSON response that the provider client returns.
 """
 
 import logging
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional
 
-from src.etl.core.transform import apply_transform, safe_int
+from src.etl.lib.transform import apply_transform, safe_int
 
 logger = logging.getLogger(__name__)
 

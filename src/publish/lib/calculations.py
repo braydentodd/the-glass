@@ -1,11 +1,13 @@
 import logging
 from datetime import date, datetime
 from typing import Dict, Any, List, Optional
-from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.definitions.config import SECTIONS_CONFIG, STAT_RATES
+
 from src.core.config import STAT_DOMAINS
+from src.publish.definitions.columns import TAB_COLUMNS
+from src.publish.definitions.config import SECTIONS_CONFIG, STAT_RATES, VALUES_KEY_ENTITY
 
 logger = logging.getLogger(__name__)
+
 
 # ============================================================================
 # TUPLE-TREE EXPRESSION EVALUATOR
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def evaluate_expression(expr, entity_data: dict,
                         context: Optional[dict] = None) -> Any:
-    """Recursively evaluate an expression tree built by formulas.py.
+    """Recursively evaluate an expression tree built by the marker DSL above.
 
     Args:
         expr: One of:
@@ -126,7 +128,7 @@ def evaluate_expression(expr, entity_data: dict,
         age_years = (today - bdate).days / 365.25
         return round(age_years, 1)
 
-    logger.warning(f"Unknown expression operator: {op}")
+    logger.warning('Unknown expression operator: %r', op)
     return None
 
 
@@ -154,24 +156,59 @@ def evaluate_formula(col_key: str, entity_data: dict,
     return evaluate_expression(expr, entity_data, context)
 
 
-def _apply_scaling(raw_value: Any, mode: str, games: float, minutes: float,
-                   possessions: float) -> Any:
-    """Apply mode-based scaling to a raw stat value.
+def _coerce_positive(*candidates: Optional[float]) -> Optional[float]:
+    """Return the first candidate that is a positive number, else None.
 
-    Scaling factors are driven by STAT_RATES so changing the base
-    (e.g. 40 mins -> 48 mins) only requires a config update.
+    Drives the domain -> base fallback chain for rate denominators.
     """
-    if raw_value is None or raw_value == 0:
-        return raw_value
+    for v in candidates:
+        if v is None:
+            continue
+        try:
+            n = float(v)
+        except (TypeError, ValueError):
+            continue
+        if n > 0:
+            return n
+    return None
+
+
+def _apply_scaling(
+    raw_value: Any,
+    mode: str,
+    *,
+    domain_games: Optional[float], base_games: Optional[float],
+    domain_minutes: Optional[float], base_minutes: Optional[float],
+    domain_possessions: Optional[float], base_possessions: Optional[float],
+) -> Any:
+    """Apply mode-based scaling with a strict domain -> base fallback chain.
+
+    A scaled rate is only defined when its denominator is positive.  If both
+    the domain denominator and the base denominator are zero/NULL we return
+    ``None`` so the consumer renders an empty cell instead of a misleading
+    zero.  Scaling factors come from STAT_RATES so changes (e.g. 40 -> 48
+    minute base) only require a config update.
+    """
+    if raw_value is None:
+        return None
+    if raw_value == 0:
+        return 0
 
     if mode == 'per_game':
-        return raw_value / max(games, 1)
-    elif mode == 'per_minute':
-        per_min_base = STAT_RATES['per_minute']['rate']
-        return raw_value * per_min_base / max(minutes, 0.1)
-    elif mode == 'per_possession':
-        per_poss_base = STAT_RATES['per_possession']['rate']
-        return raw_value * per_poss_base / max(possessions, 1)
+        denom = _coerce_positive(domain_games, base_games)
+        return None if denom is None else raw_value / denom
+
+    if mode == 'per_minute':
+        denom = _coerce_positive(domain_minutes, base_minutes)
+        if denom is None:
+            return None
+        return raw_value * STAT_RATES['per_minute']['rate'] / denom
+
+    if mode == 'per_possession':
+        denom = _coerce_positive(domain_possessions, base_possessions)
+        if denom is None:
+            return None
+        return raw_value * STAT_RATES['per_possession']['rate'] / denom
 
     return raw_value
 
@@ -203,10 +240,12 @@ def calculate_entity_stats(entity_data: dict, entity_type: str = 'player',
             local_context['seasons_in_query'] = 1
 
     results = {}
-    games = entity_data.get('games', 0) or 0
-    base_minutes_x10 = entity_data.get('minutes_x10', 0) or 0
-    base_minutes = base_minutes_x10 / 10.0
-    possessions = entity_data.get('possessions', 0) or 0
+
+    # Base denominators -- always available on the fact row.
+    base_games = entity_data.get('games')
+    base_minutes_x10 = entity_data.get('minutes_x10')
+    base_minutes = (base_minutes_x10 or 0) / 10.0 if base_minutes_x10 is not None else None
+    base_possessions = entity_data.get('possessions')
 
     for col_key, col_def in TAB_COLUMNS.items():
         values = col_def.get('values', {})
@@ -221,32 +260,56 @@ def calculate_entity_stats(entity_data: dict, entity_type: str = 'player',
 
         rate_domain = col_def.get('rate_domain')
 
-        if rate_domain is not None:
-            if rate_domain == 'per_game_only':
-                results[col_key] = raw_value / max(games, 1)
-            else:
-                domain_cfg = STAT_DOMAINS.get(rate_domain)
-                
-                if domain_cfg and rate_domain != 'base':
-                    # Use domain-specific minutes
-                    domain_minutes_col = domain_cfg['minutes_col']
-                    domain_minutes = (entity_data.get(domain_minutes_col, 0) or 0) / 10.0
-                    
-                    # Scale possessions proportionally when using specialized minutes
-                    if base_minutes > 0:
-                        minute_ratio = domain_minutes / base_minutes
-                        stat_possessions = possessions * minute_ratio
-                    else:
-                        stat_possessions = possessions
-                    
-                    results[col_key] = _apply_scaling(raw_value, mode, games, domain_minutes, stat_possessions)
-                else:
-                    results[col_key] = _apply_scaling(raw_value, mode, games, base_minutes, possessions)
-        else:
+        if rate_domain is None:
             results[col_key] = raw_value
-            
-        # Format percentage handling
-        if col_def.get('format') == 'percentage' and isinstance(results[col_key], (int, float)):
+        elif rate_domain == 'per_game_only':
+            # Special-case: ignore the active mode and always do per-game.
+            results[col_key] = _apply_scaling(
+                raw_value, 'per_game',
+                domain_games=None, base_games=base_games,
+                domain_minutes=None, base_minutes=None,
+                domain_possessions=None, base_possessions=None,
+            )
+        else:
+            domain_cfg = STAT_DOMAINS.get(rate_domain)
+            if domain_cfg and not domain_cfg.get('primary', False):
+                # Non-base domain: pull its own denominators from config.
+                d_min_col = domain_cfg['minutes_col']
+                d_games_col = domain_cfg['games_col']
+                d_min_x10 = entity_data.get(d_min_col)
+                domain_minutes = (
+                    (d_min_x10 or 0) / 10.0 if d_min_x10 is not None else None
+                )
+                domain_games = entity_data.get(d_games_col)
+
+                # Scale possessions proportionally to the domain's share of
+                # base minutes, when both denominators are observable.
+                if domain_minutes and base_minutes and base_minutes > 0:
+                    domain_possessions = (
+                        (base_possessions or 0) * (domain_minutes / base_minutes)
+                    )
+                else:
+                    domain_possessions = None
+
+                results[col_key] = _apply_scaling(
+                    raw_value, mode,
+                    domain_games=domain_games, base_games=base_games,
+                    domain_minutes=domain_minutes, base_minutes=base_minutes,
+                    domain_possessions=domain_possessions,
+                    base_possessions=base_possessions,
+                )
+            else:
+                # 'base' or unknown domain -> base denominators only.
+                results[col_key] = _apply_scaling(
+                    raw_value, mode,
+                    domain_games=None, base_games=base_games,
+                    domain_minutes=None, base_minutes=base_minutes,
+                    domain_possessions=None, base_possessions=base_possessions,
+                )
+
+        if col_def.get('format') == 'percentage' and isinstance(
+            results[col_key], (int, float)
+        ):
             results[col_key] = results[col_key] * 100
 
     return results
@@ -360,9 +423,6 @@ def get_percentile_rank(value: Any, sorted_weighted: List, reverse: bool = False
 # ============================================================================
 # FIELD DERIVATION (consolidated from field_derivation.py)
 # ============================================================================
-
-from src.publish.definitions.config import VALUES_KEY_ENTITY
-
 
 def _extract_db_refs(expr) -> set:
     """Walk an expression tree and return all referenced DB column names."""

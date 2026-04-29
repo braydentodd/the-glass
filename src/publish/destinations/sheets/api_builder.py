@@ -1,10 +1,7 @@
-import logging
-from typing import Dict, List, Optional, Tuple
-from src.publish.core.formatting import ROW_INDEXES
-from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.definitions.config import (SECTIONS_CONFIG, SUBSECTIONS, COLORS, COLOR_THRESHOLDS, SHEET_FORMATTING, WIDTH_CLASSES, HEADER_ROWS)
-from src.publish.destinations.sheets.styles import get_color_for_percentile, get_color_for_raw, get_color_dict, get_border_style, create_cell_format, create_text_format
-from src.publish.core.layout import get_column_index
+from typing import List, Optional, Tuple
+from src.publish.lib.formatting import ROW_INDEXES
+from src.publish.definitions.config import (SECTIONS_CONFIG, COLORS, SHEET_FORMATTING, WIDTH_CLASSES, HEADER_ROWS)
+from src.publish.destinations.sheets.styles import get_color_for_percentile, get_color_for_raw
 
 def build_formatting_requests(ws_id: int, columns_list: List[Tuple],
                               header_merges: list, n_data_rows: int,
@@ -47,7 +44,6 @@ def build_formatting_requests(ws_id: int, columns_list: List[Tuple],
             cell['row'] += data_start
 
     total_rows = data_start + n_data_rows
-    header_end = ROW_INDEXES['data_start_row']  # Row after last header row
     frozen_columns = fmt.get('frozen_columns', fmt.get('frozen_columns', 0))
     column_border_weight = fmt.get('column_border_weight', 1)
     column_header_color = get_color_for_raw(COLORS[fmt.get('column_border_color_header', 'white')])

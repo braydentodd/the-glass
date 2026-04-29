@@ -8,7 +8,8 @@ the per-league stats schemas, and operational ETL tables.
 Public surface:
     ensure_core_schema(conn)            - core schema + sequence + profile + junction tables
     ensure_league_schema(league, conn)  - league schema + stats tables + ETL operational tables
-    ensure_all(league, conn=None)       - one-shot orchestrator (called from the runner)
+    ensure_league_profile(league, conn) - upsert a core.league_profiles row for a league key
+    ensure_all(league, conn=None)       - one-shot orchestrator (called from the CLI)
 
 The generator is purely additive: it CREATEs missing tables and ADD COLUMNs
 missing columns, but never drops or alters existing structures.  Schema
@@ -17,7 +18,7 @@ outside this module.
 """
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 from src.core.db import get_db_connection, quote_col
 from src.etl.definitions import (
@@ -25,8 +26,8 @@ from src.etl.definitions import (
     DB_COLUMNS,
     ETL_TABLES,
     JUNCTION_TABLES,
+    LEAGUES,
     PROFILE_TABLES,
-    SOURCES,
     STATS_TABLES,
     THE_GLASS_ID_COLUMN,
     THE_GLASS_ID_SEQUENCE,
@@ -395,3 +396,41 @@ def ensure_all(league_key: str, conn=None) -> Dict[str, List[str]]:
     out.update(ensure_core_schema(conn))
     out.update(ensure_league_schema(league_key, conn))
     return out
+
+
+# ---------------------------------------------------------------------------
+# League profile row bootstrap
+# ---------------------------------------------------------------------------
+
+def ensure_league_profile(league_key: str, conn) -> int:
+    """Ensure ``core.league_profiles`` has a row for ``league_key``.
+
+    The ``key`` column anchors the league_key -> the_glass_id mapping and is
+    the only stable reference between config and database.  Idempotent: if
+    a row already exists its the_glass_id is returned unchanged.
+    """
+    if league_key not in LEAGUES:
+        raise ValueError(f"Unknown league: {league_key!r}")
+
+    league = LEAGUES[league_key]
+    with conn.cursor() as cur:
+        cur.execute(
+            f"SELECT {quote_col(THE_GLASS_ID_COLUMN)} "
+            f"FROM {CORE_SCHEMA}.league_profiles WHERE key = %s",
+            (league_key,),
+        )
+        row = cur.fetchone()
+        if row is not None:
+            return int(row[0])
+
+        cur.execute(
+            f"INSERT INTO {CORE_SCHEMA}.league_profiles (key, name, abbr) "
+            f"VALUES (%s, %s, %s) RETURNING {quote_col(THE_GLASS_ID_COLUMN)}",
+            (league_key, league['name'], league['abbr']),
+        )
+        new_id = int(cur.fetchone()[0])
+        logger.info(
+            'Registered league %r in core.league_profiles (the_glass_id=%d)',
+            league_key, new_id,
+        )
+        return new_id

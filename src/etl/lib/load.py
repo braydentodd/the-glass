@@ -23,7 +23,6 @@ from psycopg2.extras import execute_values
 
 from src.core.db import db_connection, quote_col
 from src.etl.definitions import (
-    DB_COLUMNS,
     PROFILE_TABLES,
     STATS_TABLES,
     THE_GLASS_ID_COLUMN,

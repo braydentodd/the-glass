@@ -13,7 +13,7 @@ Single source of truth for the data model:
 Each top-level config dict has a co-located *_SCHEMA used by the validation
 engine in src.core.config_validation.
 
-The DDL generator in src.etl.core.ddl synthesizes columns by combining:
+The DDL generator in src.etl.lib.ddl synthesizes columns by combining:
     - DB_COLUMNS entries matching (entity, scope) for profile/stats tables
     - dynamic source-id columns from SOURCES for profile tables
     - inline column dicts for junction tables
@@ -72,13 +72,15 @@ DB_COLUMNS_SCHEMA: Dict[str, Dict[str, Any]] = {
 # ============================================================================
 
 LEAGUES_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'name':                {'required': True, 'types': (str,)},
-    'abbr':                {'required': True, 'types': (str,)},
-    'season_format':       {'required': True, 'types': (str,)},
-    'season_types':        {'required': True, 'types': (list,)},
-    'calendar_flip_md':    {'required': True, 'types': (str,)},
-    'retention_seasons':   {'required': True, 'types': (int,)},
-    'reader_source':       {'required': True, 'types': (str,)},
+    'name':                 {'required': True, 'types': (str,)},
+    'abbr':                 {'required': True, 'types': (str,)},
+    'season_format':        {'required': True, 'types': (str,)},
+    'season_types':         {'required': True, 'types': (list,)},
+    'regular_season_type':  {'required': True, 'types': (str,)},
+    'postseason_types':     {'required': True, 'types': (list,)},
+    'calendar_flip_md':     {'required': True, 'types': (str,)},
+    'retention_seasons':    {'required': True, 'types': (int,)},
+    'reader_source':        {'required': True, 'types': (str,)},
 }
 
 LEAGUES: Dict[str, Dict[str, Any]] = {
@@ -87,6 +89,8 @@ LEAGUES: Dict[str, Dict[str, Any]] = {
         'abbr': 'NBA',
         'season_format': 'YYYY-YY',
         'season_types': ['rs', 'po', 'pi'],
+        'regular_season_type': 'rs',
+        'postseason_types': ['po', 'pi'],
         'calendar_flip_md': '08-01',
         'retention_seasons': 8,
         'reader_source': 'nba_api',
@@ -337,6 +341,32 @@ ETL_TABLES: Dict[str, Dict[str, Any]] = {
             'retry_count':     {'type': 'INTEGER',     'nullable': True, 'default': '0'},
         },
         'unique_key': ['run_id', 'entity_type', 'endpoint', 'column_name'],
+    },
+    'publish_runs': {
+        'columns': {
+            'id':              {'type': 'SERIAL',      'primary_key': True,  'nullable': False},
+            'league':          {'type': 'VARCHAR(10)', 'nullable': False},
+            'status':          {'type': 'VARCHAR(20)', 'nullable': False, 'default': "'running'"},
+            'started_at':      {'type': 'TIMESTAMP',   'nullable': False, 'default': 'NOW()'},
+            'completed_at':    {'type': 'TIMESTAMP',   'nullable': True},
+            'total_tabs':      {'type': 'INTEGER',     'nullable': True, 'default': '0'},
+            'completed_tabs':  {'type': 'INTEGER',     'nullable': True, 'default': '0'},
+            'error_message':   {'type': 'TEXT',        'nullable': True},
+        },
+    },
+    'publish_progress': {
+        'columns': {
+            'id':              {'type': 'SERIAL',      'primary_key': True,  'nullable': False},
+            'run_id':          {'type': 'INTEGER',     'nullable': False},
+            'tab_name':        {'type': 'VARCHAR(50)', 'nullable': False},
+            'section':         {'type': 'VARCHAR(50)', 'nullable': True},
+            'status':          {'type': 'VARCHAR(20)', 'nullable': False, 'default': "'pending'"},
+            'started_at':      {'type': 'TIMESTAMP',   'nullable': True},
+            'completed_at':    {'type': 'TIMESTAMP',   'nullable': True},
+            'error_message':   {'type': 'TEXT',        'nullable': True},
+            'retry_count':     {'type': 'INTEGER',     'nullable': True, 'default': '0'},
+        },
+        'unique_key': ['run_id', 'tab_name', 'section'],
     },
 }
 

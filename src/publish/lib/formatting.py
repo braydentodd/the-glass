@@ -1,7 +1,8 @@
-from typing import List, Optional, Any
+from typing import Any, List, Optional
+
 from src.core.config import format_season_label
 from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.definitions.config import (STAT_RATES)
+from src.publish.definitions.config import HEADER_ROWS, SHEET_FORMATTING, STAT_RATES
 
 def format_stat_value(value: Any, fmt: str, decimals: int, nullable: bool) -> Any:
     """Format a stat value for display according to column definition."""
@@ -75,7 +76,6 @@ def format_section_header(section: str, historical_config: Optional[dict] = None
         return f"{season_str} {season_label} Stats{rate_str}"
 
     # Historical / Postseason sections
-    mode_cfg = (historical_config or {}).get('mode', 'seasons')
     value = (historical_config or {}).get('value', 3)
 
     if isinstance(value, int):
@@ -130,8 +130,6 @@ def get_editable_fields() -> List[str]:
                 fields.append(formula)
 
 
-
-from src.publish.definitions.config import HEADER_ROWS, SHEET_FORMATTING
 
 def _get_row_indexes():
     indexes = {}

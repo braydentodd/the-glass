@@ -42,8 +42,14 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _collect_domain_columns(entity: str) -> Dict[str, List[str]]:
-    """Return ``{domain_name: [stat_columns excluding the domain's minutes col]}``
-    for every non-primary domain whose stats apply to ``entity``."""
+    """Return ``{domain_name: [counter columns]}`` for every non-primary
+    domain whose stats apply to ``entity``.
+
+    Counter columns are everything in the domain *except* its ``minutes_col``
+    denominator.  Minutes is the single coherency signal: if it is 0 / NULL
+    every other column in the domain (including ``games_col``) is nulled to
+    keep the row internally consistent.
+    """
     out: Dict[str, List[str]] = {}
     for col_name, col_meta in DB_COLUMNS.items():
         if entity not in col_meta.get('entity_types', []):
@@ -51,9 +57,10 @@ def _collect_domain_columns(entity: str) -> Dict[str, List[str]]:
         domain = col_meta.get('domain')
         if not domain or domain not in STAT_DOMAINS:
             continue
-        if STAT_DOMAINS[domain].get('primary', True):
+        domain_cfg = STAT_DOMAINS[domain]
+        if domain_cfg.get('primary', True):
             continue
-        if col_name == STAT_DOMAINS[domain]['minutes_col']:
+        if col_name == domain_cfg['minutes_col']:
             continue
         out.setdefault(domain, []).append(col_name)
     return out

@@ -10,7 +10,7 @@ external source (system columns) have sources: None.
 
 The synthetic identity column ``the_glass_id`` and per-source identity
 columns (e.g. ``nba_api_id``) are emitted directly by the DDL generator
-(see src/etl/core/ddl.py); they are intentionally not represented here.
+(see src/etl/lib/ddl.py); they are intentionally not represented here.
 """
 
 from typing import Any, Dict
@@ -363,7 +363,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'default': 0,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
-        'domain': 'tracking',
+        'domain': None,
         'comment': None,
         'sources': {
             'nba_api': {
@@ -413,7 +413,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'default': 0,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
-        'domain': 'hustle',
+        'domain': None,
         'comment': None,
         'sources': {
             'nba_api': {

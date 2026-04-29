@@ -1,45 +1,28 @@
 """
-The Glass - NBA Provider Configuration
+The Glass - NBA API Source Configuration
 
-Pure data definitions for the NBA API provider: endpoint metadata,
-rate limits, season boundaries, and field name mappings.
+Pure data definitions for the ``nba_api`` source: endpoint metadata,
+rate limits, season-type mapping, and field-name mappings.
 
-All query logic (column lookups, call grouping, team ID resolution)
-lives in nba_api/resolver.py.  Column schema and NBA source mappings
-live in the unified config (src/input/config.py).
+League-level concerns (current season, retention window, calendar flip)
+live in :mod:`src.etl.definitions.config.LEAGUES` -- this module is purely
+about how to talk to the source itself.
 """
 
-import os
 from typing import Any, Dict
 
-from src.core.db import get_current_season, get_current_season_year
-from src.etl.core.transform import format_season_end_year
-
 
 # ============================================================================
-# SCHEMA
+# SOURCE METADATA
 # ============================================================================
 
-DB_SCHEMA = 'nba'
-
-
-# ============================================================================
-# SEASON CONFIGURATION
-# ============================================================================
-
-SEASON_CONFIG = {
-    'current_season': get_current_season(),
-    'current_season_year': get_current_season_year(),
-    'season_type': os.getenv('SEASON_TYPE', 'rs'),
-    'backfill_start': '2003-04',
-    'tracking_start': '2013-14',
-    'hustle_start': '2015-16',
-    'onoff_start': '2007-08',
-    'combine_start_year': 2003,
+SOURCE_META: Dict[str, Any] = {
+    'source_key': 'nba_api',
+    # Endpoint whose rows define the active roster snapshot for a league.
+    # The client's fetch_roster_snapshot() pulls (TEAM_ID, PERSON_ID) tuples
+    # from this endpoint.
+    'roster_endpoint': 'commonallplayers',
 }
-
-
-format_season = format_season_end_year
 
 
 SEASON_TYPES = {
@@ -226,7 +209,7 @@ ENDPOINTS: Dict[str, Dict[str, Any]] = {
         'entity_types': ['player'],
     },
 
-    'commonallplayers': {
+    'commonplayerinfo': {
         'min_season': None,
         'execution_tier': 'player',
         'default_result_set': 'CommonPlayerInfo',
@@ -291,22 +274,23 @@ API_FIELD_NAMES = {
 # ============================================================================
 
 def validate_provider_config() -> list:
-    from src.core.config_validation import validate_flat_config, validate_dict_config
     import logging
+
+    from src.core.config_validation import validate_dict_config, validate_flat_config
+
     logger = logging.getLogger(__name__)
-    
-    errors = []
-    
-    errors.extend(validate_flat_config(SEASON_CONFIG, SEASON_CONFIG_SCHEMA, 'SEASON_CONFIG'))
+    errors: list = []
+
+    errors.extend(validate_flat_config(SOURCE_META, SOURCE_META_SCHEMA, 'SOURCE_META'))
     errors.extend(validate_flat_config(API_CONFIG, API_CONFIG_SCHEMA, 'API_CONFIG'))
     errors.extend(validate_flat_config(RETRY_CONFIG, RETRY_CONFIG_SCHEMA, 'RETRY_CONFIG'))
     errors.extend(validate_dict_config(SEASON_TYPES, SEASON_TYPES_SCHEMA, 'SEASON_TYPES'))
     errors.extend(validate_dict_config(ENDPOINTS, ENDPOINTS_SCHEMA, 'ENDPOINTS'))
-    
+
     if errors:
         for err in errors:
             logger.error('nba_api config validation: %s', err)
-    
+
     return errors
 
 
@@ -316,15 +300,9 @@ def validate_provider_config() -> list:
 
 VALID_EXECUTION_TIERS = {'league', 'player', 'team', 'team_call'}
 
-SEASON_CONFIG_SCHEMA = {
-    'current_season': {'required': True, 'types': (str,)},
-    'current_season_year': {'required': True, 'types': (int,)},
-    'season_type': {'required': True, 'types': (str,)},
-    'backfill_start': {'required': True, 'types': (str,)},
-    'tracking_start': {'required': True, 'types': (str,)},
-    'hustle_start': {'required': True, 'types': (str,)},
-    'onoff_start': {'required': True, 'types': (str,)},
-    'combine_start_year': {'required': True, 'types': (int,)},
+SOURCE_META_SCHEMA = {
+    'source_key':      {'required': True, 'types': (str,)},
+    'roster_endpoint': {'required': True, 'types': (str,)},
 }
 
 API_CONFIG_SCHEMA = {

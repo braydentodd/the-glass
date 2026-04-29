@@ -15,7 +15,12 @@ import time
 import warnings
 from typing import Any, Callable, Dict, Optional
 
-from src.etl.sources.nba_api.config import API_CONFIG, ENDPOINTS, RETRY_CONFIG
+from src.etl.sources.nba_api.config import (
+    API_CONFIG,
+    ENDPOINTS,
+    RETRY_CONFIG,
+    SOURCE_META,
+)
 
 warnings.filterwarnings(
     "ignore",
@@ -281,6 +286,59 @@ def _fetch_virtual(endpoint: str, season: str) -> Optional[Dict]:
         return _fetch_team_metadata(season)
     logger.warning('Unknown virtual endpoint: %s', endpoint)
     return None
+
+
+# ============================================================================
+# ROSTER SNAPSHOT  (consumed by the runner's `rosters` phase)
+# ============================================================================
+
+def fetch_roster_snapshot(
+    league_key: str,
+    season: str,
+    season_type_name: str = 'Regular Season',
+) -> list:
+    """Return ``[(team_source_id, player_source_id), ...]`` for every active
+    roster slot in the league for the given season.
+
+    The endpoint is taken from ``SOURCE_META['roster_endpoint']`` so the
+    runner stays source-agnostic.  Players whose ``TEAM_ID`` is null or zero
+    (free agents / inactive) are dropped.
+    """
+    endpoint = SOURCE_META['roster_endpoint']
+    fetcher = make_fetcher(season, season_type_name, 'player')
+    result = fetcher(endpoint, {'is_only_current_season': '1'})
+    if result is None:
+        logger.warning(
+            'Roster snapshot %s/%s returned no result from %s',
+            league_key, season, endpoint,
+        )
+        return []
+
+    pairs: list = []
+    for rs in result.get('resultSets', []):
+        headers = rs.get('headers', [])
+        if 'TEAM_ID' not in headers or 'PERSON_ID' not in headers:
+            continue
+        tid_idx = headers.index('TEAM_ID')
+        pid_idx = headers.index('PERSON_ID')
+        for row in rs['rowSet']:
+            tid = row[tid_idx]
+            pid = row[pid_idx]
+            if tid is None or pid is None:
+                continue
+            try:
+                tid_val = int(tid)
+            except (TypeError, ValueError):
+                continue
+            if tid_val == 0:
+                continue
+            pairs.append((tid_val, pid))
+
+    logger.info(
+        'Roster snapshot %s/%s: %d active (team, player) pairs from %s',
+        league_key, season, len(pairs), endpoint,
+    )
+    return pairs
 
 
 def _fetch_team_metadata(season: str) -> Dict:

@@ -17,7 +17,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
-from src.core.db import db_connection, get_table_name, quote_col
+from src.core.db import db_connection, quote_col
+from src.etl.definitions import get_table_name
 from src.etl.core.extract import (
     extract_columns_from_result,
     extract_raw_rows,
@@ -39,7 +40,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ExecutionContext:
-    """Bundles everything the execution engine needs from the provider."""
+    """Bundles everything the execution engine needs from the provider.
+
+    Note:
+        ``db_schema`` always equals the league key (``'nba'``, ``'ncaa'``, ...)
+        and is used wherever a schema prefix is expected.  ``source_key`` is the
+        registered source (``'nba_api'``) and drives source-id column resolution.
+    """
 
     entity: str
     scope: str
@@ -48,6 +55,7 @@ class ExecutionContext:
     season_type_name: str
     entity_id_field: str
     db_schema: str
+    source_key: str
     api_fetcher: Callable
     team_ids: Dict[str, int] = field(default_factory=dict)
     rate_limit_delay: float = 1.2
@@ -82,7 +90,8 @@ def _execute_league_wide(
         id_aliases=ctx.id_aliases,
     )
     return write_entity_rows(
-        ctx.entity, ctx.scope, rows, ctx.season, ctx.season_type, ctx.db_schema,
+        ctx.entity, ctx.scope, rows, ctx.season, ctx.season_type,
+        ctx.db_schema, ctx.source_key,
     )
 
 
@@ -123,7 +132,8 @@ def _execute_multi_call_column(
         return 0
     rows = {eid: {col_name: val} for eid, val in totals.items()}
     return write_entity_rows(
-        ctx.entity, ctx.scope, rows, ctx.season, ctx.season_type, ctx.db_schema,
+        ctx.entity, ctx.scope, rows, ctx.season, ctx.season_type,
+        ctx.db_schema, ctx.source_key,
     )
 
 
@@ -157,7 +167,8 @@ def _execute_pipeline_column(
         return 0
     rows = {eid: {col_name: val} for eid, val in result.items()}
     return write_entity_rows(
-        ctx.entity, ctx.scope, rows, ctx.season, ctx.season_type, ctx.db_schema,
+        ctx.entity, ctx.scope, rows, ctx.season, ctx.season_type,
+        ctx.db_schema, ctx.source_key,
     )
 
 
@@ -218,7 +229,8 @@ def _execute_team_call(
 
     rows = aggregate_team_rows(player_team_rows, columns, minutes_field)
     return write_entity_rows(
-        ctx.entity, ctx.scope, rows, ctx.season, ctx.season_type, ctx.db_schema,
+        ctx.entity, ctx.scope, rows, ctx.season, ctx.season_type,
+        ctx.db_schema, ctx.source_key,
     )
 
 
@@ -234,8 +246,8 @@ def _execute_per_entity(
     Iterates over all known entities in the DB, calls the endpoint once
     per entity (passing the entity's source_id), and extracts simple columns.
     """
-    source_id_col = get_source_id_column(ctx.db_schema)
-    entity_table = get_table_name(ctx.entity, 'entity', ctx.db_schema)
+    source_id_col = get_source_id_column(ctx.source_key)
+    entity_table = get_table_name(ctx.entity, 'entity')
 
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -305,7 +317,7 @@ def _execute_per_entity(
 
     return write_entity_rows(
         ctx.entity, ctx.scope, all_rows,
-        ctx.season, ctx.season_type, ctx.db_schema,
+        ctx.season, ctx.season_type, ctx.db_schema, ctx.source_key,
     )
 
 

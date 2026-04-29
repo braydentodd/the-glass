@@ -4,13 +4,16 @@ The Glass - Column Registry
 Single source of truth for database column definitions and provider source
 mappings.  Column names match the actual PostgreSQL schema exactly.
 
-Each column entry carries a 'sources' attribute that maps provider keys
-(e.g., 'nba') to per-entity fetch definitions.  Columns with no external
-source (system columns) have sources: None.
+Each column entry carries a 'sources' attribute that maps source registry
+keys (e.g., 'nba_api') to per-entity fetch definitions.  Columns with no
+external source (system columns) have sources: None.
+
+The synthetic identity column ``the_glass_id`` and per-source identity
+columns (e.g. ``nba_api_id``) are emitted directly by the DDL generator
+(see src/etl/core/ddl.py); they are intentionally not represented here.
 """
 
 from typing import Any, Dict
-
 
 
 DB_COLUMNS: Dict[str, Dict[str, Any]] = {
@@ -18,150 +21,115 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     # SYSTEM COLUMNS  (managed by DB / ETL engine, no provider sources)
     # ------------------------------------------------------------------
-    # 'id': {
-    #     'type': 'SERIAL',
-    #     'scope': ['entity', 'stats'],
-    #     'nullable': False,
-    #     'default': None,
-    #     'entity_types': ['player', 'team'],
-    #     'update_frequency': None,
-    #     'domain': None,
-    #     'comment': None,
-    #     'primary_key': True,
-    #     'sources': None,
-    # },
-    # 'nba_api_id': {
-    #     'type': 'VARCHAR(10)',
-    #     'scope': ['entity'],
-    #     'nullable': False,
-    #     'default': None,
-    #     'entity_types': ['player', 'team'],
-    #     'update_frequency': None,
-    #     'domain': None,
-    #     'comment': None,
-    #     'primary_key': False,
-    #     'sources': {
-    #         'nba': {
-    #             'player': {
-    #                 'endpoint': 'leaguedashplayerstats',
-    #                 'field': 'PLAYER_ID',
-    #                 'transform': 'safe_str',
-    #             },
-    #             'team': {
-    #                 'endpoint': 'leaguedashteamstats',
-    #                 'field': 'TEAM_ID',
-    #                 'transform': 'safe_str',
-    #             },
-    #         },
-    #     },
-    # },
     'updated_at': {
         'type': 'TIMESTAMP',
-        'scope': ['entity', 'stats'],
+        'scope': 'both',
         'nullable': True,
         'default': 'CURRENT_TIMESTAMP',
-        'entity_types': ['player', 'team'],
+        'entity_types': ['league', 'player', 'team'],
         'update_frequency': None,
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': None,
     },
     'created_at': {
         'type': 'TIMESTAMP',
-        'scope': ['entity', 'stats'],
+        'scope': 'both',
         'nullable': True,
         'default': 'CURRENT_TIMESTAMP',
-        'entity_types': ['player', 'team'],
+        'entity_types': ['league', 'player', 'team'],
         'update_frequency': None,
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': None,
     },
     'season': {
         'type': 'VARCHAR(7)',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': None,
         'domain': None,
         'comment': None,
-        'primary_key': True,
         'sources': None,
     },
     'season_type': {
         'type': 'VARCHAR(3)',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': None,
         'domain': None,
         'comment': None,
-        'primary_key': True,
         'sources': None,
     },
     'backfilled': {
         'type': 'BOOLEAN',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': False,
         'default': 'FALSE',
         'entity_types': ['player', 'team'],
         'update_frequency': None,
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': None,
     },
     'notes': {
         'type': 'TEXT',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': None,
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': None,
     },
     # ------------------------------------------------------------------
-    # ENTITY INFORMATION  (player / team profile data)
+    # ENTITY INFORMATION  (league / team / player profile data)
     # ------------------------------------------------------------------
     'team_id': {
-        'type': 'INTEGER',
-        'scope': ['entity'],
-        'nullable': True,
+        'type': 'BIGINT',
+        'scope': 'stats',
+        'nullable': False,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'daily',
         'domain': None,
-        'comment': 'FK to teams table serial id (resolved from source during ETL)',
-        'primary_key': False,
+        'comment': 'FK to core.team_profiles.the_glass_id; resolved from source TEAM_ID during load.',
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
-                    'endpoint': 'commonallplayers',
+                    'endpoint': 'leaguedashplayerstats',
                     'field': 'TEAM_ID',
-                    'transform': 'null_if_zero',
                 },
             },
         },
     },
+    'key': {
+        'type': 'VARCHAR(10)',
+        'scope': 'entity',
+        'nullable': False,
+        'default': None,
+        'entity_types': ['league'],
+        'update_frequency': None,
+        'domain': None,
+        'comment': 'Stable league key (matches LEAGUES dict key, e.g. "nba").',
+        'sources': None,
+    },
     'name': {
         'type': 'VARCHAR(100)',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team'],
+        'entity_types': ['league', 'player', 'team'],
         'update_frequency': 'annual',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerstats',
                     'field': 'PLAYER_NAME',
@@ -177,16 +145,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'height_ins': {
         'type': 'SMALLINT',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'annual',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'commonallplayers',
                     'field': 'HEIGHT',
@@ -197,32 +164,30 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'weight_lbs': {
         'type': 'SMALLINT',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'annual',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'commonallplayers', 'field': 'WEIGHT'},
             },
         },
     },
     'wingspan_ins': {
         'type': 'SMALLINT',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': None,
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'draftcombineplayeranthro',
                     'field': 'WINGSPAN',
@@ -233,32 +198,30 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'jersey_num': {
         'type': 'VARCHAR(3)',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'commonallplayers', 'field': 'JERSEY'},
             },
         },
     },
     'birthdate': {
         'type': 'DATE',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'annual',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'commonallplayers',
                     'field': 'BIRTHDATE',
@@ -269,44 +232,41 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'hand': {
         'type': 'CHAR',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': None,
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': None,
     },
     'seasons_exp': {
         'type': 'SMALLINT',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'commonallplayers', 'field': 'SEASON_EXP'},
             },
         },
     },
     'rookie_season': {
         'type': 'VARCHAR(10)',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'annual',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'commonallplayers',
                     'field': 'FROM_YEAR',
@@ -317,32 +277,30 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'abbr': {
         'type': 'VARCHAR(5)',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
-        'entity_types': ['team'],
+        'entity_types': ['league', 'team'],
         'update_frequency': 'annual',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'team': {'endpoint': 'team_metadata', 'field': 'TEAM_ABBREVIATION', 'transform': 'safe_str'},
             },
         },
     },
     'conf': {
         'type': 'VARCHAR(50)',
-        'scope': ['entity'],
+        'scope': 'entity',
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
         'update_frequency': 'annual',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'team': {'endpoint': 'team_metadata', 'field': 'TEAM_CONFERENCE', 'transform': 'safe_str'},
             },
         },
@@ -352,16 +310,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'games': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'GP'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'GP'},
             },
@@ -369,16 +326,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'minutes_x10': {
         'type': 'INTEGER',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'MIN', 'scale': 10},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'MIN', 'scale': 10},
             },
@@ -386,16 +342,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'wins': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'W'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'W'},
             },
@@ -403,16 +358,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'tracking_games': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptstats',
                     'field': 'GP',
@@ -428,16 +382,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'tracking_minutes_x10': {
         'type': 'INTEGER',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
-        'domain': 'tracking',
+        'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptstats',
                     'field': 'MIN',
@@ -455,16 +408,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'hustle_games': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'hustle',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguehustlestatsplayer', 'field': 'G'},
                 'team': {'endpoint': 'leaguehustlestatsteam', 'field': 'G'},
             },
@@ -472,16 +424,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'hustle_minutes_x10': {
         'type': 'INTEGER',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
-        'domain': 'hustle',
+        'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguehustlestatsplayer', 'field': 'MIN', 'scale': 10},
                 'team': {'endpoint': 'leaguehustlestatsteam', 'field': 'MIN', 'scale': 10},
             },
@@ -489,16 +440,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'off_games': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': 0,
         'entity_types': ['player'],
         'update_frequency': 'daily',
-        'domain': 'onoff',
+        'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'teamplayeronoffsummary',
                     'tier': 'team_call',
@@ -512,16 +462,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'off_minutes_x10': {
         'type': 'INTEGER',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
-        'domain': 'onoff',
+        'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'teamplayeronoffsummary',
                     'tier': 'team_call',
@@ -539,16 +488,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'fg2m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerstats',
                     'field': 'FGM',
@@ -570,16 +518,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'fg2a': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerstats',
                     'field': 'FGA',
@@ -604,16 +551,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'fg3m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'FG3M'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'FG3M'},
                 'opponent': {
@@ -626,16 +572,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'fg3a': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'FG3A'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'FG3A'},
                 'opponent': {
@@ -651,16 +596,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'ftm': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'FTM'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'FTM'},
                 'opponent': {
@@ -673,16 +617,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'fta': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'FTA'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'FTA'},
                 'opponent': {
@@ -698,16 +641,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'cont_rim_fgm': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FGM',
@@ -743,16 +685,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'cont_rim_fga': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FGA',
@@ -788,16 +729,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'open_rim_fgm': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FGM',
@@ -833,16 +773,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'open_rim_fga': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FGA',
@@ -878,16 +817,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'cont_fg2m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FG2M',
@@ -911,16 +849,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'cont_fg2a': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FG2A',
@@ -944,16 +881,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'open_fg2m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FG2M',
@@ -977,16 +913,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'open_fg2a': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FG2A',
@@ -1010,16 +945,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'cont_fg3m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FG3M',
@@ -1043,16 +977,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'cont_fg3a': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FG3A',
@@ -1076,16 +1009,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'open_fg3m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FG3M',
@@ -1109,16 +1041,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'open_fg3a': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerptshot',
                     'field': 'FG3A',
@@ -1145,16 +1076,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'putbacks': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'pipeline': {
                         'endpoint': 'playerdashboardbyshootingsplits',
@@ -1197,16 +1127,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'dunks': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'pipeline': {
                         'endpoint': 'playerdashboardbyshootingsplits',
@@ -1274,16 +1203,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'unassisted_rim_fgm': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'pipeline': {
                         'endpoint': 'playerdashboardbyshootingsplits',
@@ -1305,16 +1233,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'unassisted_fg2m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'pipeline': {
                         'endpoint': 'playerdashboardbyshootingsplits',
@@ -1336,16 +1263,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'unassisted_fg3m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'pipeline': {
                         'endpoint': 'playerdashboardbyshootingsplits',
@@ -1370,16 +1296,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'o_rebs': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'OREB'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'OREB'},
                 'opponent': {
@@ -1392,16 +1317,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'd_rebs': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'DREB'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'DREB'},
                 'opponent': {
@@ -1414,16 +1338,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'o_reb_pct_x1000': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerstats',
                     'field': 'OREB_PCT',
@@ -1441,16 +1364,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'd_reb_pct_x1000': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerstats',
                     'field': 'DREB_PCT',
@@ -1468,16 +1390,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'cont_o_rebs': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'pipeline': {
                         'endpoint': 'playerdashptreb',
@@ -1510,16 +1431,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'cont_d_rebs': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'pipeline': {
                         'endpoint': 'playerdashptreb',
@@ -1555,16 +1475,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'assists': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'AST'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'AST'},
                 'opponent': {
@@ -1577,16 +1496,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'pot_assists': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptstats',
                     'field': 'POTENTIAL_AST',
@@ -1602,16 +1520,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'passes': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptstats',
                     'field': 'PASSES_MADE',
@@ -1627,16 +1544,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'sec_assists': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptstats',
                     'field': 'SECONDARY_AST',
@@ -1655,16 +1571,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'touches': {
         'type': 'INTEGER',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptstats',
                     'field': 'TOUCHES',
@@ -1680,16 +1595,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'time_on_ball': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptstats',
                     'field': 'TIME_OF_POSS',
@@ -1705,16 +1619,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'possessions': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerstats',
                     'field': 'POSS',
@@ -1733,16 +1646,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'turnovers': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team', 'opponent'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'TOV'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'TOV'},
                 'opponent': {
@@ -1758,16 +1670,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'o_dist_x10': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptstats',
                     'field': 'DIST_MILES_OFF',
@@ -1785,16 +1696,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'd_dist_x10': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptstats',
                     'field': 'DIST_MILES_DEF',
@@ -1815,16 +1725,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'steals': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'STL'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'STL'}
             },
@@ -1832,16 +1741,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'blocks': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'BLK'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'BLK'},
             },
@@ -1849,16 +1757,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'fouls': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguedashplayerstats', 'field': 'PF'},
                 'team': {'endpoint': 'leaguedashteamstats', 'field': 'PF'}
             },
@@ -1869,16 +1776,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'deflections': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'hustle',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguehustlestatsplayer', 'field': 'DEFLECTIONS'},
                 'team': {'endpoint': 'leaguehustlestatsteam', 'field': 'DEFLECTIONS'},
             },
@@ -1886,16 +1792,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'charges_drawn': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'hustle',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguehustlestatsplayer', 'field': 'CHARGES_DRAWN'},
                 'team': {'endpoint': 'leaguehustlestatsteam', 'field': 'CHARGES_DRAWN'},
             },
@@ -1903,16 +1808,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'contests': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'hustle',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {'endpoint': 'leaguehustlestatsplayer', 'field': 'CONTESTED_SHOTS'},
                 'team': {'endpoint': 'leaguehustlestatsteam', 'field': 'CONTESTED_SHOTS'},
             },
@@ -1923,16 +1827,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'd_rim_fgm': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'FGM',
@@ -1948,16 +1851,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'd_rim_fga': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'FGA_LT_10',
@@ -1973,16 +1875,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'd_fg2m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'FG2M',
@@ -1998,16 +1899,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'd_fg2a': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'FG2A',
@@ -2023,16 +1923,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'd_fg3m': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'FG3M',
@@ -2048,16 +1947,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'd_fg3a': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'FG3A',
@@ -2076,16 +1974,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'o_rtg_x10': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerstats',
                     'field': 'OFF_RATING',
@@ -2103,16 +2000,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'd_rtg_x10': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': None,
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashplayerstats',
                     'field': 'DEF_RATING',
@@ -2130,16 +2026,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'off_o_rtg_x10': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'daily',
         'domain': 'onoff',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'teamplayeronoffsummary',
                     'tier': 'team_call',
@@ -2154,16 +2049,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'off_d_rtg_x10': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
         'update_frequency': 'daily',
         'domain': 'onoff',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'teamplayeronoffsummary',
                     'tier': 'team_call',
@@ -2181,16 +2075,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     'real_d_fg_pct_x1000': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'PCT_PLUSMINUS',
@@ -2208,16 +2101,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'real_d_rim_fg_pct_x1000': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'PLUSMINUS',
@@ -2235,16 +2127,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'real_d_fg2_pct_x1000': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'PLUSMINUS',
@@ -2262,16 +2153,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
     },
     'real_d_fg3_pct_x1000': {
         'type': 'SMALLINT',
-        'scope': ['stats'],
+        'scope': 'stats',
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
         'update_frequency': 'daily',
         'domain': 'tracking',
         'comment': None,
-        'primary_key': False,
         'sources': {
-            'nba': {
+            'nba_api': {
                 'player': {
                     'endpoint': 'leaguedashptdefend',
                     'field': 'PLUSMINUS',

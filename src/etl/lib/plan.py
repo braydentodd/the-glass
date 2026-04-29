@@ -2,15 +2,12 @@
 The Glass - Call Group Builder
 
 Transforms column configuration into executable API call groups for any
-data provider.  A "call group" is a batch of columns that can be satisfied
+data source.  A "call group" is a batch of columns that can be satisfied
 by a single API call.
 
-Functions accept provider-specific config (provider_key, endpoints) as
-parameters rather than importing from a specific source, keeping this
+Functions accept source-specific config (``source_key``, ``endpoints``)
+as parameters rather than importing from a specific source, keeping this
 module source-agnostic.
-
-Column schema and provider source mappings live in the unified config
-(src/etl/config.py).
 """
 
 import logging
@@ -36,16 +33,17 @@ def _enrich_source(source: Dict[str, Any], col_meta: Dict[str, Any]) -> Dict[str
     return enriched
 
 
-def _get_provider_source(
+def _get_source_definition(
     col_meta: Dict[str, Any],
     entity: str,
-    provider_key: str,
+    source_key: str,
 ) -> Optional[Dict[str, Any]]:
-    """Extract a provider's source definition for an entity from a column's metadata."""
-    provider_sources = (col_meta.get('sources') or {}).get(provider_key)
-    if not provider_sources:
+    """Return the per-entity source definition under ``col_meta['sources'][source_key][entity]``,
+    or ``None`` if absent."""
+    source_entries = (col_meta.get('sources') or {}).get(source_key)
+    if not source_entries:
         return None
-    return provider_sources.get(entity)
+    return source_entries.get(entity)
 
 
 # ============================================================================
@@ -74,17 +72,17 @@ def is_endpoint_available(
 def get_columns_for_endpoint(
     endpoint_name: str,
     entity: str,
-    provider_key: str,
+    source_key: str,
     params: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Dict[str, Any]]:
-    """Find all columns whose provider source maps to the given endpoint.
+    """Find all columns whose source definition maps to the given endpoint.
 
     Returns ``{col_name: enriched_source_dict}`` with default transforms injected.
     """
     matched: Dict[str, Dict[str, Any]] = {}
 
     for col_name, col_meta in DB_COLUMNS.items():
-        source = _get_provider_source(col_meta, entity, provider_key)
+        source = _get_source_definition(col_meta, entity, source_key)
         if not source:
             continue
 
@@ -106,18 +104,18 @@ def get_columns_for_endpoint(
 
 def get_all_sources_for_entity(
     entity: str,
-    provider_key: str,
+    source_key: str,
     endpoints: Dict[str, Dict[str, Any]],
     season: Optional[str] = None,
 ) -> Dict[str, Dict[str, Any]]:
-    """Return every column with a provider source for the given entity.
+    """Return every column with a source definition for the given entity.
 
-    If *season* is provided, excludes endpoints not available for that season.
+    If ``season`` is provided, excludes endpoints not available for that season.
     """
     matched: Dict[str, Dict[str, Any]] = {}
 
     for col_name, col_meta in DB_COLUMNS.items():
-        source = _get_provider_source(col_meta, entity, provider_key)
+        source = _get_source_definition(col_meta, entity, source_key)
         if not source:
             continue
 
@@ -165,19 +163,19 @@ def tier_for_source(
 def build_call_groups(
     entity: str,
     season: str,
-    provider_key: str,
+    source_key: str,
     endpoints: Dict[str, Dict[str, Any]],
     scope: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Group all columns for *entity* into API call batches.
+    """Group all columns for ``entity`` into API call batches.
 
     Walks DB_COLUMNS, groups simple/derived columns that share the same
     (endpoint, params) so each batch requires exactly one API call.
     Multi-call, pipeline, and team_call columns get their own entries.
 
     Args:
-        scope: If set, only include columns whose scope list contains
-               this value (e.g. ``'entity'`` or ``'stats'``).
+        scope: If set, only include columns whose ``scope`` matches this
+               value or is ``'both'``.
 
     Returns a list of dicts, each with:
         endpoint, params, tier, columns ({col_name: enriched_source})
@@ -186,10 +184,12 @@ def build_call_groups(
     special: List[Dict[str, Any]] = []
 
     for col_name, col_meta in DB_COLUMNS.items():
-        if scope and scope not in col_meta.get('scope', []):
-            continue
+        if scope:
+            col_scope = col_meta.get('scope')
+            if col_scope != scope and col_scope != 'both':
+                continue
 
-        source = _get_provider_source(col_meta, entity, provider_key)
+        source = _get_source_definition(col_meta, entity, source_key)
         if not source:
             continue
 

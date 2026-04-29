@@ -1,63 +1,50 @@
 """
 The Glass - Shared Database Module
 
-Provides a single source of truth for database connections, shared across
-both NBA and NCAA pipelines. Eliminates duplicated connection code.
+Lightweight, dependency-free database primitives used everywhere in the
+codebase:
 
-Both leagues share the same PostgreSQL database with separate schemas:
-  - nba.*   (players, teams, player_season_stats, team_season_stats, endpoint_tracker)
-  - ncaa.*  (players, teams, player_season_stats, team_season_stats)
+    get_db_connection / db_connection   - connection acquisition
+    quote_col                           - identifier quoting
+    get_current_season_year             - calendar-agnostic end-year helper
+    get_current_season                  - same, formatted as 'YYYY-YY'
 
-Note: lib/nba_etl.py maintains its own ThreadedConnectionPool for the
-heavy NBA pipeline. This module is the canonical connection source for
-NCAA and lightweight shared callers.
+Schema-aware table-name resolution and per-league season helpers live in
+``src.etl.definitions`` to keep this module free of higher-level concerns.
+
+All schemas (``core``, per-league) share a single PostgreSQL instance.
+Schema bootstrap is handled by :mod:`src.etl.core.ddl`.
 """
 import logging
 import os
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Dict
 
 import psycopg2
+
+from src.core.config import format_season_label
 
 logger = logging.getLogger(__name__)
 
 
-# ============================================================================
-# SHARED UTILITIES
-# ============================================================================
-
-# Table naming convention: maps (entity, scope) to table name
-_TABLE_NAMES = {
-    ('player', 'entity'): 'players',
-    ('team', 'entity'): 'teams',
-    ('player', 'stats'): 'player_season_stats',
-    ('team', 'stats'): 'team_season_stats',
-}
-
-
-def get_table_name(entity: str, scope: str, db_schema: str) -> str:
-    """Resolve a schema-qualified table name.
-
-    Example: get_table_name('player', 'stats', 'nba') -> 'nba.player_season_stats'
-    """
-    key = (entity, scope)
-    if key not in _TABLE_NAMES:
-        raise ValueError(f"No table for entity={entity!r}, scope={scope!r}")
-    return f"{db_schema}.{_TABLE_NAMES[key]}"
-
+# ---------------------------------------------------------------------------
+# Identifier helpers
+# ---------------------------------------------------------------------------
 
 def quote_col(col: str) -> str:
-    """Quote a column name for PostgreSQL. Handles digit-starting names like 2fgm."""
+    """Quote a column name for PostgreSQL (handles digit-starting names like ``2fgm``)."""
     return f'"{col}"'
 
 
-def get_db_connection():
-    """
-    Create a new database connection.
+# ---------------------------------------------------------------------------
+# Connection management
+# ---------------------------------------------------------------------------
 
-    Caller is responsible for calling conn.close().
-    Prefer using db_connection() context manager for short operations.
+def get_db_connection():
+    """Create a new psycopg2 connection.
+
+    Caller is responsible for closing.  Prefer :func:`db_connection` for
+    short-lived operations.
     """
     db_url = os.getenv('DATABASE_URL')
     if not db_url:
@@ -67,17 +54,8 @@ def get_db_connection():
 
 @contextmanager
 def db_connection():
-    """
-    Context manager for a database connection.
-
-    Automatically commits on success, rolls back on exception,
-    and closes the connection.
-
-    Usage:
-        with db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT ...")
-    """
+    """Context-managed DB connection that commits on success, rolls back on
+    exception, and always closes."""
     conn = get_db_connection()
     try:
         yield conn
@@ -89,146 +67,25 @@ def db_connection():
         conn.close()
 
 
-# ============================================================================
-# SHARED SEASON UTILITIES
-# ============================================================================
+# ---------------------------------------------------------------------------
+# Static-cutoff season helpers (legacy - prefer the per-league variants in
+# src.etl.definitions for new code).
+# ---------------------------------------------------------------------------
+
+_DEFAULT_FLIP_MONTH = 7  # July 1st - aligns with NBA/NCAA carry-over
+
 
 def get_current_season_year() -> int:
-    """End-year of the current season.
+    """End-year of the current season using a static July-1 cutoff.
 
-    Uses July 1st as the boundary: from July 1 2026 onward we are in the
-    2026-27 season (end-year 2027). Before July 1 2026 we are still in
-    2025-26 (end-year 2026). Shared by both NBA and NCAA.
+    Retained for callers that have no league context (e.g. the publish
+    layer's date-stamp formatting).  League-specific code should use
+    :func:`src.etl.definitions.get_current_season_year_for_league` instead.
     """
     now = datetime.now()
-    return now.year + 1 if now.month >= 7 else now.year
+    return now.year + 1 if now.month >= _DEFAULT_FLIP_MONTH else now.year
 
-
-from src.core.config import format_season_label
 
 def get_current_season() -> str:
-    """Current season as a display string, e.g. '2025-26'."""
-    end_year = get_current_season_year()
-    return format_season_label(end_year)
-
-
-# ============================================================================
-# SCHEMA AUTO-SYNC
-# ============================================================================
-
-def ensure_schema(db_schema: str, tables_config: dict, db_columns: dict,
-                  conn=None) -> Dict[str, list]:
-    """Ensure all tables exist and have every column defined in config.
-
-    Compares config-driven column definitions against ``information_schema``
-    and issues ``ALTER TABLE … ADD COLUMN IF NOT EXISTS`` for anything
-    missing.  Designed to run **once per ETL invocation** (not per-write)
-    so there is zero per-row overhead.
-
-    Args:
-        db_schema:     Schema name (``'nba'`` or ``'ncaa'``).
-        tables_config: ``TABLES_CONFIG`` dict mapping table names →
-                       ``{'entity': …, 'contents': …}``.
-        db_columns:    ``DB_COLUMNS`` dict mapping column names →
-                       ``{'table': 'entity'|'stats'|'both', 'type': …, …}``.
-        conn:          Optional existing connection.  If *None*, a new
-                       connection is created (and closed on exit).
-
-    Returns:
-        Dict mapping schema-qualified table name → list of columns added.
-        Empty lists mean the table already had all columns.
-    """
-    own_conn = conn is None
-    if own_conn:
-        conn = get_db_connection()
-
-    try:
-        added: Dict[str, list] = {}
-
-        # --- Build {table_name: set_of_column_names} from TABLES_CONFIG ------
-        table_cols: Dict[str, Dict[str, str]] = {}  # table -> {col: pg_type}
-        stats_tables = {
-            f"{db_schema}.{name}"
-            for name, meta in tables_config.items()
-            if meta['contents'] == 'stats'
-        }
-        entity_tables = {
-            f"{db_schema}.{name}"
-            for name, meta in tables_config.items()
-            if meta['contents'] == 'entity'
-        }
-
-        for col_name, col_meta in db_columns.items():
-            if not isinstance(col_meta, dict):
-                continue
-            col_scope = col_meta.get('table', '')
-            col_type = col_meta.get('type', 'INTEGER')
-
-            target_tables = set()
-            if col_scope == 'entity':
-                target_tables = entity_tables
-            elif col_scope == 'stats':
-                target_tables = stats_tables
-            elif col_scope == 'both':
-                target_tables = entity_tables | stats_tables
-
-            for tbl in target_tables:
-                table_cols.setdefault(tbl, {})[col_name] = col_type
-
-        # --- Query information_schema for existing columns -------------------
-        with conn.cursor() as cur:
-            # Ensure the schema itself exists
-            cur.execute(f"CREATE SCHEMA IF NOT EXISTS {db_schema}")
-
-            for qual_table, expected_cols in table_cols.items():
-                bare_table = qual_table.split('.', 1)[1]
-
-                # Check if table exists at all
-                cur.execute(
-                    "SELECT 1 FROM information_schema.tables "
-                    "WHERE table_schema = %s AND table_name = %s",
-                    (db_schema, bare_table),
-                )
-                if cur.fetchone() is None:
-                    # Table doesn't exist yet — skip (CREATE TABLE is the
-                    # ETL's responsibility on first run; we only add columns)
-                    logger.info(
-                        'ensure_schema: table %s does not exist yet, skipping',
-                        qual_table,
-                    )
-                    added[qual_table] = []
-                    continue
-
-                # Fetch existing columns
-                cur.execute(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_schema = %s AND table_name = %s",
-                    (db_schema, bare_table),
-                )
-                existing = {row[0] for row in cur.fetchall()}
-
-                missing = []
-                for col, pg_type in expected_cols.items():
-                    if col not in existing:
-                        cur.execute(
-                            f'ALTER TABLE {qual_table} '
-                            f'ADD COLUMN IF NOT EXISTS {quote_col(col)} {pg_type}'
-                        )
-                        missing.append(col)
-
-                added[qual_table] = missing
-                if missing:
-                    logger.info(
-                        'ensure_schema: added %d column(s) to %s: %s',
-                        len(missing), qual_table, ', '.join(missing),
-                    )
-
-        conn.commit()
-        return added
-
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        if own_conn:
-            conn.close()
+    """Current season label (``'YYYY-YY'``) using the static July-1 cutoff."""
+    return format_season_label(get_current_season_year())

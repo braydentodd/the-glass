@@ -4,7 +4,15 @@ import time
 from typing import Callable, Optional, Set
 from dataclasses import dataclass, field
 
-from src.core.db import get_db_connection, get_table_name
+from src.core.config import format_season_label
+from src.core.db import get_db_connection
+from src.etl.definitions import (
+    LEAGUES,
+    get_current_season_for_league,
+    get_current_season_year_for_league,
+    get_reader_source,
+    get_table_name,
+)
 from src.publish.definitions.config import STAT_RATES, SECTIONS_CONFIG, TABS_CONFIG
 from src.publish.core.queries import fetch_all_players, fetch_all_teams, fetch_players_for_team, fetch_team_stats, get_teams_from_db
 from src.publish.core.layout import build_headers, build_tab_columns
@@ -145,13 +153,23 @@ def sync_league(
     """Execute the full Google Sheets sync for a league."""
     # ---- Build context ----
     from src.publish.definitions.config import GOOGLE_SHEETS_CONFIG, SHEET_FORMATTING
-    from src.etl.definitions import get_source_for_league
-    import importlib
+
+    if league not in LEAGUES:
+        raise ValueError(f"Unknown league: {league!r}")
 
     db_schema = league
-    source_key = get_source_for_league(league)
-    source_config = importlib.import_module(f'src.etl.sources.{source_key}.config')
-    league_config = source_config.SEASON_CONFIG
+    # Cross-check that the league has a reader source registered; we don't
+    # otherwise need the source_key in the publish flow.
+    get_reader_source(league)
+
+    # league_config preserves the legacy shape consumed by _precompute_percentiles
+    # and the per-tab sync helpers; values are now derived from LEAGUES rather
+    # than baked into the source module.
+    league_config = {
+        'current_season':      get_current_season_for_league(league),
+        'current_season_year': get_current_season_year_for_league(league),
+        'season_type':         'rs',
+    }
 
     stats_sections = frozenset(
         name for name, cfg in SECTIONS_CONFIG.items() if cfg.get('stats_timeframe')
@@ -174,7 +192,7 @@ def sync_league(
         stat_fields=db_fields['stat_fields'],
         team_stat_fields=db_fields['team_stat_fields'],
         primary_minutes_col='minutes_x10' if 'minutes_x10' in db_fields['stat_fields'] else 'minutes',
-        season_format_fn=getattr(source_config, 'format_season', str),
+        season_format_fn=format_season_label,
     )
 
     logger.info('Starting %s sync...', 'partial update' if data_only else 'full')

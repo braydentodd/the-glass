@@ -23,12 +23,14 @@ from typing import Any, Dict, List, Tuple
 from dotenv import load_dotenv
 load_dotenv()
 
-from src.core.db import db_connection, quote_col
-from src.etl.definitions import THE_GLASS_ID_COLUMN, get_table_name
+from src.core.definitions.db_tables import THE_GLASS_ID_COLUMN
+from src.core.lib.postgres import db_connection, quote_col
+from src.core.lib.table_names import get_table_name
 from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.definitions.config import GOOGLE_SHEETS_CONFIG, SHEET_FORMATTING
+from src.publish.definitions.sheets import SHEET_FORMATTING
 from src.publish.destinations.sheets.client import get_sheets_client
-from src.publish.destinations.sheets.layout import build_tab_columns, get_column_index
+from src.publish.destinations.sheets.config import GOOGLE_SHEETS_CONFIG
+from src.publish.lib.layout import build_tab_columns, get_column_index
 
 logger = logging.getLogger(__name__)
 

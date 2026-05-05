@@ -13,12 +13,12 @@ in :mod:`src.etl.orchestrator`; the CLI lives in :mod:`src.etl.cli`.
 """
 
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
-from src.core.db import db_connection, quote_col
-from src.etl.definitions import get_source_id_column, get_table_name
+from src.core.lib.postgres import db_connection, quote_col
+from src.core.lib.sources import get_source_id_column
+from src.core.lib.table_names import get_table_name
 from src.etl.lib.extract import (
     extract_columns_from_result,
     extract_raw_rows,
@@ -57,7 +57,6 @@ class ExecutionContext:
     source_key: str
     api_fetcher: Callable
     team_ids: Dict[str, int] = field(default_factory=dict)
-    rate_limit_delay: float = 1.2
     max_consecutive_failures: int = 5
     id_aliases: Dict[str, list] = field(default_factory=dict)
 
@@ -67,7 +66,7 @@ class ExecutionContext:
 # ============================================================================
 
 def _execute_league_wide(
-    endpoint: str,
+    dataset: str,
     params: Dict[str, Any],
     columns: Dict[str, Dict[str, Any]],
     ctx: ExecutionContext,
@@ -75,10 +74,10 @@ def _execute_league_wide(
 ) -> int:
     """One API call returns all entities -- extract, transform, write."""
     try:
-        result = ctx.api_fetcher(endpoint, params)
+        result = ctx.api_fetcher(dataset, params)
     except Exception as exc:
-        logger.error('League-wide %s failed: %s', endpoint, exc)
-        failed.append({'endpoint': endpoint, 'params': params, 'error': str(exc)})
+        logger.error('League-wide %s failed: %s', dataset, exc)
+        failed.append({'dataset': dataset, 'params': params, 'error': str(exc)})
         return 0
 
     if result is None:
@@ -101,7 +100,7 @@ def _execute_multi_call_column(
     failed: List[Dict[str, Any]],
 ) -> int:
     """Make multiple API calls and sum the field per entity."""
-    endpoint = source['endpoint']
+    dataset = source['dataset']
     api_field = source['field']
     multi_call_params = source['multi_call']
     result_set = source.get('result_set')
@@ -110,11 +109,11 @@ def _execute_multi_call_column(
 
     for extra_params in multi_call_params:
         try:
-            result = ctx.api_fetcher(endpoint, extra_params)
+            result = ctx.api_fetcher(dataset, extra_params)
         except Exception as exc:
             logger.warning(
                 'Multi-call %s %s failed for params %s: %s',
-                endpoint, col_name, extra_params, exc,
+                dataset, col_name, extra_params, exc,
             )
             continue
 
@@ -145,9 +144,9 @@ def _execute_pipeline_column(
     """Execute a transformation pipeline for a single column."""
     pipeline_config = source['pipeline']
 
-    def pipeline_fetcher(ep, extra_params, tier):
+    def pipeline_fetcher(ds, extra_params, tier):
         try:
-            return ctx.api_fetcher(ep, extra_params)
+            return ctx.api_fetcher(ds, extra_params)
         except Exception:
             return {'resultSets': []}
 
@@ -172,7 +171,7 @@ def _execute_pipeline_column(
 
 
 def _execute_team_call(
-    endpoint: str,
+    dataset: str,
     columns: Dict[str, Dict[str, Any]],
     ctx: ExecutionContext,
     failed: List[Dict[str, Any]],
@@ -190,7 +189,7 @@ def _execute_team_call(
     if not result_set_name or not player_id_field:
         logger.error(
             'team_call columns for %s missing required result_set or player_id_field',
-            endpoint,
+            dataset,
         )
         return 0
 
@@ -200,15 +199,15 @@ def _execute_team_call(
 
     for idx, team_id in enumerate(team_ids):
         try:
-            result = ctx.api_fetcher(endpoint, {'team_id': team_id})
+            result = ctx.api_fetcher(dataset, {'team_id': team_id})
             consecutive_failures = 0
         except Exception as exc:
             consecutive_failures += 1
-            logger.warning('Team %d failed for %s: %s', team_id, endpoint, exc)
+            logger.warning('Team %d failed for %s: %s', team_id, dataset, exc)
             if consecutive_failures >= ctx.max_consecutive_failures:
                 logger.error(
                     'Aborting %s after %d consecutive failures',
-                    endpoint, consecutive_failures,
+                    dataset, consecutive_failures,
                 )
                 break
             continue
@@ -219,9 +218,6 @@ def _execute_team_call(
         new_rows = extract_raw_rows(result, player_id_field, result_set_name)
         for pid, rows_list in new_rows.items():
             player_team_rows.setdefault(pid, []).extend(rows_list)
-
-        if ctx.rate_limit_delay > 0 and idx < len(team_ids) - 1:
-            time.sleep(ctx.rate_limit_delay)
 
     if not player_team_rows:
         return 0
@@ -234,7 +230,7 @@ def _execute_team_call(
 
 
 def _execute_per_entity(
-    endpoint: str,
+    dataset: str,
     columns: Dict[str, Dict[str, Any]],
     ctx: ExecutionContext,
     failed: List[Dict[str, Any]],
@@ -242,7 +238,7 @@ def _execute_per_entity(
 ) -> int:
     """Per-entity API calls for simple columns (e.g. commonplayerinfo).
 
-    Iterates over all known entities in the DB, calls the endpoint once
+    Iterates over all known entities in the DB, calls the dataset once
     per entity (passing the entity's source_id), and extracts simple columns.
     """
     source_id_col = get_source_id_column(ctx.source_key)
@@ -274,27 +270,27 @@ def _execute_per_entity(
 
     for idx, sid in enumerate(source_ids):
         try:
-            result = ctx.api_fetcher(endpoint, {id_param: sid})
+            result = ctx.api_fetcher(dataset, {id_param: sid})
             consecutive_failures = 0
         except KeyError as exc:
             # Malformed response for this specific entity (e.g. missing
             # resultSet key) — skip without counting toward API-level abort.
             logger.debug(
                 'Per-entity %s: no data for %s=%s (KeyError: %s)',
-                endpoint, id_param, sid, exc,
+                dataset, id_param, sid, exc,
             )
             continue
         except Exception as exc:
             consecutive_failures += 1
             logger.warning(
-                'Per-entity %s for %s=%s failed: %s', endpoint, id_param, sid, exc,
+                'Per-entity %s for %s=%s failed: %s', dataset, id_param, sid, exc,
             )
             if consecutive_failures >= ctx.max_consecutive_failures:
                 logger.error(
                     'Aborting %s after %d consecutive failures',
-                    endpoint, consecutive_failures,
+                    dataset, consecutive_failures,
                 )
-                failed.append({'endpoint': endpoint, 'error': str(exc)})
+                failed.append({'dataset': dataset, 'error': str(exc)})
                 break
             continue
 
@@ -306,10 +302,6 @@ def _execute_per_entity(
             id_aliases=ctx.id_aliases,
         )
         all_rows.update(extracted)
-
-        per_entity_delay = 2.5
-        if idx < len(source_ids) - 1:
-            time.sleep(per_entity_delay)
 
     if not all_rows:
         return 0
@@ -330,7 +322,7 @@ def execute_group(
     failed: List[Dict[str, Any]],
 ) -> int:
     """Execute a single call group and return rows written."""
-    endpoint = group['endpoint']
+    dataset = group['dataset']
     params = group['params']
     tier = group['tier']
     columns = group['columns']
@@ -342,17 +334,17 @@ def execute_group(
     param_label = ' '.join(f'{k}={v}' for k, v in sorted(params.items()))
     logger.info(
         'Processing %s %s %s %s [%s]',
-        ctx.season, ctx.season_type_name, endpoint, ctx.entity, param_label,
+        ctx.season, ctx.season_type_name, dataset, ctx.entity, param_label,
     )
 
     written = 0
 
     if tier == 'team_call':
-        written += _execute_team_call(endpoint, columns, ctx, failed)
+        written += _execute_team_call(dataset, columns, ctx, failed)
     elif tier in ('team', 'player'):
         if simple:
             written += _execute_per_entity(
-                endpoint, simple, ctx, failed,
+                dataset, simple, ctx, failed,
                 removed_refresh_mode=group.get('removed_refresh_mode', 'null_only'),
             )
         for col_name, source in pipelines.items():
@@ -361,7 +353,7 @@ def execute_group(
             written += _execute_multi_call_column(col_name, source, ctx, failed)
     else:
         if simple:
-            written += _execute_league_wide(endpoint, params, simple, ctx, failed)
+            written += _execute_league_wide(dataset, params, simple, ctx, failed)
         for col_name, source in multi_call.items():
             written += _execute_multi_call_column(col_name, source, ctx, failed)
         for col_name, source in pipelines.items():

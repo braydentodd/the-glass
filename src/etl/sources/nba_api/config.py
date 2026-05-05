@@ -1,12 +1,14 @@
 """
 The Glass - NBA API Source Configuration
 
-Pure data definitions for the ``nba_api`` source: endpoint metadata,
+Pure data definitions for the ``nba_api`` source: dataset metadata,
 rate limits, season-type mapping, and field-name mappings.
 
 League-level concerns (current season, retention window, calendar flip)
-live in :mod:`src.etl.definitions.config.LEAGUES` -- this module is purely
-about how to talk to the source itself.
+live in :mod:`src.core.definitions.leagues.LEAGUES` -- this module is
+purely about how to talk to the source itself.
+
+Validation is folded into :func:`src.etl.config_validation._validate_nba_api`.
 """
 
 from typing import Any, Dict
@@ -18,17 +20,29 @@ from typing import Any, Dict
 
 SOURCE_META: Dict[str, Any] = {
     'source_key': 'nba_api',
-    # Endpoint whose rows define the active roster snapshot for a league.
+    # Dataset whose rows define the active roster snapshot for a league.
     # The client's fetch_roster_snapshot() pulls (TEAM_ID, PERSON_ID) tuples
-    # from this endpoint.
-    'roster_endpoint': 'commonallplayers',
+    # from this dataset.
+    'roster_dataset': 'commonallplayers',
 }
 
 
-SEASON_TYPES = {
-    'rs': {'name': 'Regular Season', 'param': 'Regular Season', 'min_season': None},
-    'po': {'name': 'Playoffs',       'param': 'Playoffs',       'min_season': None},
-    'pi': {'name': 'PlayIn',         'param': 'PlayIn',         'min_season': '2020-21'},
+SEASON_TYPES: Dict[str, Dict[str, Any]] = {
+    'rs': {
+        'name':       'Regular Season',
+        'param':      'Regular Season',
+        'min_season': None,
+    },
+    'po': {
+        'name':       'Playoffs',
+        'param':      'Playoffs',
+        'min_season': None,
+    },
+    'pi': {
+        'name':       'PlayIn',
+        'param':      'PlayIn',
+        'min_season': '2020-21',
+    },
 }
 
 
@@ -65,10 +79,10 @@ RETRY_CONFIG = {
 
 
 # ============================================================================
-# ENDPOINT DEFINITIONS
+# DATASET DEFINITIONS
 # ============================================================================
 
-ENDPOINTS: Dict[str, Dict[str, Any]] = {
+DATASETS: Dict[str, Dict[str, Any]] = {
 
     # --- Basic stats (since 2003-04) ---
 
@@ -270,27 +284,6 @@ API_FIELD_NAMES = {
 
 
 # ============================================================================
-# SCHEMA VALIDATORS
-# ============================================================================
-
-def validate_provider_config() -> list:
-    """Validate every nba_api config dict against its co-located schema.
-
-    Returns a list of error strings (empty = clean).  Caller (typically
-    :func:`src.etl.config_validation.validate_all`) handles surfacing.
-    """
-    from src.core.config_validation import validate_dict_config, validate_flat_config
-
-    errors: list = []
-    errors.extend(validate_flat_config(SOURCE_META, SOURCE_META_SCHEMA, 'SOURCE_META'))
-    errors.extend(validate_flat_config(API_CONFIG, API_CONFIG_SCHEMA, 'API_CONFIG'))
-    errors.extend(validate_flat_config(RETRY_CONFIG, RETRY_CONFIG_SCHEMA, 'RETRY_CONFIG'))
-    errors.extend(validate_dict_config(SEASON_TYPES, SEASON_TYPES_SCHEMA, 'SEASON_TYPES'))
-    errors.extend(validate_dict_config(ENDPOINTS, ENDPOINTS_SCHEMA, 'ENDPOINTS'))
-    return errors
-
-
-# ============================================================================
 # VALIDATION SCHEMAS  (co-located with the config they describe)
 # ============================================================================
 
@@ -298,7 +291,7 @@ VALID_EXECUTION_TIERS = {'league', 'player', 'team', 'team_call'}
 
 SOURCE_META_SCHEMA = {
     'source_key':      {'required': True, 'types': (str,)},
-    'roster_endpoint': {'required': True, 'types': (str,)},
+    'roster_dataset': {'required': True, 'types': (str,)},
 }
 
 API_CONFIG_SCHEMA = {
@@ -326,7 +319,7 @@ RETRY_CONFIG_SCHEMA = {
     'backoff_base': {'required': True, 'types': (int, float)},
 }
 
-ENDPOINTS_SCHEMA = {
+DATASETS_SCHEMA = {
     'min_season': {'required': True, 'types': (str, type(None))},
     'execution_tier': {'required': True, 'types': (str,), 'allowed_values': VALID_EXECUTION_TIERS},
     'default_result_set': {'required': True, 'types': (str,)},

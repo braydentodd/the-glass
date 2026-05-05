@@ -17,8 +17,9 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Callable, Set
 
-from src.core.db import get_db_connection
-from src.publish.definitions.config import STAT_RATES, TABS_CONFIG
+from src.core.lib.postgres import get_db_connection
+from src.publish.definitions.layout import TABS_CONFIG
+from src.publish.definitions.stats import STAT_RATES
 from src.publish.destinations.sheets.api_builder import build_formatting_requests
 from src.publish.destinations.sheets.client import (
     get_or_create_worksheet,
@@ -173,7 +174,7 @@ def sync_team_tab(ctx, client, spreadsheet, team_abbr,
 
     conn = get_db_connection()
     try:
-        from src.publish.definitions.config import HISTORICAL_TIMEFRAMES
+        from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
         supported_years = list(HISTORICAL_TIMEFRAMES.keys())
         
         # ---- Fetch raw data ----
@@ -271,7 +272,8 @@ def sync_team_tab(ctx, client, spreadsheet, team_abbr,
         headers = build_headers(
             columns, mode=mode, team_name=display_name,
             current_season=current_season_year,
-            historical_config=historical_config)
+            historical_config=historical_config,
+            season_format_fn=ctx.season_format_fn)
 
         # ---- Index players by id for merging ----
         curr_by_id = {p.get('id'): p for p in current_players}
@@ -427,7 +429,7 @@ def sync_teams_tab(ctx, client, spreadsheet, mode='per_possession',
 
     conn = get_db_connection()
     try:
-        from src.publish.definitions.config import HISTORICAL_TIMEFRAMES
+        from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
         supported_years = list(HISTORICAL_TIMEFRAMES.keys())
 
         # ---- Fetch all teams for 3 sections ----
@@ -549,7 +551,8 @@ def sync_teams_tab(ctx, client, spreadsheet, mode='per_possession',
         headers = build_headers(
             columns, mode=mode, team_name='Teams',
             current_season=current_season_year,
-            historical_config=historical_config)
+            historical_config=historical_config,
+            season_format_fn=ctx.season_format_fn)
 
         # ---- Build team rows (all modes at once) ----
         data_rows = []
@@ -647,7 +650,7 @@ def sync_players_tab(ctx, client, spreadsheet, mode='per_possession',
 
     conn = get_db_connection()
     try:
-        from src.publish.definitions.config import HISTORICAL_TIMEFRAMES
+        from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
         supported_years = list(HISTORICAL_TIMEFRAMES.keys())
 
         # ---- Fetch all players league-wide ----
@@ -688,7 +691,8 @@ def sync_players_tab(ctx, client, spreadsheet, mode='per_possession',
         headers = build_headers(
             columns, mode=mode, team_name='Players',
             current_season=current_season_year,
-            historical_config=historical_config)
+            historical_config=historical_config,
+            season_format_fn=ctx.season_format_fn)
 
         # ---- Index players by id ----
         curr_by_id = {p.get('id'): p for p in all_players_curr}

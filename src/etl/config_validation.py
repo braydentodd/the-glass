@@ -5,12 +5,13 @@ ETL-specific validation: cross-reference checks, PostgreSQL type validation,
 and source structure checks.  Uses the generic validation engine from
 ``src.core.config_validation``.
 
-Schemas are co-located with their config files:
+Schemas are co-located with their declarative data:
 
-  - DB_COLUMNS_SCHEMA, LEAGUES_SCHEMA, SOURCES_SCHEMA, PROFILE_TABLES_SCHEMA,
-    STATS_TABLES_SCHEMA, JUNCTION_TABLES_SCHEMA, ETL_CONFIG_SCHEMA,
-    ETL_TABLES_SCHEMA  -> src/etl/definitions/config.py
-  - ENDPOINTS_SCHEMA, SEASON_TYPES_SCHEMA  -> src/etl/sources/<source>/config.py
+  - LEAGUES_SCHEMA, SOURCES_SCHEMA, schema constants     -> src/core/definitions/
+  - DB_COLUMNS_SCHEMA                                     -> src/core/definitions/schema.py
+  - RUNTIME_CONFIG_SCHEMA                                 -> src/core/definitions/runtime.py
+  - OPERATIONAL_TABLES_SCHEMA                             -> src/core/definitions/db_tables.py
+  - DATASETS_SCHEMA, SEASON_TYPES_SCHEMA                  -> src/etl/sources/<source>/config.py
 
 Add a new config?  Define a schema dict next to the data, then register it
 in :func:`validate_config`.
@@ -19,13 +20,13 @@ in :func:`validate_config`.
 import logging
 from typing import Any, Dict, List, Optional
 
-from src.core.config_validation import validate_dict_config, validate_flat_config
+from src.core.lib.config_validation import validate_dict_config, validate_flat_config
 
 logger = logging.getLogger(__name__)
 
 
 VALID_TRANSFORMS = {
-    'safe_int', 'safe_float', 'safe_str',
+    'safe_int', 'safe_str',
     'parse_height', 'parse_birthdate', 'format_season',
 }
 
@@ -36,7 +37,7 @@ VALID_TRANSFORMS = {
 
 def _validate_pg_types(db_columns: Dict[str, Dict]) -> List[str]:
     """Validate that all DB_COLUMNS types are valid PostgreSQL types."""
-    from src.etl.definitions import VALID_PG_TYPES
+    from src.core.definitions.db_tables import VALID_PG_TYPES
 
     errors = []
     for col_name, meta in db_columns.items():
@@ -56,7 +57,7 @@ def _validate_source_structure(
     Each provider key must exist in SOURCES, and each entity key must be in
     VALID_ENTITY_TYPES and in the provider's ``applies_to`` list.
     """
-    from src.etl.definitions import VALID_ENTITY_TYPES
+    from src.core.definitions.db_tables import VALID_ENTITY_TYPES
     errors = []
     for col_name, meta in db_columns.items():
         col_sources = meta.get('sources')
@@ -94,11 +95,11 @@ def _validate_source_structure(
     return errors
 
 
-def _validate_endpoint_refs(
+def _validate_dataset_refs(
     db_columns: Dict[str, Dict],
-    endpoints: Dict[str, Dict],
+    datasets: Dict[str, Dict],
 ) -> List[str]:
-    """Validate that source endpoint references exist in ENDPOINTS."""
+    """Validate that source dataset references exist in DATASETS."""
     errors = []
     for col_name, meta in db_columns.items():
         sources = meta.get('sources')
@@ -112,13 +113,13 @@ def _validate_endpoint_refs(
             for entity_name, source_def in entities.items():
                 if not isinstance(source_def, dict):
                     continue
-                ep = (
-                    source_def.get('endpoint')
-                    or source_def.get('pipeline', {}).get('endpoint')
+                ds = (
+                    source_def.get('dataset')
+                    or source_def.get('pipeline', {}).get('dataset')
                 )
-                if ep and ep not in endpoints:
+                if ds and ds not in datasets:
                     errors.append(
-                        f"{prefix}: references unknown endpoint '{ep}'"
+                        f"{prefix}: references unknown dataset '{ds}'"
                     )
     return errors
 
@@ -129,7 +130,7 @@ def _validate_stats_primary_keys(
 ) -> List[str]:
     """Validate that every PK column on a stats table is either the synthetic
     ``the_glass_id`` or a column declared in DB_COLUMNS."""
-    from src.etl.definitions import THE_GLASS_ID_COLUMN
+    from src.core.definitions.db_tables import THE_GLASS_ID_COLUMN
     errors = []
     for table_name, meta in stats_tables.items():
         for col in meta.get('primary_key', []):
@@ -143,32 +144,32 @@ def _validate_stats_primary_keys(
     return errors
 
 
-def _validate_league_reader_sources(
+def _validate_league_primary_sources(
     leagues: Dict[str, Dict],
     sources: Dict[str, Dict],
 ) -> List[str]:
-    """Each league.reader_source must exist in SOURCES with role=reader and
-    list the league in its leagues array."""
+    """Each league.primary_source must exist in SOURCES with
+    role=authoritative and list the league in its leagues array."""
     errors = []
     for league_key, meta in leagues.items():
-        rs = meta.get('reader_source')
+        rs = meta.get('primary_source')
         if not rs:
-            errors.append(f"LEAGUES['{league_key}']: missing reader_source")
+            errors.append(f"LEAGUES['{league_key}']: missing primary_source")
             continue
         if rs not in sources:
             errors.append(
-                f"LEAGUES['{league_key}']: reader_source '{rs}' not in SOURCES"
+                f"LEAGUES['{league_key}']: primary_source '{rs}' not in SOURCES"
             )
             continue
         src = sources[rs]
-        if src.get('role') != 'reader':
+        if src.get('role') != 'authoritative':
             errors.append(
-                f"LEAGUES['{league_key}']: reader_source '{rs}' has role "
-                f"{src.get('role')!r}, expected 'reader'"
+                f"LEAGUES['{league_key}']: primary_source '{rs}' has role "
+                f"{src.get('role')!r}, expected 'authoritative'"
             )
         if league_key not in src.get('leagues', []):
             errors.append(
-                f"LEAGUES['{league_key}']: reader_source '{rs}' does not list "
+                f"LEAGUES['{league_key}']: primary_source '{rs}' does not list "
                 f"'{league_key}' in its leagues"
             )
     return errors
@@ -177,7 +178,7 @@ def _validate_league_reader_sources(
 def _validate_domain_coverage(db_columns: Dict[str, Dict]) -> List[str]:
     """Every non-primary domain in STAT_DOMAINS must be referenced by at
     least one DB_COLUMNS entry (otherwise the domain is dead config)."""
-    from src.core.config import STAT_DOMAINS
+    from src.core.definitions.stats import STAT_DOMAINS
 
     used = {meta.get('domain') for meta in db_columns.values() if meta.get('domain')}
     errors: List[str] = []
@@ -199,7 +200,7 @@ def _validate_fk_targets(
 ) -> List[str]:
     """Every FK ref_schema/ref_table must resolve to a known table, and the
     on_update / on_delete actions must be in the allowed set."""
-    from src.etl.definitions import VALID_FK_ACTIONS
+    from src.core.definitions.db_tables import VALID_FK_ACTIONS
 
     core_tables = set(profile_tables) | set(junction_tables)
     errors: List[str] = []
@@ -229,38 +230,35 @@ def _validate_fk_targets(
 # ============================================================================
 
 def validate_config(
-    endpoints: Optional[Dict[str, Any]] = None,
-    endpoints_schema: Optional[Dict[str, Any]] = None,
+    datasets: Optional[Dict[str, Any]] = None,
+    datasets_schema: Optional[Dict[str, Any]] = None,
 ) -> List[str]:
     """Validate every ETL configuration dict at startup.
 
     Args:
-        endpoints:        Optional ENDPOINTS dict from the active source config.
-                          If supplied, source endpoint references are cross-checked.
-        endpoints_schema: Optional schema dict for validating ``endpoints``.
+        datasets:        Optional DATASETS dict from the active source config.
+                          If supplied, source dataset references are cross-checked.
+        datasets_schema: Optional schema dict for validating ``datasets``.
 
     Raises:
         RuntimeError: if any validation errors are found.
     """
-    from src.etl.definitions import (
-        DB_COLUMNS,
+    from src.core.lib.config_validation import validate_core_constants
+    from src.core.definitions.db_tables import (
         DB_COLUMNS_SCHEMA,
-        ETL_CONFIG,
-        ETL_CONFIG_SCHEMA,
-        ETL_TABLES,
-        ETL_TABLES_SCHEMA,
         JUNCTION_TABLES,
         JUNCTION_TABLES_SCHEMA,
-        LEAGUES,
-        LEAGUES_SCHEMA,
+        OPERATIONAL_TABLES,
+        OPERATIONAL_TABLES_SCHEMA,
         PROFILE_TABLES,
         PROFILE_TABLES_SCHEMA,
-        SOURCES,
-        SOURCES_SCHEMA,
         STATS_TABLES,
         STATS_TABLES_SCHEMA,
     )
-    from src.core.config_validation import validate_core_constants
+    from src.core.definitions.leagues import LEAGUES, LEAGUES_SCHEMA
+    from src.core.definitions.runtime import RUNTIME_CONFIG, RUNTIME_CONFIG_SCHEMA
+    from src.core.definitions.sources import SOURCES, SOURCES_SCHEMA
+    from src.core.definitions.columns import DB_COLUMNS
 
     errors: List[str] = []
 
@@ -273,22 +271,22 @@ def validate_config(
     errors.extend(validate_dict_config(PROFILE_TABLES, PROFILE_TABLES_SCHEMA, 'PROFILE_TABLES'))
     errors.extend(validate_dict_config(STATS_TABLES, STATS_TABLES_SCHEMA, 'STATS_TABLES'))
     errors.extend(validate_dict_config(JUNCTION_TABLES, JUNCTION_TABLES_SCHEMA, 'JUNCTION_TABLES'))
-    errors.extend(validate_dict_config(ETL_TABLES, ETL_TABLES_SCHEMA, 'ETL_TABLES'))
-    errors.extend(validate_flat_config(ETL_CONFIG, ETL_CONFIG_SCHEMA, 'ETL_CONFIG'))
+    errors.extend(validate_dict_config(OPERATIONAL_TABLES, OPERATIONAL_TABLES_SCHEMA, 'OPERATIONAL_TABLES'))
+    errors.extend(validate_flat_config(RUNTIME_CONFIG, RUNTIME_CONFIG_SCHEMA, 'RUNTIME_CONFIG'))
 
-    if endpoints and endpoints_schema:
-        errors.extend(validate_dict_config(endpoints, endpoints_schema, 'ENDPOINTS'))
+    if datasets and datasets_schema:
+        errors.extend(validate_dict_config(datasets, datasets_schema, 'DATASETS'))
 
     # Type and structural validations
     errors.extend(_validate_pg_types(DB_COLUMNS))
     errors.extend(_validate_source_structure(DB_COLUMNS, SOURCES))
     errors.extend(_validate_stats_primary_keys(STATS_TABLES, DB_COLUMNS))
-    errors.extend(_validate_league_reader_sources(LEAGUES, SOURCES))
+    errors.extend(_validate_league_primary_sources(LEAGUES, SOURCES))
     errors.extend(_validate_domain_coverage(DB_COLUMNS))
     errors.extend(_validate_fk_targets(STATS_TABLES, JUNCTION_TABLES, PROFILE_TABLES))
 
-    if endpoints:
-        errors.extend(_validate_endpoint_refs(DB_COLUMNS, endpoints))
+    if datasets:
+        errors.extend(_validate_dataset_refs(DB_COLUMNS, datasets))
 
     if errors:
         for err in errors:
@@ -314,41 +312,36 @@ def validate_all() -> List[str]:
     Raises:
         RuntimeError: if any layer reports validation errors.
     """
-    import importlib
-    from src.etl.definitions import SOURCES
+    from src.core.definitions.sources import SOURCES
 
-    # Cross-cuts ETL definitions + per-source ENDPOINTS (no league required).
+    # Cross-cuts ETL definitions + per-source DATASETS (no league required).
     validate_config()
 
-    # Per-source validation.  Each source module exposes its own
-    # ``validate_provider_config()`` that checks SOURCE_META, API_CONFIG,
-    # SEASON_TYPES, ENDPOINTS, etc. against locally-defined schemas.  We
-    # then re-run the ETL-level cross-reference check so DB_COLUMNS endpoint
-    # references resolve against the active source's ENDPOINTS dict.
+    # Source-specific validation folded into the center.  Each source is
+    # validated explicitly so that adding a new source requires editing this
+    # module (intentional: it keeps the validation surface visible).
     aggregated: List[str] = []
     for source_key in sorted(SOURCES):
         source_meta = SOURCES[source_key]
+        if source_meta.get('role') != 'authoritative':
+            continue
+
         try:
-            cfg_mod = importlib.import_module(f'src.etl.sources.{source_key}.config')
+            cfg_mod = __import__(f'src.etl.sources.{source_key}.config', fromlist=['config'])
         except ModuleNotFoundError:
-            # Writers (sheets, BI exporters, etc.) don't always ship a
-            # source config module; only readers must have one.
-            if source_meta.get('role') != 'reader':
-                continue
             logger.warning(
-                'Reader source %r is missing src.etl.sources.%s.config; '
-                'skipping endpoint validation.',
-                source_key, source_key,
+                'Authoritative source %r is missing config module; '
+                'skipping source-specific validation.', source_key,
             )
             continue
 
-        if hasattr(cfg_mod, 'validate_provider_config'):
-            aggregated.extend(cfg_mod.validate_provider_config())
+        if source_key == 'nba_api':
+            aggregated.extend(_validate_nba_api(cfg_mod))
 
-        endpoints = getattr(cfg_mod, 'ENDPOINTS', None)
-        if endpoints is not None:
-            from src.etl.definitions import DB_COLUMNS
-            aggregated.extend(_validate_endpoint_refs(DB_COLUMNS, endpoints))
+        datasets = getattr(cfg_mod, 'DATASETS', None)
+        if datasets is not None:
+            from src.core.definitions.columns import DB_COLUMNS
+            aggregated.extend(_validate_dataset_refs(DB_COLUMNS, datasets))
 
     if aggregated:
         for err in aggregated:
@@ -358,3 +351,31 @@ def validate_all() -> List[str]:
         )
 
     return []
+
+
+def _validate_nba_api(cfg_mod) -> List[str]:
+    """Validate the ``nba_api`` source config against its local schemas."""
+    from src.core.lib.config_validation import validate_dict_config, validate_flat_config
+
+    errors: List[str] = []
+    errors.extend(validate_flat_config(
+        getattr(cfg_mod, 'API_CONFIG', {}),
+        getattr(cfg_mod, 'API_CONFIG_SCHEMA', {}),
+        'nba_api.API_CONFIG',
+    ))
+    errors.extend(validate_flat_config(
+        getattr(cfg_mod, 'RETRY_CONFIG', {}),
+        getattr(cfg_mod, 'RETRY_CONFIG_SCHEMA', {}),
+        'nba_api.RETRY_CONFIG',
+    ))
+    errors.extend(validate_dict_config(
+        getattr(cfg_mod, 'SEASON_TYPES', {}),
+        getattr(cfg_mod, 'SEASON_TYPES_SCHEMA', {}),
+        'nba_api.SEASON_TYPES',
+    ))
+    errors.extend(validate_dict_config(
+        getattr(cfg_mod, 'DATASETS', {}),
+        getattr(cfg_mod, 'DATASETS_SCHEMA', {}),
+        'nba_api.DATASETS',
+    ))
+    return errors

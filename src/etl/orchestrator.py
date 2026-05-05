@@ -12,7 +12,7 @@ Layering:
         v
     src.etl.orchestrator  (this module: phase ordering)
         |
-        +--> src.etl.lib.ddl                (schema bootstrap)
+        +--> src.core.lib.ddl              (schema bootstrap)
         +--> src.etl.lib.roster_maintainer  (junction sync)
         +--> src.etl.lib.executor           (one API call group)
         +--> src.etl.lib.cleanup            (post-run hygiene)
@@ -28,26 +28,21 @@ import importlib
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
-from src.core.cli import progress
-from src.core.db import db_connection, quote_col
-from src.core.logging import phase_marker
-from src.etl.definitions import (
-    CORE_SCHEMA,
-    ETL_CONFIG,
-    LEAGUES,
-    SOURCES,
-    THE_GLASS_ID_COLUMN,
-    get_current_season_for_league,
-    get_reader_source,
-    get_retained_seasons,
-    get_source_id_column,
-)
+from src.core.lib.cli import progress
+from src.core.lib.ddl import ensure_all, ensure_league_profile
+from src.core.lib.logging import phase_marker
+from src.core.lib.postgres import db_connection, quote_col
+from src.core.lib.sources import get_primary_source, get_source_id_column
+from src.core.definitions.leagues import LEAGUES
+from src.core.definitions.runtime import RUNTIME_CONFIG
+from src.core.definitions.db_tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
+from src.core.definitions.sources import SOURCES
+from src.core.lib.leagues import get_current_season, get_retained_seasons
 from src.etl.lib.cleanup import (
     cleanup_stat_domains,
     prune_orphan_profiles,
     prune_stats_retention,
 )
-from src.etl.lib.ddl import ensure_all, ensure_league_profile
 from src.etl.lib.executor import ExecutionContext, execute_group
 from src.etl.lib.load import seed_empty_stats
 from src.etl.lib.plan import build_call_groups
@@ -92,7 +87,7 @@ def _get_active_team_source_ids(league_key: str, source_key: str) -> Dict[str, i
     ``core.league_rosters`` for the given league.
 
     Used by per-team execution strategies that need to iterate over the team
-    list (e.g. on/off court endpoints).
+    list (e.g. on/off court datasets).
     """
     src_col = get_source_id_column(source_key)
     sql = f"""
@@ -131,7 +126,7 @@ def _run_groups(
     *,
     league_key: str,
     source_key: str,
-    endpoints: dict,
+    datasets: dict,
     api_field_names: dict,
     api_config: dict,
     make_fetcher: Callable,
@@ -142,7 +137,7 @@ def _run_groups(
     for season in seasons:
         for ent in entities:
             groups = build_call_groups(
-                ent, season, source_key, endpoints, scope=scope,
+                ent, season, source_key, datasets, scope=scope,
             )
             if not groups:
                 continue
@@ -162,7 +157,6 @@ def _run_groups(
                 source_key=source_key,
                 api_fetcher=make_fetcher(season, season_type_name, ent),
                 team_ids=team_ids,
-                rate_limit_delay=api_config.get('rate_limit_delay', 1.2),
                 max_consecutive_failures=api_config.get('max_consecutive_failures', 5),
                 id_aliases=api_field_names.get('id_aliases', {}),
             )
@@ -170,7 +164,7 @@ def _run_groups(
             with db_connection() as conn:
                 run_id, work_items = resolve_work(
                     conn, league_key, ent, season, season_type, groups, run_type,
-                    ETL_CONFIG['auto_resume'],
+                    RUNTIME_CONFIG['auto_resume']['etl'],
                 )
 
                 entity_rows = 0
@@ -183,7 +177,7 @@ def _run_groups(
                         leave=False,
                     ) as bar:
                         for group, progress_id in work_items:
-                            bar.set_postfix_str(group['endpoint'], refresh=False)
+                            bar.set_postfix_str(group['dataset'], refresh=False)
                             mark_group_started(conn, league_key, progress_id)
                             try:
                                 rows = execute_group(group, ctx, failed)
@@ -191,11 +185,11 @@ def _run_groups(
                                 mark_group_completed(conn, league_key, progress_id, rows)
                             except Exception as exc:
                                 logger.error(
-                                    'Group %s failed: %s', group['endpoint'], exc,
+                                    'Group %s failed: %s', group['dataset'], exc,
                                 )
                                 mark_group_failed(conn, league_key, progress_id, str(exc))
                                 failed.append({
-                                    'endpoint': group['endpoint'], 'error': str(exc),
+                                    'dataset': group['dataset'], 'error': str(exc),
                                 })
                             bar.update(1)
 
@@ -348,16 +342,16 @@ def run_etl(
             f"Unknown league {league_key!r}. Registered: {sorted(LEAGUES)}"
         )
 
-    source_key = get_reader_source(league_key)
+    source_key = get_primary_source(league_key)
     config_mod, client_mod = _load_source(source_key)
 
     season_types = config_mod.SEASON_TYPES
-    endpoints = config_mod.ENDPOINTS
+    datasets = config_mod.DATASETS
     api_config = config_mod.API_CONFIG
     api_field_names = config_mod.API_FIELD_NAMES
 
     league_cfg = LEAGUES[league_key]
-    season = season or get_current_season_for_league(league_key)
+    season = season or get_current_season(league_key)
 
     # Discover / rosters always use the league's canonical regular-season type.
     regular_st = league_cfg['regular_season_type']
@@ -387,7 +381,7 @@ def run_etl(
     source_kw = dict(
         league_key=league_key,
         source_key=source_key,
-        endpoints=endpoints,
+        datasets=datasets,
         api_field_names=api_field_names,
         api_config=api_config,
         make_fetcher=client_mod.make_fetcher,

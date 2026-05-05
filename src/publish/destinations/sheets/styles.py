@@ -1,5 +1,6 @@
 from typing import Dict
-from src.publish.definitions.config import COLORS, COLOR_THRESHOLDS
+
+from src.publish.definitions.style import COLOR_THRESHOLDS, COLORS
 
 def get_color_for_percentile(percentile: float, reverse: bool = False) -> Dict:
     """Get RGB color dict (values 0-1) for a percentile using red->yellow->green gradient."""

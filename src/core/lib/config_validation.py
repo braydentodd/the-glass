@@ -4,9 +4,9 @@ The Glass - Schema-Driven Config Validation Engine
 Generic validation functions that check configuration dictionaries against
 declarative schemas.  Shared across ETL, publish, and any future modules.
 
-Schemas are co-located with their config files (e.g. DB_COLUMNS_SCHEMA
-lives in etl/config.py).  This module provides only the engine — it has
-no knowledge of any specific config structure.
+Schemas are co-located with their declarative data (e.g. ``DB_COLUMNS_SCHEMA``
+lives in ``src.core.definitions.schema``).  This module provides only the
+engine -- it has no knowledge of any specific config structure.
 """
 
 from typing import Any, Dict, List
@@ -116,28 +116,26 @@ def validate_scalar_dict(
 
 
 def validate_core_constants() -> List[str]:
-    """Validate every constant exported by ``src.core.config`` against its schema.
+    """Validate cross-cutting core constants against their co-located schemas.
 
     Returns a list of error strings (empty = valid).  Caller decides how to
     surface them (typically the CLI's ``validate_all`` step).
     """
-    from src.core.config import (
-        CORE_CONFIG_SCHEMAS,
+    from src.core.definitions.stats import (
         SEASON_TYPE_GROUPS,
+        SEASON_TYPE_GROUPS_SCHEMA,
         STAT_DOMAINS,
+        STAT_DOMAINS_SCHEMA,
     )
 
     errors: List[str] = []
 
     errors.extend(validate_entry(
-        SEASON_TYPE_GROUPS,
-        CORE_CONFIG_SCHEMAS['SEASON_TYPE_GROUPS'],
-        'SEASON_TYPE_GROUPS',
+        SEASON_TYPE_GROUPS, SEASON_TYPE_GROUPS_SCHEMA, 'SEASON_TYPE_GROUPS',
     ))
 
-    domain_schema = CORE_CONFIG_SCHEMAS['STAT_DOMAINS_ENTRY']
     errors.extend(validate_dict_config(
-        STAT_DOMAINS, domain_schema, 'STAT_DOMAINS',
+        STAT_DOMAINS, STAT_DOMAINS_SCHEMA, 'STAT_DOMAINS',
     ))
 
     # Exactly one domain must be flagged primary; cleanup + publish rely on it.

@@ -1,7 +1,7 @@
 """
 The Glass - NBA API Client
 
-Wraps the nba_api library with browser header patching, dynamic endpoint
+Wraps the nba_api library with browser header patching, dynamic dataset
 loading, retry logic, and parameter building.  Abstracts NBA-specific
 HTTP concerns so the core pipeline never touches requests directly.
 
@@ -17,7 +17,7 @@ from typing import Any, Callable, Dict, Optional
 
 from src.etl.sources.nba_api.config import (
     API_CONFIG,
-    ENDPOINTS,
+    DATASETS,
     RETRY_CONFIG,
     SOURCE_META,
 )
@@ -85,31 +85,31 @@ def _patch_nba_api_headers() -> None:
 
 
 # ============================================================================
-# ENDPOINT CLASS LOADING
+# DATASET CLASS LOADING
 # ============================================================================
 
-_endpoint_class_cache: Dict[str, Any] = {}
+_dataset_class_cache: Dict[str, Any] = {}
 
 
-def load_endpoint_class(endpoint_name: str) -> Optional[Any]:
-    """Dynamically import and cache an nba_api endpoint class by name.
+def load_dataset_class(dataset_name: str) -> Optional[Any]:
+    """Dynamically import and cache an nba_api dataset class by name.
 
     Returns ``None`` (with a warning) if the module doesn't exist.
     """
-    if endpoint_name in _endpoint_class_cache:
-        return _endpoint_class_cache[endpoint_name]
+    if dataset_name in _dataset_class_cache:
+        return _dataset_class_cache[dataset_name]
 
-    module_path = f"nba_api.stats.endpoints.{endpoint_name}"
+    module_path = f"nba_api.stats.endpoints.{dataset_name}"
     try:
         module = importlib.import_module(module_path)
     except ImportError:
-        logger.warning("Could not import endpoint module: %s", module_path)
+        logger.warning("Could not import dataset module: %s", module_path)
         return None
 
-    # Find the endpoint class: look for a class whose lowercase name matches
+    # Find the dataset class: look for a class whose lowercase name matches
     cls = None
     for attr_name in dir(module):
-        if attr_name.lower() == endpoint_name.lower():
+        if attr_name.lower() == dataset_name.lower():
             candidate = getattr(module, attr_name)
             if isinstance(candidate, type):
                 cls = candidate
@@ -119,7 +119,7 @@ def load_endpoint_class(endpoint_name: str) -> Optional[Any]:
         logger.warning("No class found in %s", module_path)
         return None
 
-    _endpoint_class_cache[endpoint_name] = cls
+    _dataset_class_cache[dataset_name] = cls
     return cls
 
 
@@ -128,23 +128,23 @@ def load_endpoint_class(endpoint_name: str) -> Optional[Any]:
 # ============================================================================
 
 def create_api_call(
-    endpoint_class: Any,
+    dataset_class: Any,
     params: Dict[str, Any],
-    endpoint_name: str = '',
+    dataset_name: str = '',
     timeout: Optional[int] = None,
 ) -> Callable:
     """Build a zero-arg callable that executes an NBA API request.
 
     Internal params (keys starting with ``_``) are stripped before the call.
-    Parameters not accepted by the endpoint constructor are silently dropped.
+    Parameters not accepted by the dataset constructor are silently dropped.
     Returns raw JSON dict with ``resultSets``.
     """
     _patch_nba_api_headers()
 
     clean_params = {k: v for k, v in params.items() if not k.startswith('_')}
 
-    # Filter to only params the endpoint actually accepts
-    sig = inspect.signature(endpoint_class.__init__)
+    # Filter to only params the dataset actually accepts
+    sig = inspect.signature(dataset_class.__init__)
     accepted = set(sig.parameters.keys()) - {'self'}
     has_kwargs = any(
         p.kind == inspect.Parameter.VAR_KEYWORD
@@ -156,7 +156,7 @@ def create_api_call(
     call_timeout = timeout or API_CONFIG['timeout_default']
 
     def _call() -> Dict[str, Any]:
-        result = endpoint_class(**clean_params, timeout=call_timeout)
+        result = dataset_class(**clean_params, timeout=call_timeout)
         return result.get_dict()
 
     return _call
@@ -195,8 +195,8 @@ def with_retry(func: Callable, max_retries: Optional[int] = None) -> Any:
 # PARAMETER BUILDER
 # ============================================================================
 
-def build_endpoint_params(
-    endpoint_name: str,
+def build_dataset_params(
+    dataset_name: str,
     season: str,
     season_type_name: str,
     entity: str,
@@ -205,32 +205,32 @@ def build_endpoint_params(
     """Assemble the full parameter dict for an NBA API call.
 
     Merges standard parameters (season, league_id, per_mode, season_type)
-    with endpoint-specific defaults and caller-supplied overrides.
+    with dataset-specific defaults and caller-supplied overrides.
     """
-    ep_cfg = ENDPOINTS.get(endpoint_name, {})
+    ds_cfg = DATASETS.get(dataset_name, {})
 
-    # Season parameter — most endpoints use 'season' (str like "2025-26"),
+    # Season parameter — most datasets use 'season' (str like "2025-26"),
     # but some (e.g., draft combine) use 'season_year' (int like 2025).
-    season_param = ep_cfg.get('season_param', 'season')
+    season_param = ds_cfg.get('season_param', 'season')
     if season_param == 'season_year':
         params: Dict[str, Any] = {season_param: int(season.split('-')[0])}
     else:
         params: Dict[str, Any] = {season_param: season}
 
     # Season type
-    st_param = ep_cfg.get('season_type_param')
+    st_param = ds_cfg.get('season_type_param')
     if st_param:
         params[st_param] = season_type_name
 
     # Per-mode
-    pm_param = ep_cfg.get('per_mode_param')
+    pm_param = ds_cfg.get('per_mode_param')
     if pm_param and pm_param in API_CONFIG:
         params[pm_param] = API_CONFIG[pm_param]
 
-    # Player / Team discriminator for shared endpoints
+    # Player / Team discriminator for shared datasets
     if (
-        'player' in ep_cfg.get('entity_types', [])
-        and 'team' in ep_cfg.get('entity_types', [])
+        'player' in ds_cfg.get('entity_types', [])
+        and 'team' in ds_cfg.get('entity_types', [])
     ):
         if entity == 'player':
             params['player_or_team'] = 'Player'
@@ -238,7 +238,7 @@ def build_endpoint_params(
             params['player_or_team'] = 'Team'
 
     # League ID — add both variants; signature filtering in create_api_call
-    # will keep only the one the endpoint accepts.
+    # will keep only the one the dataset accepts.
     params['league_id'] = API_CONFIG['league_id']
     params['league_id_nullable'] = API_CONFIG['league_id']
 
@@ -256,35 +256,35 @@ def build_endpoint_params(
 def make_fetcher(season: str, season_type_name: str, entity: str) -> Callable:
     """Create an api_fetcher closure for the given season, season type, and entity.
 
-    Returns a function that accepts (endpoint, extra_params) and executes
+    Returns a function that accepts (dataset, extra_params) and executes
     a fully parameterized NBA API call with retry logic.
-    Virtual endpoints (e.g. team_metadata) are routed to dedicated handlers.
+    Virtual datasets (e.g. team_metadata) are routed to dedicated handlers.
     """
-    def fetch(endpoint: str, extra_params: Optional[Dict[str, Any]] = None) -> Optional[Dict]:
-        ep_cfg = ENDPOINTS.get(endpoint, {})
-        if ep_cfg.get('virtual'):
-            return _fetch_virtual(endpoint, season)
+    def fetch(dataset: str, extra_params: Optional[Dict[str, Any]] = None) -> Optional[Dict]:
+        ds_cfg = DATASETS.get(dataset, {})
+        if ds_cfg.get('virtual'):
+            return _fetch_virtual(dataset, season)
 
-        EndpointClass = load_endpoint_class(endpoint)
-        if EndpointClass is None:
+        DatasetClass = load_dataset_class(dataset)
+        if DatasetClass is None:
             return None
-        full_params = build_endpoint_params(
-            endpoint, season, season_type_name, entity, extra_params or {},
+        full_params = build_dataset_params(
+            dataset, season, season_type_name, entity, extra_params or {},
         )
-        api_call = create_api_call(EndpointClass, full_params, endpoint_name=endpoint)
+        api_call = create_api_call(DatasetClass, full_params, dataset_name=dataset)
         return with_retry(api_call)
     return fetch
 
 
 # ============================================================================
-# VIRTUAL ENDPOINT HANDLERS
+# VIRTUAL DATASET HANDLERS
 # ============================================================================
 
-def _fetch_virtual(endpoint: str, season: str) -> Optional[Dict]:
-    """Dispatch virtual endpoints to their handlers."""
-    if endpoint == 'team_metadata':
+def _fetch_virtual(dataset: str, season: str) -> Optional[Dict]:
+    """Dispatch virtual datasets to their handlers."""
+    if dataset == 'team_metadata':
         return _fetch_team_metadata(season)
-    logger.warning('Unknown virtual endpoint: %s', endpoint)
+    logger.warning('Unknown virtual dataset: %s', dataset)
     return None
 
 
@@ -300,17 +300,17 @@ def fetch_roster_snapshot(
     """Return ``[(team_source_id, player_source_id), ...]`` for every active
     roster slot in the league for the given season.
 
-    The endpoint is taken from ``SOURCE_META['roster_endpoint']`` so the
+    The dataset is taken from ``SOURCE_META['roster_dataset']`` so the
     runner stays source-agnostic.  Players whose ``TEAM_ID`` is null or zero
     (free agents / inactive) are dropped.
     """
-    endpoint = SOURCE_META['roster_endpoint']
+    dataset = SOURCE_META['roster_dataset']
     fetcher = make_fetcher(season, season_type_name, 'player')
-    result = fetcher(endpoint, {'is_only_current_season': '1'})
+    result = fetcher(dataset, {'is_only_current_season': '1'})
     if result is None:
         logger.warning(
             'Roster snapshot %s/%s returned no result from %s',
-            league_key, season, endpoint,
+            league_key, season, dataset,
         )
         return []
 
@@ -336,7 +336,7 @@ def fetch_roster_snapshot(
 
     logger.info(
         'Roster snapshot %s/%s: %d active (team, player) pairs from %s',
-        league_key, season, len(pairs), endpoint,
+        league_key, season, len(pairs), dataset,
     )
     return pairs
 
@@ -346,7 +346,7 @@ def _fetch_team_metadata(season: str) -> Dict:
 
     Returns abbreviation from nba_api static data and conference from the
     LeagueStandings API, keyed by TEAM_ID so the extract pipeline can
-    process it like any other endpoint.
+    process it like any other dataset.
     """
     from nba_api.stats.static import teams as static_teams
     from nba_api.stats.endpoints import leaguestandings
@@ -359,7 +359,7 @@ def _fetch_team_metadata(season: str) -> Dict:
     standings_call = create_api_call(
         leaguestandings.LeagueStandings,
         {'season': season, 'league_id': '00'},
-        endpoint_name='leaguestandings',
+        dataset_name='leaguestandings',
     )
     standings = with_retry(standings_call)
 

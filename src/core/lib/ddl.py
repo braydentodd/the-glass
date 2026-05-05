@@ -20,20 +20,20 @@ outside this module.
 import logging
 from typing import Any, Dict, Iterable, List, Tuple
 
-from src.core.db import get_db_connection, quote_col
-from src.etl.definitions import (
+from src.core.lib.postgres import get_db_connection, quote_col
+from src.core.definitions.leagues import LEAGUES
+from src.core.definitions.db_tables import (
     CORE_SCHEMA,
-    DB_COLUMNS,
-    ETL_TABLES,
     JUNCTION_TABLES,
-    LEAGUES,
+    OPERATIONAL_TABLES,
     PROFILE_TABLES,
     STATS_TABLES,
     THE_GLASS_ID_COLUMN,
     THE_GLASS_ID_SEQUENCE,
     THE_GLASS_ID_TYPE,
-    get_source_id_columns_for_entity,
 )
+from src.core.lib.sources import get_source_id_columns_for_entity
+from src.core.definitions.columns import DB_COLUMNS
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,12 @@ logger = logging.getLogger(__name__)
 
 def _matches(col_meta: Dict[str, Any], scope: str, entity: str) -> bool:
     """Whether a DB_COLUMNS entry contributes to the given (scope, entity) table."""
-    col_scope = col_meta.get('scope')
-    if col_scope != scope and col_scope != 'both':
+    col_scope = col_meta.get('scope', [])
+    # Normalize scope to list for comparison
+    if isinstance(col_scope, str):
+        col_scope = [col_scope]
+    # Check if column scope includes target scope
+    if scope not in col_scope:
         return False
     return entity in col_meta.get('entity_types', [])
 
@@ -152,7 +156,7 @@ def _create_profile_table(cur, table_name: str, meta: Dict[str, Any]) -> int:
     entity = meta['entity']
     qualified = f'{CORE_SCHEMA}.{table_name}'
 
-    columns = _data_columns_for(scope='entity', entity=entity)
+    columns = _data_columns_for(scope='entities', entity=entity)
     source_id_cols = get_source_id_columns_for_entity(entity)
 
     fragments: List[str] = [_the_glass_id_pk_clause()]
@@ -171,13 +175,25 @@ def _create_profile_table(cur, table_name: str, meta: Dict[str, Any]) -> int:
 def _create_junction_table(cur, table_name: str, meta: Dict[str, Any]) -> int:
     """CREATE TABLE for a junction table.  Returns column count."""
     qualified = f'{CORE_SCHEMA}.{table_name}'
-    fragments: List[str] = [_column_ddl(c, m) for c, m in meta['columns'].items()]
+    col_list = meta['columns']  # List of column names
+    fragments: List[str] = []
+    for col_name in col_list:
+        col_def = DB_COLUMNS[col_name]
+        ddl = f"{quote_col(col_name)} {col_def['type']}"
+        # For junction tables, we use table-level composite PRIMARY KEY
+        # Don't add column-level PRIMARY KEY here
+        if not col_def.get('nullable', True):
+            ddl += ' NOT NULL'
+        default_val = col_def.get('default')
+        if default_val is not None:
+            ddl += f' DEFAULT {default_val}'
+        fragments.append(ddl)
     pk_cols = ', '.join(quote_col(c) for c in meta['primary_key'])
     fragments.append(f"PRIMARY KEY ({pk_cols})")
     for fk in meta['foreign_keys']:
         fragments.append(_foreign_key_ddl(fk))
     cur.execute(f"CREATE TABLE {qualified} (\n  " + ",\n  ".join(fragments) + "\n)")
-    return len(meta['columns'])
+    return len(col_list)
 
 
 def _create_stats_table(cur, league_key: str, table_name: str, meta: Dict[str, Any]) -> int:
@@ -205,19 +221,21 @@ def _create_stats_table(cur, league_key: str, table_name: str, meta: Dict[str, A
     return len(declared) + 1  # +1 for the_glass_id
 
 
-def _create_etl_table(cur, league_key: str, table_name: str, meta: Dict[str, Any]) -> int:
-    """CREATE TABLE for an operational ETL table (etl_runs / etl_progress)."""
+def _create_operational_table(cur, league_key: str, table_name: str, meta: Dict[str, Any]) -> int:
+    """CREATE TABLE for an operational table (runs / tasks)."""
     qualified = f'{league_key}.{table_name}'
-    cols = meta['columns']
+    col_list = meta['columns']  # List of column names
     fragments: List[str] = []
-    for col_name, col_meta in cols.items():
-        parts = [quote_col(col_name), col_meta['type']]
-        if col_meta.get('primary_key'):
-            parts.append('PRIMARY KEY')
-        elif not col_meta.get('nullable', True):
+    # Auto-generate 'id' as SERIAL PRIMARY KEY
+    fragments.append(f'{quote_col("id")} SERIAL PRIMARY KEY')
+    for col_name in col_list:
+        col_def = DB_COLUMNS[col_name]
+        parts = [quote_col(col_name), col_def['type']]
+        if not col_def.get('nullable', True):
             parts.append('NOT NULL')
-        if col_meta.get('default') is not None and not col_meta.get('primary_key'):
-            parts.append(f"DEFAULT {col_meta['default']}")
+        default_val = col_def.get('default')
+        if default_val is not None:
+            parts.append(f"DEFAULT {default_val}")
         fragments.append(' '.join(parts))
 
     unique_key = meta.get('unique_key')
@@ -226,7 +244,7 @@ def _create_etl_table(cur, league_key: str, table_name: str, meta: Dict[str, Any
         fragments.append(f"UNIQUE ({uk_str})")
 
     cur.execute(f"CREATE TABLE {qualified} (\n  " + ",\n  ".join(fragments) + "\n)")
-    return len(cols)
+    return len(col_list) + 1  # +1 for id
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +281,7 @@ def _sync_profile_table(cur, table_name: str, meta: Dict[str, Any]) -> List[str]
 
     expected: List[Tuple[str, str]] = []
     expected.append((THE_GLASS_ID_COLUMN, THE_GLASS_ID_TYPE))
-    for name, m in _data_columns_for(scope='entity', entity=meta['entity']):
+    for name, m in _data_columns_for(scope='entities', entity=meta['entity']):
         expected.append((name, m['type']))
     expected.extend(get_source_id_columns_for_entity(meta['entity']))
 
@@ -278,7 +296,7 @@ def _sync_junction_table(cur, table_name: str, meta: Dict[str, Any]) -> List[str
         actions.append(f'created ({n} columns)')
         return actions
 
-    expected = [(c, m['type']) for c, m in meta['columns'].items()]
+    expected = [(c, DB_COLUMNS[c]['type']) for c in meta['columns']]
     _add_missing_columns(cur, CORE_SCHEMA, table_name, expected, actions)
     return actions
 
@@ -301,15 +319,16 @@ def _sync_stats_table(cur, league_key: str, table_name: str,
     return actions
 
 
-def _sync_etl_table(cur, league_key: str, table_name: str,
-                    meta: Dict[str, Any]) -> List[str]:
+def _sync_operational_table(cur, league_key: str, table_name: str,
+                            meta: Dict[str, Any]) -> List[str]:
     actions: List[str] = []
     if not _table_exists(cur, league_key, table_name):
-        n = _create_etl_table(cur, league_key, table_name, meta)
+        n = _create_operational_table(cur, league_key, table_name, meta)
         actions.append(f'created ({n} columns)')
         return actions
 
-    expected = [(c, m['type']) for c, m in meta['columns'].items()]
+    # 'id' is auto-generated, not in DB_COLUMNS
+    expected = [('id', 'SERIAL')] + [(c, DB_COLUMNS[c]['type']) for c in meta['columns']]
     _add_missing_columns(cur, league_key, table_name, expected, actions)
     return actions
 
@@ -373,12 +392,12 @@ def ensure_league_schema(league_key: str, conn=None) -> Dict[str, List[str]]:
                 if acts:
                     logger.info('Stats %s: %s', qualified, ', '.join(acts))
 
-            for name, meta in ETL_TABLES.items():
+            for name, meta in OPERATIONAL_TABLES.items():
                 qualified = f'{league_key}.{name}'
-                acts = _sync_etl_table(cur, league_key, name, meta)
+                acts = _sync_operational_table(cur, league_key, name, meta)
                 actions[qualified] = acts
                 if acts:
-                    logger.info('ETL %s: %s', qualified, ', '.join(acts))
+                    logger.info('Operational %s: %s', qualified, ', '.join(acts))
 
         conn.commit()
         return actions

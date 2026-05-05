@@ -21,15 +21,14 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from psycopg2.extras import execute_values
 
-from src.core.db import db_connection, quote_col
-from src.etl.definitions import (
+from src.core.lib.postgres import db_connection, quote_col
+from src.core.definitions.db_tables import (
     PROFILE_TABLES,
     STATS_TABLES,
     THE_GLASS_ID_COLUMN,
-    get_reader_source,
-    get_source_id_column,
-    get_table_name,
 )
+from src.core.lib.sources import get_primary_source, get_source_id_column
+from src.core.lib.table_names import get_table_name
 
 logger = logging.getLogger(__name__)
 
@@ -256,7 +255,7 @@ def write_entity_rows(
         return 0
 
     if source_key is None:
-        source_key = get_reader_source(league_key)
+        source_key = get_primary_source(league_key)
 
     if scope == 'entity':
         return _write_profile_rows(entity, rows, source_key)
@@ -400,7 +399,7 @@ def seed_empty_stats(
 
     own = conn is None
     if own:
-        from src.core.db import get_db_connection
+        from src.core.lib.postgres import get_db_connection
         conn = get_db_connection()
 
     try:

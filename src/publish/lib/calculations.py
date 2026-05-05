@@ -2,9 +2,10 @@ import logging
 from datetime import date, datetime
 from typing import Dict, Any, List, Optional
 
-from src.core.config import STAT_DOMAINS
+from src.core.definitions.stats import STAT_DOMAINS
 from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.definitions.config import SECTIONS_CONFIG, STAT_RATES, VALUES_KEY_ENTITY
+from src.publish.definitions.layout import SECTIONS_CONFIG, VALUES_KEY_ENTITY
+from src.publish.definitions.stats import STAT_RATES
 
 logger = logging.getLogger(__name__)
 

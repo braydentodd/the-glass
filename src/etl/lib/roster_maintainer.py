@@ -16,20 +16,17 @@ pairs, resolves each to its ``the_glass_id`` via the relevant
     3. Deactivates rows that existed before but are absent from the snapshot.
 
 Source-agnostic: callers (the orchestrator) supply already-fetched pairs.
-Source-specific endpoint logic stays in each source client.  The league
+Source-specific dataset logic stays in each source client.  The league
 profile row itself is bootstrapped by :func:`src.etl.lib.ddl.ensure_league_profile`.
 """
 
 import logging
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
-from src.core.db import db_connection, quote_col
-from src.etl.definitions import (
-    CORE_SCHEMA,
-    THE_GLASS_ID_COLUMN,
-    get_source_id_column,
-)
-from src.etl.lib.ddl import ensure_league_profile
+from src.core.lib.ddl import ensure_league_profile
+from src.core.lib.postgres import db_connection, quote_col
+from src.core.lib.sources import get_source_id_column
+from src.core.definitions.db_tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
 
 logger = logging.getLogger(__name__)
 

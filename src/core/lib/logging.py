@@ -13,7 +13,7 @@ Conventions:
     DEBUG    per-row / per-call traces (off by default)
 
 Usage:
-    from src.core.logging import setup_logging, phase_marker
+    from src.core.lib.logging import setup_logging, phase_marker
     setup_logging(verbose=False)
     logger.info(phase_marker('discover'))
 """

@@ -41,7 +41,7 @@ def extract_field(
 
     raw_value = row[headers.index(field)]
 
-    # Reject complex types (some endpoints return nested objects)
+    # Reject complex types (some datasets return nested objects)
     if isinstance(raw_value, (dict, list)):
         return None
 
@@ -94,7 +94,7 @@ def extract_columns_from_result(
     Args:
         api_result: Raw API JSON with ``resultSets``.
         columns: ``{canonical_col_name: source_config}`` — typically a
-                 subset of SOURCES filtered for a specific endpoint.
+                 subset of SOURCES filtered for a specific dataset.
         entity: 'player' or 'team'.
         entity_id_field: API header name for the entity ID (e.g. 'PLAYER_ID').
         result_set_name: If given, only process this result set.

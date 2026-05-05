@@ -1,12 +1,21 @@
-from typing import List, Optional, Any, Tuple
-from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.lib.formatting import ROW_INDEXES
-from src.publish.definitions.config import (HEADER_ROWS, SECTIONS_CONFIG, SUBSECTIONS, SHEET_FORMATTING,
-                                STAT_RATES, DEFAULT_STAT_RATE, ColumnContext)
-from src.publish.lib.formatting import format_section_header
-
-
 import re
+from dataclasses import dataclass
+from typing import Any, Callable, List, Optional, Tuple
+
+from src.publish.definitions.columns import TAB_COLUMNS
+from src.publish.definitions.layout import SECTIONS_CONFIG, SUBSECTIONS
+from src.publish.definitions.sheets import HEADER_ROWS, SHEET_FORMATTING
+from src.publish.definitions.stats import DEFAULT_STAT_RATE, STAT_RATES
+from src.publish.lib.formatting import ROW_INDEXES, format_section_header
+
+
+@dataclass(frozen=True)
+class ColumnContext:
+    """Composite key tagging mode-specific column mappings (rate + timeframe)."""
+    base_section: str
+    rate:         Optional[str] = None
+    timeframe:    Optional[int] = None
+
 def _base_section(ctx: Any) -> str:
     """Extract the base section name from a context."""
     if not ctx:
@@ -393,7 +402,7 @@ def build_tab_columns(entity: str = 'player', stats_mode: str = 'both',
                         all_columns.append(_make_separator(context_key, mode_visible, 'section'))
             else:
                 # Historical and Postseason expand by rate AND timeframe
-                from src.publish.definitions.config import HISTORICAL_TIMEFRAMES
+                from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
                 supported_years = list(HISTORICAL_TIMEFRAMES.keys())
                 for y in supported_years:
                     for stat_rate in STAT_RATES:
@@ -454,7 +463,8 @@ def build_headers(columns_list: List[Tuple], mode: str = 'per_possession',
                   current_season: int = 0,
                   historical_config: Optional[dict] = None,
                   hist_timeframe: str = '',
-                  post_timeframe: str = '') -> dict:
+                  post_timeframe: str = '',
+                  season_format_fn: Callable[[int], str] = str) -> dict:
     """
     Build header rows for Google Sheets (4-row layout).
 
@@ -495,7 +505,8 @@ def build_headers(columns_list: List[Tuple], mode: str = 'per_possession',
                 base, current_season=current_season,
                 historical_config=local_hist_config,
                 is_postseason=(base == 'postseason_stats'),
-                mode=sec_mode)
+                mode=sec_mode,
+                season_format_fn=season_format_fn)
         
         if isinstance(section, ColumnContext):
              return base_cfg.get('display_name', section.base_section)

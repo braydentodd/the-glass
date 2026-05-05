@@ -1,7 +1,10 @@
 from typing import List, Optional, Tuple
-from src.publish.lib.formatting import ROW_INDEXES
-from src.publish.definitions.config import (SECTIONS_CONFIG, COLORS, SHEET_FORMATTING, WIDTH_CLASSES, HEADER_ROWS)
+
+from src.publish.definitions.layout import SECTIONS_CONFIG
+from src.publish.definitions.sheets import HEADER_ROWS, SHEET_FORMATTING
+from src.publish.definitions.style import COLORS, WIDTH_CLASSES
 from src.publish.destinations.sheets.styles import get_color_for_percentile, get_color_for_raw
+from src.publish.lib.formatting import ROW_INDEXES
 
 def build_formatting_requests(ws_id: int, columns_list: List[Tuple],
                               header_merges: list, n_data_rows: int,

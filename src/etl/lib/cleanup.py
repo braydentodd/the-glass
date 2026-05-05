@@ -22,17 +22,17 @@ risks deleting an entity that's about to be referenced.
 import logging
 from typing import Dict, List
 
-from src.core.config import STAT_DOMAINS
-from src.core.db import db_connection, get_db_connection, quote_col
-from src.etl.definitions import (
+from src.core.lib.postgres import db_connection, get_db_connection, quote_col
+from src.core.definitions.leagues import LEAGUES
+from src.core.definitions.db_tables import (
     CORE_SCHEMA,
-    DB_COLUMNS,
-    LEAGUES,
     STATS_TABLES,
     THE_GLASS_ID_COLUMN,
-    get_oldest_retained_season,
-    get_table_name,
 )
+from src.core.definitions.stats import STAT_DOMAINS
+from src.core.lib.leagues import get_oldest_retained_season
+from src.core.lib.table_names import get_table_name
+from src.core.definitions.columns import DB_COLUMNS
 
 logger = logging.getLogger(__name__)
 

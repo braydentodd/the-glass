@@ -23,27 +23,26 @@ import logging
 import subprocess
 import time
 from collections import defaultdict
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
-from src.core.cli import progress
-from src.core.config import format_season_label
-from src.core.db import get_db_connection
-from src.core.logging import phase_marker
-from src.etl.definitions import (
-    LEAGUES,
-    get_current_season_for_league,
-    get_current_season_year_for_league,
-    get_reader_source,
-    get_table_name,
+from src.core.lib.cli import progress
+from src.core.lib.logging import phase_marker
+from src.core.lib.postgres import get_db_connection
+from src.core.lib.table_names import get_table_name
+from src.core.lib.sources import get_primary_source
+from src.core.definitions.leagues import LEAGUES
+from src.core.lib.leagues import (
+    format_season_label,
+    get_current_season,
+    get_current_season_year,
 )
-from src.publish.definitions.config import (
-    GOOGLE_SHEETS_CONFIG,
-    HISTORICAL_TIMEFRAMES,
-    PUBLISH_CONFIG,
-    SECTIONS_CONFIG,
-    SHEET_FORMATTING,
-)
+from src.core.definitions.runtime import RUNTIME_CONFIG
+from src.publish.definitions.layout import SECTIONS_CONFIG
+from src.publish.definitions.sheets import SHEET_FORMATTING
+from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
+from src.publish.destinations.sheets.config import GOOGLE_SHEETS_CONFIG
 from src.publish.destinations.sheets.client import get_sheets_client
 from src.publish.lib.calculations import derive_db_fields
 from src.publish.lib.executor import (
@@ -229,15 +228,21 @@ def run_publish(
         raise ValueError(f"Unknown league: {league!r}")
 
     db_schema = league
-    # Cross-check that the league has a reader source registered; we don't
+    # Cross-check that the league has a primary source registered; we don't
     # otherwise need the source_key in the publish flow.
-    get_reader_source(league)
+    get_primary_source(league)
 
     league_config = {
-        'current_season':      get_current_season_for_league(league),
-        'current_season_year': get_current_season_year_for_league(league),
+        'current_season':      get_current_season(league),
+        'current_season_year': get_current_season_year(league),
         'season_type':         'rs',
     }
+
+    # Bind format_season_label to the league's season_format so downstream
+    # consumers (queries, header formatters) can call it with just an end-year.
+    season_format_fn = partial(
+        format_season_label, season_format=LEAGUES[league]['season_format'],
+    )
 
     stats_sections = frozenset(
         name for name, cfg in SECTIONS_CONFIG.items()
@@ -262,7 +267,7 @@ def run_publish(
         primary_minutes_col=(
             'minutes_x10' if 'minutes_x10' in db_fields['stat_fields'] else 'minutes'
         ),
-        season_format_fn=format_season_label,
+        season_format_fn=season_format_fn,
     )
 
     logger.info(phase_marker('publish', f'league={league} rate={stat_rate}'))
@@ -302,7 +307,7 @@ def run_publish(
     all_tabs = abbrs + aggregate_order
 
     # Auto-resume: resolve pending work (may be subset if resuming)
-    auto_resume = PUBLISH_CONFIG.get('auto_resume', True)
+    auto_resume = RUNTIME_CONFIG['auto_resume']['publish']
     conn = get_db_connection()
     try:
         run_id, pending_items = resolve_work(

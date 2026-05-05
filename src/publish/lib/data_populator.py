@@ -1,8 +1,16 @@
 from typing import List, Optional, Any, Tuple
+
 from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.lib.formatting import format_stat_value, format_height
-from src.publish.definitions.config import (SECTIONS_CONFIG, STAT_RATES, DEFAULT_STAT_RATE, SUMMARY_THRESHOLDS, ColumnContext)
-from src.publish.lib.calculations import get_percentile_rank, evaluate_formula, calculate_entity_stats, evaluate_expression
+from src.publish.definitions.layout import SECTIONS_CONFIG, SUMMARY_THRESHOLDS
+from src.publish.definitions.stats import DEFAULT_STAT_RATE, STAT_RATES
+from src.publish.lib.layout import ColumnContext
+from src.publish.lib.calculations import (
+    calculate_entity_stats,
+    evaluate_expression,
+    evaluate_formula,
+    get_percentile_rank,
+)
+from src.publish.lib.formatting import format_height, format_stat_value
 from src.publish.lib.layout import _base_section, _format_companion
 
 # ============================================================================

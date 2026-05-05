@@ -2,7 +2,10 @@
 The Glass - ETL Progress Tracking
 
 Database operations for tracking ETL run state and per-group progress.
-Uses the etl_runs and etl_progress tables defined in config.ETL_TABLES.
+Uses the unified ``runs`` and ``tasks`` tables (pipeline = 'etl').
+
+Each task row uses an ``item_key`` that encodes the work unit as:
+  ``{entity_type}:{dataset}:{tier}:{comma_sorted_columns}``
 
 Supports auto-resume: if a run was interrupted mid-flight, the runner
 can detect the orphaned 'running' record and resume from the last
@@ -13,6 +16,14 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+_PIPELINE = 'etl'
+
+
+def _make_item_key(entity_type: str, dataset: str, tier: str, columns: Dict) -> str:
+    """Encode a call-group work unit as a stable, opaque string key."""
+    col_part = ','.join(sorted(columns.keys())) if columns else ''
+    return f'{entity_type}:{dataset}:{tier}:{col_part}'
 
 
 # ============================================================================
@@ -28,13 +39,13 @@ def create_run(
     entity_type: str,
     total_groups: int,
 ) -> int:
-    """Insert a new etl_runs record and return the run id."""
+    """Insert a new runs record for the ETL pipeline and return the run id."""
     with conn.cursor() as cur:
         cur.execute(
-            f"INSERT INTO {db_schema}.etl_runs "
-            f"(run_type, status, season, season_type, entity_type, total_groups) "
-            f"VALUES (%s, 'running', %s, %s, %s, %s) RETURNING id",
-            (run_type, season, season_type, entity_type, total_groups),
+            f"INSERT INTO {db_schema}.runs "
+            f"(pipeline, run_type, status, season, season_type, entity_type, total_items) "
+            f"VALUES (%s, %s, 'running', %s, %s, %s, %s) RETURNING id",
+            (_PIPELINE, run_type, season, season_type, entity_type, total_groups),
         )
         run_id = cur.fetchone()[0]
     conn.commit()
@@ -46,10 +57,10 @@ def complete_run(conn: Any, db_schema: str, run_id: int, total_rows: int) -> Non
     """Mark a run as completed."""
     with conn.cursor() as cur:
         cur.execute(
-            f"UPDATE {db_schema}.etl_runs "
+            f"UPDATE {db_schema}.runs "
             f"SET status = 'completed', completed_at = NOW(), total_rows = %s "
-            f"WHERE id = %s",
-            (total_rows, run_id),
+            f"WHERE id = %s AND pipeline = %s",
+            (total_rows, run_id, _PIPELINE),
         )
     conn.commit()
 
@@ -58,16 +69,16 @@ def fail_run(conn: Any, db_schema: str, run_id: int, error_message: str) -> None
     """Mark a run as failed."""
     with conn.cursor() as cur:
         cur.execute(
-            f"UPDATE {db_schema}.etl_runs "
+            f"UPDATE {db_schema}.runs "
             f"SET status = 'failed', completed_at = NOW(), error_message = %s "
-            f"WHERE id = %s",
-            (error_message, run_id),
+            f"WHERE id = %s AND pipeline = %s",
+            (error_message, run_id, _PIPELINE),
         )
     conn.commit()
 
 
 # ============================================================================
-# GROUP PROGRESS
+# GROUP TASKS
 # ============================================================================
 
 def register_groups(
@@ -77,63 +88,62 @@ def register_groups(
     groups: List[Dict[str, Any]],
     entity_type: str,
 ) -> List[int]:
-    """Insert etl_progress rows for each call group. Returns progress ids."""
-    progress_ids: List[int] = []
+    """Insert task rows for each call group. Returns task ids."""
+    task_ids: List[int] = []
     with conn.cursor() as cur:
         for group in groups:
-            endpoint = group['endpoint']
-            tier = group['tier']
-            col_names = sorted(group.get('columns', {}).keys())
-            col_name_str = ','.join(col_names) if col_names else None
-
-            cur.execute(
-                f"INSERT INTO {db_schema}.etl_progress "
-                f"(run_id, entity_type, endpoint, tier, column_name, status) "
-                f"VALUES (%s, %s, %s, %s, %s, 'pending') RETURNING id",
-                (run_id, entity_type, endpoint, tier, col_name_str),
+            item_key = _make_item_key(
+                entity_type, group['dataset'], group['tier'],
+                group.get('columns', {}),
             )
-            progress_ids.append(cur.fetchone()[0])
+            cur.execute(
+                f"INSERT INTO {db_schema}.tasks "
+                f"(run_id, pipeline, item_key, entity_type, status) "
+                f"VALUES (%s, %s, %s, %s, 'pending') RETURNING id",
+                (run_id, _PIPELINE, item_key, entity_type),
+            )
+            task_ids.append(cur.fetchone()[0])
     conn.commit()
-    return progress_ids
+    return task_ids
 
 
-def mark_group_started(conn: Any, db_schema: str, progress_id: int) -> None:
-    """Mark a progress entry as running."""
+def mark_group_started(conn: Any, db_schema: str, task_id: int) -> None:
+    """Mark a task entry as running."""
     with conn.cursor() as cur:
         cur.execute(
-            f"UPDATE {db_schema}.etl_progress "
+            f"UPDATE {db_schema}.tasks "
             f"SET status = 'running', started_at = NOW() "
             f"WHERE id = %s",
-            (progress_id,),
+            (task_id,),
         )
     conn.commit()
 
 
 def mark_group_completed(
-    conn: Any, db_schema: str, progress_id: int, rows_written: int,
+    conn: Any, db_schema: str, task_id: int, rows_written: int,
 ) -> None:
-    """Mark a progress entry as completed."""
+    """Mark a task entry as completed."""
     with conn.cursor() as cur:
         cur.execute(
-            f"UPDATE {db_schema}.etl_progress "
+            f"UPDATE {db_schema}.tasks "
             f"SET status = 'completed', completed_at = NOW(), rows_written = %s "
             f"WHERE id = %s",
-            (rows_written, progress_id),
+            (rows_written, task_id),
         )
     conn.commit()
 
 
 def mark_group_failed(
-    conn: Any, db_schema: str, progress_id: int, error_message: str,
+    conn: Any, db_schema: str, task_id: int, error_message: str,
 ) -> None:
-    """Mark a progress entry as failed and increment retry count."""
+    """Mark a task entry as failed and increment retry count."""
     with conn.cursor() as cur:
         cur.execute(
-            f"UPDATE {db_schema}.etl_progress "
+            f"UPDATE {db_schema}.tasks "
             f"SET status = 'failed', completed_at = NOW(), "
             f"error_message = %s, retry_count = retry_count + 1 "
             f"WHERE id = %s",
-            (error_message, progress_id),
+            (error_message, task_id),
         )
     conn.commit()
 
@@ -149,36 +159,37 @@ def find_resumable_run(
     season_type: str,
     entity_type: str,
 ) -> Optional[int]:
-    """Find an interrupted run matching the given parameters.
+    """Find an interrupted ETL run matching the given parameters.
 
     Returns the run_id if a 'running' record exists, else None.
     """
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT id FROM {db_schema}.etl_runs "
-            f"WHERE status = 'running' AND season = %s AND season_type = %s "
-            f"AND entity_type = %s ORDER BY started_at DESC LIMIT 1",
-            (season, season_type, entity_type),
+            f"SELECT id FROM {db_schema}.runs "
+            f"WHERE pipeline = %s AND status = 'running' "
+            f"AND season = %s AND season_type = %s AND entity_type = %s "
+            f"ORDER BY started_at DESC LIMIT 1",
+            (_PIPELINE, season, season_type, entity_type),
         )
         row = cur.fetchone()
     return row[0] if row else None
 
 
-def get_pending_progress_ids(
+def get_pending_task_ids(
     conn: Any,
     db_schema: str,
     run_id: int,
-) -> List[Tuple[int, str, str]]:
-    """Get (progress_id, endpoint, column_name) for incomplete groups.
+) -> List[Tuple[int, str]]:
+    """Return (task_id, item_key) for incomplete groups.
 
     Returns groups with status 'pending' or 'running' (interrupted).
     """
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT id, endpoint, column_name FROM {db_schema}.etl_progress "
-            f"WHERE run_id = %s AND status IN ('pending', 'running') "
+            f"SELECT id, item_key FROM {db_schema}.tasks "
+            f"WHERE run_id = %s AND pipeline = %s AND status IN ('pending', 'running') "
             f"ORDER BY id",
-            (run_id,),
+            (run_id, _PIPELINE),
         )
         return cur.fetchall()
 
@@ -186,14 +197,14 @@ def get_pending_progress_ids(
 def update_run_completed_groups(
     conn: Any, db_schema: str, run_id: int,
 ) -> None:
-    """Sync the completed_groups counter on the run record."""
+    """Sync the completed_items counter on the run record."""
     with conn.cursor() as cur:
         cur.execute(
-            f"UPDATE {db_schema}.etl_runs SET completed_groups = ("
-            f"  SELECT COUNT(*) FROM {db_schema}.etl_progress "
-            f"  WHERE run_id = %s AND status = 'completed'"
-            f") WHERE id = %s",
-            (run_id, run_id),
+            f"UPDATE {db_schema}.runs SET completed_items = ("
+            f"  SELECT COUNT(*) FROM {db_schema}.tasks "
+            f"  WHERE run_id = %s AND pipeline = %s AND status = 'completed'"
+            f") WHERE id = %s AND pipeline = %s",
+            (run_id, _PIPELINE, run_id, _PIPELINE),
         )
     conn.commit()
 
@@ -218,25 +229,25 @@ def resolve_work(
     (season, season_type, entity), resumes from the last pending group.
     Otherwise creates a fresh run and registers all groups.
 
-    Returns (run_id, [(group_dict, progress_id), ...]).
+    Returns (run_id, [(group_dict, task_id), ...]).
     """
     if auto_resume:
         run_id = find_resumable_run(conn, db_schema, season, season_type, entity)
         if run_id:
-            logger.info('Resuming interrupted run %d for %s', run_id, entity)
-            pending = get_pending_progress_ids(conn, db_schema, run_id)
-            pending_lookup = {(ep, cols): pid for pid, ep, cols in pending}
+            logger.info('Resuming interrupted ETL run %d for %s', run_id, entity)
+            pending = get_pending_task_ids(conn, db_schema, run_id)
+            pending_by_key = {item_key: tid for tid, item_key in pending}
             work_items: List[Tuple[Dict[str, Any], int]] = []
             for group in groups:
-                col_key = ','.join(sorted(group.get('columns', {}).keys())) or None
-                key = (group['endpoint'], col_key)
-                if key in pending_lookup:
-                    work_items.append((group, pending_lookup[key]))
+                key = _make_item_key(entity, group['dataset'], group['tier'],
+                                     group.get('columns', {}))
+                if key in pending_by_key:
+                    work_items.append((group, pending_by_key[key]))
             logger.info('Resuming with %d pending groups', len(work_items))
             return run_id, work_items
 
     run_id = create_run(
         conn, db_schema, run_type, season, season_type, entity, len(groups),
     )
-    progress_ids = register_groups(conn, db_schema, run_id, groups, entity)
-    return run_id, list(zip(groups, progress_ids))
+    task_ids = register_groups(conn, db_schema, run_id, groups, entity)
+    return run_id, list(zip(groups, task_ids))

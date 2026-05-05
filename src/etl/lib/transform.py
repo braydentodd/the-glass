@@ -27,16 +27,6 @@ def safe_int(value: Any, scale: int = 1) -> Optional[int]:
         return None
 
 
-def safe_float(value: Any, scale: int = 1) -> Optional[int]:
-    """Convert value to scaled float (stored as integer), returning None for unparseable input."""
-    if value is None:
-        return None
-    try:
-        return round(float(value) * scale)
-    except (ValueError, TypeError):
-        return None
-
-
 def safe_str(value: Any) -> Optional[str]:
     """Safely convert to string, returning None for empty/NaN."""
     if value is None or value == '':
@@ -105,7 +95,6 @@ def format_season(from_year: Any) -> Optional[str]:
 
 TRANSFORMS: Dict[str, Callable] = {
     'safe_int': safe_int,
-    'safe_float': safe_float,
     'safe_str': safe_str,
     'null_if_zero': null_if_zero,
     'parse_height': parse_height,
@@ -117,13 +106,13 @@ TRANSFORMS: Dict[str, Callable] = {
 def apply_transform(value: Any, transform_name: str, scale: int = 1) -> Any:
     """Apply a named transform to a value.
 
-    For safe_int / safe_float the *scale* argument is forwarded.
-    All other transforms ignore it.
+    For safe_int the *scale* argument is forwarded; all other transforms
+    ignore it.
     """
     func = TRANSFORMS.get(transform_name)
     if func is None:
         raise ValueError(f"Unknown transform: {transform_name}")
-    if transform_name in ('safe_int', 'safe_float'):
+    if transform_name == 'safe_int':
         return func(value, scale=scale)
     return func(value)
 
@@ -156,7 +145,7 @@ def execute_pipeline(
 
     Args:
         pipeline_config: The ``transformation`` dict from a SOURCES entry.
-        api_fetcher: Callable ``(endpoint, params, execution_tier) -> raw_result``
+        api_fetcher: Callable ``(dataset, params, execution_tier) -> raw_result``
             that handles the actual API call (provided by the runner).
         entity: 'player' or 'team'.
         season: Season string.
@@ -167,17 +156,17 @@ def execute_pipeline(
     Returns:
         Dict mapping entity ID to the final computed value.
     """
-    endpoint = pipeline_config['endpoint']
+    dataset = pipeline_config['dataset']
     execution_tier = pipeline_config.get('tier', 'league')
     operations = pipeline_config['operations']
-    endpoint_params = pipeline_config.get('params', {})
+    dataset_params = pipeline_config.get('params', {})
 
     # Determine if any operation needs API data
     needs_api = any(op.get('type') not in ('db_copy',) for op in operations)
 
     api_result = None
     if needs_api:
-        api_result = api_fetcher(endpoint, endpoint_params, execution_tier)
+        api_result = api_fetcher(dataset, dataset_params, execution_tier)
 
     data: Dict[int, Any] = {}
     for op in operations:
@@ -185,7 +174,7 @@ def execute_pipeline(
         if op_type == 'extract':
             data = _op_extract(api_result, op, entity_id_field)
         elif op_type == 'multi_league_extract':
-            data = _op_multi_league_extract(op, api_fetcher, endpoint, entity_id_field, season, season_type_name)
+            data = _op_multi_league_extract(op, api_fetcher, dataset, entity_id_field, season, season_type_name)
         elif op_type == 'filter':
             data = _op_filter(data, op)
         elif op_type == 'aggregate':
@@ -279,7 +268,7 @@ def _op_extract(
 def _op_multi_league_extract(
     op: Dict[str, Any],
     api_fetcher: Callable,
-    base_endpoint: str,
+    base_dataset: str,
     entity_id_field: str,
     season: str,
     season_type_name: str,
@@ -293,7 +282,7 @@ def _op_multi_league_extract(
     totals: Dict[int, int] = {}
 
     for call_params in calls:
-        api_result = api_fetcher(base_endpoint, call_params, 'league')
+        api_result = api_fetcher(base_dataset, call_params, 'league')
         for rs in api_result.get('resultSets', []):
             if result_set and rs['name'] != result_set:
                 continue

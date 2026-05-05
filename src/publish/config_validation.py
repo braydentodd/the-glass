@@ -13,7 +13,7 @@ Add a new config?  Define a schema dict next to the data in
 import logging
 from typing import List
 
-from src.core.config_validation import (
+from src.core.lib.config_validation import (
     validate_dict_config,
     validate_flat_config,
     validate_scalar_dict,
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def _validate_section_subsection(sheets_columns: dict) -> List[str]:
     """Stats columns require a subsection for ordering and header display."""
-    from src.publish.definitions.config import SECTIONS_CONFIG
+    from src.publish.definitions.layout import SECTIONS_CONFIG
 
     stats_sections = {
         s for s, meta in SECTIONS_CONFIG.items()
@@ -66,7 +66,7 @@ def _validate_width_classes(sheets_columns: dict) -> List[str]:
 
 def _validate_column_section_refs(sheets_columns: dict) -> List[str]:
     """Every section listed by a column must exist in SECTIONS_CONFIG."""
-    from src.publish.definitions.config import SECTIONS_CONFIG
+    from src.publish.definitions.layout import SECTIONS_CONFIG
 
     errors: List[str] = []
     known_sections = set(SECTIONS_CONFIG)
@@ -82,7 +82,7 @@ def _validate_column_section_refs(sheets_columns: dict) -> List[str]:
 
 def _validate_subsection_section_refs() -> List[str]:
     """SUBSECTIONS may only reference sections that exist in SECTIONS_CONFIG."""
-    from src.publish.definitions.config import SECTIONS_CONFIG, SUBSECTIONS
+    from src.publish.definitions.layout import SECTIONS_CONFIG, SUBSECTIONS
 
     errors: List[str] = []
     known_sections = set(SECTIONS_CONFIG)
@@ -117,27 +117,39 @@ def validate_config() -> List[str]:
     Returns the list of errors (empty = clean) and raises ``RuntimeError``
     if anything failed, so callers can both inspect the errors AND fail fast.
     """
-    from src.core.config_validation import validate_core_constants
+    from src.core.lib.config_validation import validate_core_constants
     from src.publish.definitions.columns import TAB_COLUMNS, TAB_COLUMNS_SCHEMA
-    from src.publish.definitions.config import (
-        COLOR_THRESHOLDS,
-        COLOR_THRESHOLDS_SCHEMA,
-        COLORS,
-        COLORS_SCHEMA,
-        GOOGLE_SHEETS_CONFIG,
-        GOOGLE_SHEETS_CONFIG_SCHEMA,
-        HISTORICAL_TIMEFRAMES,
+    from src.publish.definitions.layout import (
         SECTIONS_CONFIG,
         SECTIONS_SCHEMA,
-        SHEET_FORMATTING,
-        SHEET_FORMATTING_SCHEMA,
-        STAT_RATES,
-        STAT_RATES_SCHEMA,
         SUBSECTIONS,
         SUBSECTIONS_SCHEMA,
         TABS_CONFIG,
         TABS_CONFIG_SCHEMA,
         VALUES_KEY_ENTITY,
+    )
+    from src.publish.definitions.stats import (
+        HISTORICAL_TIMEFRAMES,
+        STAT_RATES,
+        STAT_RATES_SCHEMA,
+    )
+    from src.core.definitions.runtime import (
+        RUNTIME_CONFIG,
+        RUNTIME_CONFIG_SCHEMA,
+    )
+    from src.publish.definitions.sheets import (
+        SHEET_FORMATTING,
+        SHEET_FORMATTING_SCHEMA,
+    )
+    from src.publish.destinations.sheets.config import (
+        GOOGLE_SHEETS_CONFIG,
+        GOOGLE_SHEETS_CONFIG_SCHEMA,
+    )
+    from src.publish.definitions.style import (
+        COLOR_THRESHOLDS,
+        COLOR_THRESHOLDS_SCHEMA,
+        COLORS,
+        COLORS_SCHEMA,
         WIDTH_CLASSES,
     )
 
@@ -157,6 +169,7 @@ def validate_config() -> List[str]:
     # Flat dict schemas
     errors.extend(validate_flat_config(SHEET_FORMATTING, SHEET_FORMATTING_SCHEMA, 'SHEET_FORMATTING'))
     errors.extend(validate_flat_config(COLOR_THRESHOLDS, COLOR_THRESHOLDS_SCHEMA, 'COLOR_THRESHOLDS'))
+    errors.extend(validate_flat_config(RUNTIME_CONFIG, RUNTIME_CONFIG_SCHEMA, 'RUNTIME_CONFIG'))
 
     # Scalar-valued mappings
     errors.extend(validate_scalar_dict(

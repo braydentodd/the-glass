@@ -1,8 +1,8 @@
-from typing import Any, List, Optional
+from typing import Any, Callable, List, Optional
 
-from src.core.config import format_season_label
 from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.definitions.config import HEADER_ROWS, SHEET_FORMATTING, STAT_RATES
+from src.publish.definitions.stats import STAT_RATES
+from src.publish.definitions.sheets import HEADER_ROWS, SHEET_FORMATTING
 
 def format_stat_value(value: Any, fmt: str, decimals: int, nullable: bool) -> Any:
     """Format a stat value for display according to column definition."""
@@ -42,7 +42,8 @@ def format_height(inches: Any) -> str:
 def format_section_header(section: str, historical_config: Optional[dict] = None,
                           current_season: int = 0,
                           is_postseason: bool = False,
-                          mode: Optional[str] = None) -> str:
+                          mode: Optional[str] = None,
+                          season_format_fn: Callable[[int], str] = str) -> str:
     """
     Build the full section header display string.
 
@@ -56,6 +57,9 @@ def format_section_header(section: str, historical_config: Optional[dict] = None
         current_season: End-year integer (e.g. 2026 for the 2025-26 season)
         is_postseason: True for postseason sections
         mode: Stats rate ('per_possession', 'per_minute', 'per_game')
+        season_format_fn: League-bound formatter that turns the end-year integer
+            into a season label.  Defaults to ``str`` so unbound callers still
+            render something readable.
     """
     season_label = 'Postseason' if is_postseason else 'Regular Season'
 
@@ -72,7 +76,7 @@ def format_section_header(section: str, historical_config: Optional[dict] = None
 
     # Current stats: "YYYY-YY Regular Season Stats per 100 Poss"
     if section == 'current_stats':
-        season_str = format_season_label(current_season)
+        season_str = season_format_fn(current_season)
         return f"{season_str} {season_label} Stats{rate_str}"
 
     # Historical / Postseason sections

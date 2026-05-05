@@ -1,0 +1,56 @@
+"""
+The Glass - Stat Rate & Timeframe Definitions
+
+Rate-mode definitions (per-game, per-100, per-40) and the historical
+timeframes offered to the publish UI.
+"""
+
+from typing import Any, Dict
+
+
+STAT_RATES: Dict[str, Dict[str, Any]] = {
+    'per_possession': {
+        'short_label': 'Poss',
+        'rate':        100,
+        'default':     True,
+    },
+    'per_game': {
+        'short_label': 'Game',
+        'rate':        1,
+        'default':     False,
+    },
+    'per_minute': {
+        'short_label': 'Min',
+        'rate':        40,
+        'default':     False,
+    },
+}
+
+
+HISTORICAL_TIMEFRAMES: Dict[int, str] = {
+    1: '(Previous Season)',
+    3: '(Previous 3 Seasons)',
+    5: '(Previous 5 Seasons)',
+    7: '(Previous 7 Seasons)',
+}
+
+
+# ============================================================================
+# DERIVED CONSTANTS
+# ============================================================================
+
+DEFAULT_STAT_RATE: str = next(
+    (k for k, v in STAT_RATES.items() if v.get('default', False)),
+    'per_game',
+)
+
+
+# ============================================================================
+# VALIDATION SCHEMAS
+# ============================================================================
+
+STAT_RATES_SCHEMA: Dict[str, Dict[str, Any]] = {
+    'short_label': {'required': True, 'types': (str,)},
+    'rate':        {'required': True, 'types': (int, float, type(None))},
+    'default':     {'required': True, 'types': (bool,)},
+}

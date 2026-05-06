@@ -202,6 +202,10 @@ TABLES: Dict[str, Dict[str, Any]] = {
                 'on_delete':  'CASCADE',
             },
         ],
+        'indexes': [
+            {'name': 'league_id', 'columns': ['league_id']},
+            {'name': 'team_id', 'columns': ['team_id']},
+        ],
     },
     'team_rosters': {
         'kind': 'junction',
@@ -227,6 +231,10 @@ TABLES: Dict[str, Dict[str, Any]] = {
                 'on_delete':  'CASCADE',
             },
         ],
+        'indexes': [
+            {'name': 'team_id', 'columns': ['team_id']},
+            {'name': 'player_id', 'columns': ['player_id']},
+        ],
     },
     # ------------------------------------------------------------------
     # OPERATIONAL TABLES (per-league schema)
@@ -247,7 +255,10 @@ TABLES: Dict[str, Dict[str, Any]] = {
         'kind': 'operational',
         'used_by': ['etl', 'publish'],
         'schema_kind': 'league',
-        'columns': ['pipeline', 'run_type', 'status', 'started_at', 'completed_at', 'season', 'entity_type', 'total_items', 'completed_items', 'total_rows', 'error_message'],
+        'columns': ['pipeline', 'status', 'started_at', 'completed_at', 'season', 'entity_type', 'total_items', 'completed_items', 'total_rows', 'error_message'],
+        'indexes': [
+            {'name': 'pipeline_status', 'columns': ['pipeline', 'status']},
+        ],
     },
     'tasks': {
         'kind': 'operational',
@@ -255,6 +266,19 @@ TABLES: Dict[str, Dict[str, Any]] = {
         'schema_kind': 'league',
         'columns': ['run_id', 'pipeline', 'item_key', 'entity_type', 'status', 'started_at', 'completed_at', 'rows_written', 'error_message', 'retry_count'],
         'unique_key': ['run_id', 'pipeline', 'item_key'],
+        'foreign_keys': [
+            {
+                'column': 'run_id',
+                'ref_schema': None,  # Same schema (league)
+                'ref_table': 'runs',
+                'ref_column': 'id',
+                'on_update': 'CASCADE',
+                'on_delete': 'CASCADE',
+            },
+        ],
+        'indexes': [
+            {'name': 'run_id_status', 'columns': ['run_id', 'status']},
+        ],
     },
 }
 

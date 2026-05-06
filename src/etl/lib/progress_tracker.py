@@ -33,7 +33,6 @@ def _make_item_key(entity_type: str, dataset: str, tier: str, columns: Dict) -> 
 def create_run(
     conn: Any,
     db_schema: str,
-    run_type: str,
     season: str,
     season_type: str,
     entity_type: str,
@@ -43,13 +42,13 @@ def create_run(
     with conn.cursor() as cur:
         cur.execute(
             f"INSERT INTO {db_schema}.runs "
-            f"(pipeline, run_type, status, season, season_type, entity_type, total_items) "
-            f"VALUES (%s, %s, 'running', %s, %s, %s, %s) RETURNING id",
-            (_PIPELINE, run_type, season, season_type, entity_type, total_groups),
+            f"(pipeline, season, season_type, entity_type, total_items) "
+            f"VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            (_PIPELINE, season, season_type, entity_type, total_groups),
         )
         run_id = cur.fetchone()[0]
     conn.commit()
-    logger.info('Created ETL run %d (%s)', run_id, run_type)
+    logger.info('Created ETL run %d', run_id)
     return run_id
 
 
@@ -98,8 +97,8 @@ def register_groups(
             )
             cur.execute(
                 f"INSERT INTO {db_schema}.tasks "
-                f"(run_id, pipeline, item_key, entity_type, status) "
-                f"VALUES (%s, %s, %s, %s, 'pending') RETURNING id",
+                f"(run_id, pipeline, item_key, entity_type) "
+                f"VALUES (%s, %s, %s, %s) RETURNING id",
                 (run_id, _PIPELINE, item_key, entity_type),
             )
             task_ids.append(cur.fetchone()[0])
@@ -220,7 +219,6 @@ def resolve_work(
     season: str,
     season_type: str,
     groups: List[Dict[str, Any]],
-    run_type: str,
     auto_resume: bool,
 ) -> Tuple[int, List[Tuple[Dict[str, Any], int]]]:
     """Determine the run_id and pending work items for an entity/season.
@@ -247,7 +245,7 @@ def resolve_work(
             return run_id, work_items
 
     run_id = create_run(
-        conn, db_schema, run_type, season, season_type, entity, len(groups),
+        conn, db_schema, season, season_type, entity, len(groups),
     )
     task_ids = register_groups(conn, db_schema, run_id, groups, entity)
     return run_id, list(zip(groups, task_ids))

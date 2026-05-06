@@ -17,8 +17,8 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
 from src.core.lib.postgres import db_connection, quote_col
-from src.core.lib.sources import get_source_id_column
-from src.core.lib.table_names import get_table_name
+from src.etl.lib.sources_resolver import get_source_id_column
+from src.core.lib.tables_resolver import get_table_name
 from src.etl.lib.extract import (
     extract_columns_from_result,
     extract_raw_rows,
@@ -142,7 +142,7 @@ def _execute_pipeline_column(
     failed: List[Dict[str, Any]],
 ) -> int:
     """Execute a transformation pipeline for a single column."""
-    pipeline_config = source['pipeline']
+    pipeline_config = source['extraction_config']
 
     def pipeline_fetcher(ds, extra_params, tier):
         try:

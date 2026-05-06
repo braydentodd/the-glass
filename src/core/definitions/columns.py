@@ -30,7 +30,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Entity type discriminator (player, team, league)',
+        'comment': None,
         'sources': None,
     },
     'updated_at': {
@@ -63,7 +63,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': ['player', 'team'],
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Season identifier (e.g., 2023-24)',
+        'comment': None,
         'sources': None,
     },
     'season_type': {
@@ -74,7 +74,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': ['player', 'team'],
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Season type (RS=Regular Season, PO=Playoffs, PB=Play-In)',
+        'comment': None,
         'sources': None,
     },
     'backfilled': {
@@ -98,9 +98,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'the_glass_sheets': {
-                'player': {'dataset': 'players', 'field': 'Notes'},
-                'team': {'dataset': 'teams', 'field': 'Notes'},
+            'nba': {
+                'the_glass_sheets': {
+                    'player': {'dataset': 'players', 'field': 'Notes'},
+                    'team': {'dataset': 'teams', 'field': 'Notes'},
+                },
             },
         },
     },
@@ -115,12 +117,14 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': ['player', 'team'],
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'FK to core.team_profiles.the_glass_id; resolved from source TEAM_ID during load.',
+        'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerstats',
-                    'field': 'TEAM_ID',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'TEAM_ID',
+                    },
                 },
             },
         },
@@ -133,7 +137,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': ['player', 'team'],
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'FK to core.player_profiles.the_glass_id; resolved from source PLAYER_ID during load.',
+        'comment': None,
         'sources': None,
     },
     'name': {
@@ -146,16 +150,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerstats',
-                    'field': 'PLAYER_NAME',
-                    'transform': 'safe_str',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'TEAM_NAME',
-                    'transform': 'safe_str',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'PLAYER_NAME',
+                        'transform': 'safe_str',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'TEAM_NAME',
+                        'transform': 'safe_str',
+                    },
                 },
             },
         },
@@ -170,15 +176,17 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'commonallplayers',
-                    'field': 'HEIGHT',
-                    'transform': 'parse_height',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'commonallplayers',
+                        'field': 'HEIGHT',
+                        'transform': 'parse_height',
+                    },
                 },
-            },
-            'the_glass_sheets': {
-                'player': {'dataset': 'players', 'field': 'Height'},
+                'the_glass_sheets': {
+                    'player': {'dataset': 'players', 'field': 'Height'},
+                },
             },
         },
     },
@@ -192,11 +200,13 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'commonallplayers', 'field': 'WEIGHT'},
-            },
-            'the_glass_sheets': {
-                'player': {'dataset': 'players', 'field': 'Weight'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'commonallplayers', 'field': 'WEIGHT'},
+                },
+                'the_glass_sheets': {
+                    'player': {'dataset': 'players', 'field': 'Weight'},
+                },
             },
         },
     },
@@ -210,15 +220,17 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'draftcombineplayeranthro',
-                    'field': 'WINGSPAN',
-                    'transform': 'parse_height',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'draftcombineplayeranthro',
+                        'field': 'WINGSPAN',
+                        'transform': 'parse_height',
+                    },
                 },
-            },
-            'the_glass_sheets': {
-                'player': {'dataset': 'players', 'field': 'Wingspan'},
+                'the_glass_sheets': {
+                    'player': {'dataset': 'players', 'field': 'Wingspan'},
+                },
             },
         },
     },
@@ -232,8 +244,10 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'the_glass_sheets': {
-                'player': {'dataset': 'players', 'field': 'Handedness'},
+            'nba': {
+                'the_glass_sheets': {
+                    'player': {'dataset': 'players', 'field': 'Handedness'},
+                },
             },
         },
     },
@@ -247,8 +261,10 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'commonallplayers', 'field': 'JERSEY'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'commonallplayers', 'field': 'JERSEY'},
+                },
             },
         },
     },
@@ -262,11 +278,13 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'commonallplayers',
-                    'field': 'BIRTHDATE',
-                    'transform': 'parse_birthdate',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'commonallplayers',
+                        'field': 'BIRTHDATE',
+                        'transform': 'parse_birthdate',
+                    },
                 },
             },
         },
@@ -292,8 +310,10 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'commonallplayers', 'field': 'SEASON_EXP'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'commonallplayers', 'field': 'SEASON_EXP'},
+                },
             },
         },
     },
@@ -307,11 +327,13 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'commonallplayers',
-                    'field': 'FROM_YEAR',
-                    'transform': 'format_season',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'commonallplayers',
+                        'field': 'FROM_YEAR',
+                        'transform': 'format_season',
+                    },
                 },
             },
         },
@@ -326,8 +348,10 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'team': {'dataset': 'team_metadata', 'field': 'TEAM_ABBREVIATION', 'transform': 'safe_str'},
+            'nba': {
+                'nba_api': {
+                    'team': {'dataset': 'team_metadata', 'field': 'TEAM_ABBREVIATION', 'transform': 'safe_str'},
+                },
             },
         },
     },
@@ -341,8 +365,10 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'team': {'dataset': 'team_metadata', 'field': 'TEAM_CONFERENCE', 'transform': 'safe_str'},
+            'nba': {
+                'nba_api': {
+                    'team': {'dataset': 'team_metadata', 'field': 'TEAM_CONFERENCE', 'transform': 'safe_str'},
+                },
             },
         },
     },
@@ -359,9 +385,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'GP'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'GP'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'GP'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'GP'},
+                },
             },
         },
     },
@@ -375,9 +403,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'MIN', 'scale': 10},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'MIN', 'scale': 10},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'MIN', 'scale': 10},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'MIN', 'scale': 10},
+                },
             },
         },
     },
@@ -391,9 +421,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'W'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'W'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'W'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'W'},
+                },
             },
         },
     },
@@ -407,16 +439,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'GP',
-                    'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Player'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'GP',
-                    'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Team'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'GP',
+                        'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'GP',
+                        'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Team'},
+                    },
                 },
             },
         },
@@ -431,18 +465,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'MIN',
-                    'scale': 10,
-                    'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Player'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'MIN',
-                    'scale': 10,
-                    'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Team'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'MIN',
+                        'scale': 10,
+                        'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'MIN',
+                        'scale': 10,
+                        'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Team'},
+                    },
                 },
             },
         },
@@ -457,9 +493,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'G'},
-                'team': {'dataset': 'leaguehustlestatsteam', 'field': 'G'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'G'},
+                    'team': {'dataset': 'leaguehustlestatsteam', 'field': 'G'},
+                },
             },
         },
     },
@@ -473,9 +511,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'MIN', 'scale': 10},
-                'team': {'dataset': 'leaguehustlestatsteam', 'field': 'MIN', 'scale': 10},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'MIN', 'scale': 10},
+                    'team': {'dataset': 'leaguehustlestatsteam', 'field': 'MIN', 'scale': 10},
+                },
             },
         },
     },
@@ -489,14 +529,16 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'teamplayeronoffsummary',
-                    'tier': 'team_call',
-                    'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
-                    'player_id_field': 'VS_PLAYER_ID',
-                    'field': 'GP',
-                    'aggregation': 'sum',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffsummary',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'GP',
+                        'aggregation': 'sum',
+                    },
                 },
             },
         },
@@ -511,15 +553,17 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'teamplayeronoffsummary',
-                    'tier': 'team_call',
-                    'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
-                    'player_id_field': 'VS_PLAYER_ID',
-                    'field': 'MIN',
-                    'scale': 10,
-                    'aggregation': 'sum',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffsummary',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'MIN',
+                        'scale': 10,
+                        'aggregation': 'sum',
+                    },
                 },
             },
         },
@@ -537,22 +581,24 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerstats',
-                    'field': 'FGM',
-                    'derived': {'subtract': 'FG3M'},
-                },
-                'team': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'FGM',
-                    'derived': {'subtract': 'FG3M'},
-                },
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_FGM',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
-                    'derived': {'subtract': 'OPP_FG3M'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'FGM',
+                        'derived': {'subtract': 'FG3M'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'FGM',
+                        'derived': {'subtract': 'FG3M'},
+                    },
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FGM',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'derived': {'subtract': 'OPP_FG3M'},
+                    },
                 },
             },
         },
@@ -567,22 +613,24 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerstats',
-                    'field': 'FGA',
-                    'derived': {'subtract': 'FG3A'},
-                },
-                'team': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'FGA',
-                    'derived': {'subtract': 'FG3A'},
-                },
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_FGA',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
-                    'derived': {'subtract': 'OPP_FG3A'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'FGA',
+                        'derived': {'subtract': 'FG3A'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'FGA',
+                        'derived': {'subtract': 'FG3A'},
+                    },
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FGA',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'derived': {'subtract': 'OPP_FG3A'},
+                    },
                 },
             },
         },
@@ -600,13 +648,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'FG3M'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'FG3M'},
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_FG3M',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'FG3M'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'FG3M'},
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FG3M',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                    },
                 },
             },
         },
@@ -621,13 +671,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'FG3A'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'FG3A'},
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_FG3A',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'FG3A'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'FG3A'},
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FG3A',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                    },
                 },
             },
         },
@@ -645,13 +697,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'FTM'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'FTM'},
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_FTM',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'FTM'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'FTM'},
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FTM',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                    },
                 },
             },
         },
@@ -666,13 +720,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'FTA'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'FTA'},
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_FTA',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'FTA'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'FTA'},
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FTA',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                    },
                 },
             },
         },
@@ -690,36 +746,38 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FGM',
-                    'multi_call': [
-                        {
-                            'close_def_dist_range_nullable': '0-2 Feet - Very Tight',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                        {
-                            'close_def_dist_range_nullable': '2-4 Feet - Tight',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FGM',
-                    'multi_call': [
-                        {
-                            'close_def_dist_range_nullable': '0-2 Feet - Very Tight',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                        {
-                            'close_def_dist_range_nullable': '2-4 Feet - Tight',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FGM',
+                        'multi_call': [
+                            {
+                                'close_def_dist_range_nullable': '0-2 Feet - Very Tight',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                            {
+                                'close_def_dist_range_nullable': '2-4 Feet - Tight',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FGM',
+                        'multi_call': [
+                            {
+                                'close_def_dist_range_nullable': '0-2 Feet - Very Tight',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                            {
+                                'close_def_dist_range_nullable': '2-4 Feet - Tight',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -734,36 +792,38 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FGA',
-                    'multi_call': [
-                        {
-                            'close_def_dist_range_nullable': '0-2 Feet - Very Tight',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                        {
-                            'close_def_dist_range_nullable': '2-4 Feet - Tight',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FGA',
-                    'multi_call': [
-                        {
-                            'close_def_dist_range_nullable': '0-2 Feet - Very Tight',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                        {
-                            'close_def_dist_range_nullable': '2-4 Feet - Tight',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FGA',
+                        'multi_call': [
+                            {
+                                'close_def_dist_range_nullable': '0-2 Feet - Very Tight',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                            {
+                                'close_def_dist_range_nullable': '2-4 Feet - Tight',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FGA',
+                        'multi_call': [
+                            {
+                                'close_def_dist_range_nullable': '0-2 Feet - Very Tight',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                            {
+                                'close_def_dist_range_nullable': '2-4 Feet - Tight',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -778,36 +838,38 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FGM',
-                    'multi_call': [
-                        {
-                            'close_def_dist_range_nullable': '4-6 Feet - Open',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                        {
-                            'close_def_dist_range_nullable': '6+ Feet - Wide Open',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FGM',
-                    'multi_call': [
-                        {
-                            'close_def_dist_range_nullable': '4-6 Feet - Open',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                        {
-                            'close_def_dist_range_nullable': '6+ Feet - Wide Open',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FGM',
+                        'multi_call': [
+                            {
+                                'close_def_dist_range_nullable': '4-6 Feet - Open',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                            {
+                                'close_def_dist_range_nullable': '6+ Feet - Wide Open',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FGM',
+                        'multi_call': [
+                            {
+                                'close_def_dist_range_nullable': '4-6 Feet - Open',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                            {
+                                'close_def_dist_range_nullable': '6+ Feet - Wide Open',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -822,36 +884,38 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FGA',
-                    'multi_call': [
-                        {
-                            'close_def_dist_range_nullable': '4-6 Feet - Open',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                        {
-                            'close_def_dist_range_nullable': '6+ Feet - Wide Open',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FGA',
-                    'multi_call': [
-                        {
-                            'close_def_dist_range_nullable': '4-6 Feet - Open',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                        {
-                            'close_def_dist_range_nullable': '6+ Feet - Wide Open',
-                            'general_range_nullable': 'Less Than 10 ft',
-                        },
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FGA',
+                        'multi_call': [
+                            {
+                                'close_def_dist_range_nullable': '4-6 Feet - Open',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                            {
+                                'close_def_dist_range_nullable': '6+ Feet - Wide Open',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FGA',
+                        'multi_call': [
+                            {
+                                'close_def_dist_range_nullable': '4-6 Feet - Open',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                            {
+                                'close_def_dist_range_nullable': '6+ Feet - Wide Open',
+                                'general_range_nullable': 'Less Than 10 ft',
+                            },
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -866,24 +930,26 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FG2M',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
-                        {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FG2M',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
-                        {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FG2M',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
+                            {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FG2M',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
+                            {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -898,24 +964,26 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FG2A',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
-                        {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FG2A',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
-                        {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FG2A',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
+                            {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FG2A',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
+                            {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -930,24 +998,26 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FG2M',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '4-6 Feet - Open'},
-                        {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FG2M',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '4-6 Feet - Open'},
-                        {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FG2M',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '4-6 Feet - Open'},
+                            {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FG2M',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '4-6 Feet - Open'},
+                            {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -962,24 +1032,26 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FG2A',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '4-6 Feet - Open'},
-                        {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FG2A',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '4-6 Feet - Open'},
-                        {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FG2A',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '4-6 Feet - Open'},
+                            {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FG2A',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '4-6 Feet - Open'},
+                            {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -994,24 +1066,26 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FG3M',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
-                        {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FG3M',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
-                        {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FG3M',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
+                            {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FG3M',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
+                            {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -1026,24 +1100,26 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FG3A',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
-                        {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FG3A',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
-                        {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FG3A',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
+                            {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FG3A',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '0-2 Feet - Very Tight'},
+                            {'close_def_dist_range_nullable': '2-4 Feet - Tight'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -1058,24 +1134,26 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FG3M',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '4-6 Feet - Open'},
-                        {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FG3M',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '4-6 Feet - Open'},
-                        {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FG3M',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '4-6 Feet - Open'},
+                            {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FG3M',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '4-6 Feet - Open'},
+                            {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -1090,24 +1168,26 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerptshot',
-                    'field': 'FG3A',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '4-6 Feet - Open'},
-                        {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
-                },
-                'team': {
-                    'dataset': 'leaguedashteamptshot',
-                    'field': 'FG3A',
-                    'multi_call': [
-                        {'close_def_dist_range_nullable': '4-6 Feet - Open'},
-                        {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
-                    ],
-                    'result_set': 'LeagueDashPTShots',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerptshot',
+                        'field': 'FG3A',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '4-6 Feet - Open'},
+                            {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamptshot',
+                        'field': 'FG3A',
+                        'multi_call': [
+                            {'close_def_dist_range_nullable': '4-6 Feet - Open'},
+                            {'close_def_dist_range_nullable': '6+ Feet - Wide Open'},
+                        ],
+                        'result_set': 'LeagueDashPTShots',
+                    },
                 },
             },
         },
@@ -1125,9 +1205,9 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'pipeline': {
+            'nba': {
+                'nba_api': {
+                    'player': {
                         'dataset': 'playerdashboardbyshootingsplits',
                         'tier': 'player',
                         'params': {'measure_type_detailed': 'Base', 'per_mode_detailed': 'Totals'},
@@ -1142,9 +1222,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
                             {'type': 'aggregate', 'method': 'sum'},
                         ],
                     },
-                },
-                'team': {
-                    'pipeline': {
+                    'team': {
                         'dataset': 'teamdashboardbyshootingsplits',
                         'tier': 'team',
                         'params': {
@@ -1176,9 +1254,9 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'pipeline': {
+            'nba': {
+                'nba_api': {
+                    'player': {
                         'dataset': 'playerdashboardbyshootingsplits',
                         'tier': 'player',
                         'params': {'measure_type_detailed': 'Base', 'per_mode_detailed': 'Totals'},
@@ -1204,9 +1282,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
                             {'type': 'aggregate', 'method': 'sum'},
                         ],
                     },
-                },
-                'team': {
-                    'pipeline': {
+                    'team': {
                         'dataset': 'teamdashboardbyshootingsplits',
                         'tier': 'team',
                         'params': {
@@ -1252,9 +1328,9 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'pipeline': {
+            'nba': {
+                'nba_api': {
+                    'player': {
                         'dataset': 'playerdashboardbyshootingsplits',
                         'tier': 'player',
                         'params': {'measure_type_detailed': 'Base', 'per_mode_detailed': 'Totals'},
@@ -1282,9 +1358,9 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'pipeline': {
+            'nba': {
+                'nba_api': {
+                    'player': {
                         'dataset': 'playerdashboardbyshootingsplits',
                         'tier': 'player',
                         'params': {'measure_type_detailed': 'Base', 'per_mode_detailed': 'Totals'},
@@ -1312,9 +1388,9 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'pipeline': {
+            'nba': {
+                'nba_api': {
+                    'player': {
                         'dataset': 'playerdashboardbyshootingsplits',
                         'tier': 'player',
                         'params': {'measure_type_detailed': 'Base', 'per_mode_detailed': 'Totals'},
@@ -1345,13 +1421,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'OREB'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'OREB'},
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_OREB',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'OREB'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'OREB'},
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_OREB',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                    },
                 },
             },
         },
@@ -1366,13 +1444,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'DREB'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'DREB'},
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_DREB',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'DREB'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'DREB'},
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_DREB',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                    },
                 },
             },
         },
@@ -1387,18 +1467,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerstats',
-                    'field': 'OREB_PCT',
-                    'scale': 1000,
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
-                },
-                'team': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OREB_PCT',
-                    'scale': 1000,
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'OREB_PCT',
+                        'scale': 1000,
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OREB_PCT',
+                        'scale': 1000,
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
                 },
             },
         },
@@ -1413,18 +1495,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerstats',
-                    'field': 'DREB_PCT',
-                    'scale': 1000,
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
-                },
-                'team': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'DREB_PCT',
-                    'scale': 1000,
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'DREB_PCT',
+                        'scale': 1000,
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'DREB_PCT',
+                        'scale': 1000,
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
                 },
             },
         },
@@ -1439,9 +1523,9 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'pipeline': {
+            'nba': {
+                'nba_api': {
+                    'player': {
                         'dataset': 'playerdashptreb',
                         'tier': 'player',
                         'params': {'team_id': 0},
@@ -1453,9 +1537,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
                             },
                         ],
                     },
-                },
-                'team': {
-                    'pipeline': {
+                    'team': {
                         'dataset': 'teamdashptreb',
                         'tier': 'team',
                         'operations': [
@@ -1480,9 +1562,9 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'pipeline': {
+            'nba': {
+                'nba_api': {
+                    'player': {
                         'dataset': 'playerdashptreb',
                         'tier': 'player',
                         'params': {'team_id': 0},
@@ -1494,9 +1576,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
                             },
                         ],
                     },
-                },
-                'team': {
-                    'pipeline': {
+                    'team': {
                         'dataset': 'teamdashptreb',
                         'tier': 'team',
                         'operations': [
@@ -1524,13 +1604,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'AST'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'AST'},
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_AST',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'AST'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'AST'},
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_AST',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                    },
                 },
             },
         },
@@ -1545,16 +1627,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'POTENTIAL_AST',
-                    'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Player'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'POTENTIAL_AST',
-                    'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Team'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'POTENTIAL_AST',
+                        'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'POTENTIAL_AST',
+                        'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Team'},
+                    },
                 },
             },
         },
@@ -1569,16 +1653,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'PASSES_MADE',
-                    'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Player'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'PASSES_MADE',
-                    'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Team'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'PASSES_MADE',
+                        'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'PASSES_MADE',
+                        'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Team'},
+                    },
                 },
             },
         },
@@ -1593,16 +1679,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'SECONDARY_AST',
-                    'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Player'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'SECONDARY_AST',
-                    'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Team'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'SECONDARY_AST',
+                        'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'SECONDARY_AST',
+                        'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Team'},
+                    },
                 },
             },
         },
@@ -1620,16 +1708,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'TOUCHES',
-                    'params': {'pt_measure_type': 'Possessions', 'player_or_team': 'Player'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'TOUCHES',
-                    'params': {'pt_measure_type': 'Possessions', 'player_or_team': 'Team'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'TOUCHES',
+                        'params': {'pt_measure_type': 'Possessions', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'TOUCHES',
+                        'params': {'pt_measure_type': 'Possessions', 'player_or_team': 'Team'},
+                    },
                 },
             },
         },
@@ -1644,16 +1734,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'TIME_OF_POSS',
-                    'params': {'pt_measure_type': 'Possessions', 'player_or_team': 'Player'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'TIME_OF_POSS',
-                    'params': {'pt_measure_type': 'Possessions', 'player_or_team': 'Team'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'TIME_OF_POSS',
+                        'params': {'pt_measure_type': 'Possessions', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'TIME_OF_POSS',
+                        'params': {'pt_measure_type': 'Possessions', 'player_or_team': 'Team'},
+                    },
                 },
             },
         },
@@ -1668,16 +1760,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerstats',
-                    'field': 'POSS',
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
-                },
-                'team': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'POSS',
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'POSS',
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'POSS',
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
                 },
             },
         },
@@ -1695,13 +1789,15 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'TOV'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'TOV'},
-                'opponent': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OPP_TOV',
-                    'params': {'measure_type_detailed_defense': 'Opponent'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'TOV'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'TOV'},
+                    'opponent': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_TOV',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                    },
                 },
             },
         },
@@ -1719,18 +1815,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'DIST_MILES_OFF',
-                    'scale': 10,
-                    'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Player'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'DIST_MILES_OFF',
-                    'scale': 10,
-                    'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Team'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'DIST_MILES_OFF',
+                        'scale': 10,
+                        'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'DIST_MILES_OFF',
+                        'scale': 10,
+                        'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Team'},
+                    },
                 },
             },
         },
@@ -1745,18 +1843,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'DIST_MILES_DEF',
-                    'scale': 10,
-                    'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Player'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptstats',
-                    'field': 'DIST_MILES_DEF',
-                    'scale': 10,
-                    'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Team'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'DIST_MILES_DEF',
+                        'scale': 10,
+                        'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'DIST_MILES_DEF',
+                        'scale': 10,
+                        'params': {'pt_measure_type': 'SpeedDistance', 'player_or_team': 'Team'},
+                    },
                 },
             },
         },
@@ -1774,9 +1874,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'STL'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'STL'}
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'STL'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'STL'}
+                },
             },
         },
     },
@@ -1790,9 +1892,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'BLK'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'BLK'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'BLK'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'BLK'},
+                },
             },
         },
     },
@@ -1806,9 +1910,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguedashplayerstats', 'field': 'PF'},
-                'team': {'dataset': 'leaguedashteamstats', 'field': 'PF'}
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'PF'},
+                    'team': {'dataset': 'leaguedashteamstats', 'field': 'PF'}
+                },
             },
         },
     },
@@ -1825,9 +1931,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'hustle',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'DEFLECTIONS'},
-                'team': {'dataset': 'leaguehustlestatsteam', 'field': 'DEFLECTIONS'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'DEFLECTIONS'},
+                    'team': {'dataset': 'leaguehustlestatsteam', 'field': 'DEFLECTIONS'},
+                },
             },
         },
     },
@@ -1841,9 +1949,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'hustle',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'CHARGES_DRAWN'},
-                'team': {'dataset': 'leaguehustlestatsteam', 'field': 'CHARGES_DRAWN'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'CHARGES_DRAWN'},
+                    'team': {'dataset': 'leaguehustlestatsteam', 'field': 'CHARGES_DRAWN'},
+                },
             },
         },
     },
@@ -1857,9 +1967,11 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'hustle',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'CONTESTED_SHOTS'},
-                'team': {'dataset': 'leaguehustlestatsteam', 'field': 'CONTESTED_SHOTS'},
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'CONTESTED_SHOTS'},
+                    'team': {'dataset': 'leaguehustlestatsteam', 'field': 'CONTESTED_SHOTS'},
+                },
             },
         },
     },
@@ -1876,16 +1988,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'FGM',
-                    'params': {'defense_category': 'Less Than 10Ft'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'FGM',
-                    'params': {'defense_category': 'Less Than 10Ft'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'FGM',
+                        'params': {'defense_category': 'Less Than 10Ft'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'FGM',
+                        'params': {'defense_category': 'Less Than 10Ft'},
+                    },
                 },
             },
         },
@@ -1900,16 +2014,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'FGA_LT_10',
-                    'params': {'defense_category': 'Less Than 10Ft'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'FGA_LT_10',
-                    'params': {'defense_category': 'Less Than 10Ft'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'FGA_LT_10',
+                        'params': {'defense_category': 'Less Than 10Ft'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'FGA_LT_10',
+                        'params': {'defense_category': 'Less Than 10Ft'},
+                    },
                 },
             },
         },
@@ -1924,16 +2040,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'FG2M',
-                    'params': {'defense_category': '2 Pointers'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'FG2M',
-                    'params': {'defense_category': '2 Pointers'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'FG2M',
+                        'params': {'defense_category': '2 Pointers'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'FG2M',
+                        'params': {'defense_category': '2 Pointers'},
+                    },
                 },
             },
         },
@@ -1948,16 +2066,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'FG2A',
-                    'params': {'defense_category': '2 Pointers'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'FG2A',
-                    'params': {'defense_category': '2 Pointers'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'FG2A',
+                        'params': {'defense_category': '2 Pointers'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'FG2A',
+                        'params': {'defense_category': '2 Pointers'},
+                    },
                 },
             },
         },
@@ -1972,16 +2092,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'FG3M',
-                    'params': {'defense_category': '3 Pointers'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'FG3M',
-                    'params': {'defense_category': '3 Pointers'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'FG3M',
+                        'params': {'defense_category': '3 Pointers'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'FG3M',
+                        'params': {'defense_category': '3 Pointers'},
+                    },
                 },
             },
         },
@@ -1996,16 +2118,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'FG3A',
-                    'params': {'defense_category': '3 Pointers'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'FG3A',
-                    'params': {'defense_category': '3 Pointers'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'FG3A',
+                        'params': {'defense_category': '3 Pointers'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'FG3A',
+                        'params': {'defense_category': '3 Pointers'},
+                    },
                 },
             },
         },
@@ -2023,18 +2147,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerstats',
-                    'field': 'OFF_RATING',
-                    'scale': 10,
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
-                },
-                'team': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'OFF_RATING',
-                    'scale': 10,
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'OFF_RATING',
+                        'scale': 10,
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OFF_RATING',
+                        'scale': 10,
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
                 },
             },
         },
@@ -2049,18 +2175,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': None,
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashplayerstats',
-                    'field': 'DEF_RATING',
-                    'scale': 10,
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
-                },
-                'team': {
-                    'dataset': 'leaguedashteamstats',
-                    'field': 'DEF_RATING',
-                    'scale': 10,
-                    'params': {'measure_type_detailed_defense': 'Advanced'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'DEF_RATING',
+                        'scale': 10,
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'DEF_RATING',
+                        'scale': 10,
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                    },
                 },
             },
         },
@@ -2075,15 +2203,17 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'onoff',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'teamplayeronoffsummary',
-                    'tier': 'team_call',
-                    'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
-                    'player_id_field': 'VS_PLAYER_ID',
-                    'field': 'OFF_RATING',
-                    'scale': 10,
-                    'aggregation': 'minute_weighted',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffsummary',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OFF_RATING',
+                        'scale': 10,
+                        'aggregation': 'minute_weighted',
+                    },
                 },
             },
         },
@@ -2098,15 +2228,17 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'onoff',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'teamplayeronoffsummary',
-                    'tier': 'team_call',
-                    'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
-                    'player_id_field': 'VS_PLAYER_ID',
-                    'field': 'DEF_RATING',
-                    'scale': 10,
-                    'aggregation': 'minute_weighted',
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffsummary',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'DEF_RATING',
+                        'scale': 10,
+                        'aggregation': 'minute_weighted',
+                    },
                 },
             },
         },
@@ -2124,18 +2256,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'PCT_PLUSMINUS',
-                    'scale': 1000,
-                    'params': {'defense_category': 'Overall'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'PCT_PLUSMINUS',
-                    'scale': 1000,
-                    'params': {'defense_category': 'Overall'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'PCT_PLUSMINUS',
+                        'scale': 1000,
+                        'params': {'defense_category': 'Overall'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'PCT_PLUSMINUS',
+                        'scale': 1000,
+                        'params': {'defense_category': 'Overall'},
+                    },
                 },
             },
         },
@@ -2150,18 +2284,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'PLUSMINUS',
-                    'scale': 1000,
-                    'params': {'defense_category': 'Less Than 10Ft'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'PLUSMINUS',
-                    'scale': 1000,
-                    'params': {'defense_category': 'Less Than 10Ft'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'PLUSMINUS',
+                        'scale': 1000,
+                        'params': {'defense_category': 'Less Than 10Ft'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'PLUSMINUS',
+                        'scale': 1000,
+                        'params': {'defense_category': 'Less Than 10Ft'},
+                    },
                 },
             },
         },
@@ -2176,18 +2312,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'PLUSMINUS',
-                    'scale': 1000,
-                    'params': {'defense_category': '2 Pointers'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'PLUSMINUS',
-                    'scale': 1000,
-                    'params': {'defense_category': '2 Pointers'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'PLUSMINUS',
+                        'scale': 1000,
+                        'params': {'defense_category': '2 Pointers'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'PLUSMINUS',
+                        'scale': 1000,
+                        'params': {'defense_category': '2 Pointers'},
+                    },
                 },
             },
         },
@@ -2202,18 +2340,20 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'domain': 'tracking',
         'comment': None,
         'sources': {
-            'nba_api': {
-                'player': {
-                    'dataset': 'leaguedashptdefend',
-                    'field': 'PLUSMINUS',
-                    'scale': 1000,
-                    'params': {'defense_category': '3 Pointers'},
-                },
-                'team': {
-                    'dataset': 'leaguedashptteamdefend',
-                    'field': 'PLUSMINUS',
-                    'scale': 1000,
-                    'params': {'defense_category': '3 Pointers'},
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptdefend',
+                        'field': 'PLUSMINUS',
+                        'scale': 1000,
+                        'params': {'defense_category': '3 Pointers'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptteamdefend',
+                        'field': 'PLUSMINUS',
+                        'scale': 1000,
+                        'params': {'defense_category': '3 Pointers'},
+                    },
                 },
             },
         },
@@ -2230,29 +2370,18 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Pipeline discriminator: etl or publish',
-        'sources': None,
-    },
-    'run_type': {
-        'type': 'VARCHAR(20)',
-        'scope': ['runs'],
-        'nullable': True,
-        'default': None,
-        'entity_types': None,
-        'update_frequency': 'per_execution',
-        'domain': None,
-        'comment': 'Type of run (e.g., full, backfill, update)',
+        'comment': None,
         'sources': None,
     },
     'status': {
         'type': 'VARCHAR(20)',
         'scope': ['runs', 'tasks'],
         'nullable': False,
-        'default': "'running'",
+        'default': "'pending'",
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Current status: running, completed, failed',
+        'comment': None,
         'sources': None,
     },
     'started_at': {
@@ -2263,7 +2392,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Timestamp when run/task started',
+        'comment': None,
         'sources': None,
     },
     'completed_at': {
@@ -2274,7 +2403,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Timestamp when run/task completed or failed',
+        'comment': None,
         'sources': None,
     },
     'total_items': {
@@ -2285,7 +2414,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Total number of items in run',
+        'comment': None,
         'sources': None,
     },
     'completed_items': {
@@ -2296,7 +2425,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Number of completed items in run',
+        'comment': None,
         'sources': None,
     },
     'total_rows': {
@@ -2307,7 +2436,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Total rows written in run',
+        'comment': None,
         'sources': None,
     },
     'error_message': {
@@ -2318,7 +2447,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Error message if run/task failed',
+        'comment': None,
         'sources': None,
     },
 
@@ -2333,7 +2462,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Foreign key to runs table',
+        'comment': None,
         'sources': None,
     },
     'item_key': {
@@ -2344,7 +2473,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Opaque work unit identifier (dataset:tier:cols or tab_name)',
+        'comment': None,
         'sources': None,
     },
     'rows_written': {
@@ -2355,7 +2484,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Rows written for this task',
+        'comment': None,
         'sources': None,
     },
     'retry_count': {
@@ -2366,7 +2495,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Number of retry attempts for this task',
+        'comment': None,
         'sources': None,
     },
 
@@ -2381,7 +2510,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Foreign key to league_profiles',
+        'comment': None,
         'sources': None,
     },
     'is_active': {
@@ -2392,7 +2521,7 @@ DB_COLUMNS: Dict[str, Dict[str, Any]] = {
         'entity_types': None,
         'update_frequency': 'per_execution',
         'domain': None,
-        'comment': 'Whether the junction record is active',
+        'comment': None,
         'sources': None,
     },
 }

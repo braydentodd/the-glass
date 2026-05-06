@@ -7,6 +7,13 @@ maps display columns back to database column references.
 
 from typing import Any, Dict
 
+from src.publish.lib.formulas import (
+    calculate_age,
+    lookup,
+    seasons_in_query,
+    team_average,
+)
+
 # ============================================================================
 # COLUMN DEFINITIONS
 # ============================================================================
@@ -53,6 +60,7 @@ TAB_COLUMNS_SCHEMA = {
     'emphasis':        {'required': False, 'types': (str, type(None)), 'allowed_values': _VALID_EMPHASIS, 'default': None},
     'font_size':       {'required': False, 'types': (int, type(None)), 'default': None},
     'values':          {'required': True,  'types': (dict,)},
+    'inputs':          {'required': False, 'types': (dict, type(None)), 'default': None},
 }
 
 TAB_COLUMNS: Dict[str, Any] = {
@@ -74,10 +82,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'left',
         'emphasis': 'bold',
         'font_size': 10,
+        'inputs': {
+            'player': {'fields': ('name',)},
+            'team': {'fields': ()},
+            'opponents': {'fields': ()},
+        },
         'values': {
-            'player': '{name}',
-            'team': 'TEAM',
-            'opponents': 'OPPONENTS'
+            'player': lambda row, ctx: row.get('name'),
+            'team': lambda row, ctx: 'TEAM',
+            'opponents': lambda row, ctx: 'OPPONENTS'
         }
     },
     'teams': {
@@ -98,8 +111,11 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'left',
         'emphasis': 'bold',
         'font_size': 10,
+        'inputs': {
+            'all_teams': {'fields': ('name',)},
+        },
         'values': {
-            'all_teams': '{name}'
+            'all_teams': lambda row, ctx: row.get('name')
         }
     },
     'team': {
@@ -120,8 +136,11 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('team_id',), 'source': 'teams'},
+        },
         'values': {
-            'player': ('lookup', 'team_id', 'teams', 'abbr')
+            'player': lambda row, ctx: lookup(row.get('team_id'), 'teams', 'abbr', ctx)
         }
     },
     'conf': {
@@ -142,8 +161,11 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'all_teams': {'fields': ('conf',)},
+        },
         'values': {
-            'all_teams': '{conf}'
+            'all_teams': lambda row, ctx: row.get('conf')
         }
     },
     'J#': {
@@ -164,8 +186,11 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('jersey_num',)},
+        },
         'values': {
-            'player': '{jersey_num}'
+            'player': lambda row, ctx: row.get('jersey_num')
         }
     },
     'exp': {
@@ -187,10 +212,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('seasons_exp',)},
+            'team': {'fields': ('seasons_exp',), 'source': 'players'},
+            'all_teams': {'fields': ('seasons_exp',), 'source': 'players'},
+        },
         'values': {
-            'player': '{seasons_exp}',
-            'team': ('team_average', 'seasons_exp'),
-            'all_teams': ('team_average', 'seasons_exp')
+            'player': lambda row, ctx: row.get('seasons_exp'),
+            'team': lambda row, ctx: team_average(lambda p, c: p.get('seasons_exp'), ctx),
+            'all_teams': lambda row, ctx: team_average(lambda p, c: p.get('seasons_exp'), ctx)
         }
     },
     'age': {
@@ -211,10 +241,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('birthdate',)},
+            'team': {'fields': ('birthdate',), 'source': 'players'},
+            'all_teams': {'fields': ('birthdate',), 'source': 'players'},
+        },
         'values': {
-            'player': ('calculate_age', 'birthdate'),
-            'team': ('team_average', ('calculate_age', 'birthdate')),
-            'all_teams': ('team_average', ('calculate_age', 'birthdate'))
+            'player': lambda row, ctx: calculate_age(row.get('birthdate')),
+            'team': lambda row, ctx: team_average(lambda p, c: calculate_age(p.get('birthdate')), ctx),
+            'all_teams': lambda row, ctx: team_average(lambda p, c: calculate_age(p.get('birthdate')), ctx)
         },
     },
     'ht': {
@@ -235,10 +270,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('height_ins',)},
+            'team': {'fields': ('height_ins',), 'source': 'players'},
+            'all_teams': {'fields': ('height_ins',), 'source': 'players'},
+        },
         'values': {
-            'player': '{height_ins}',
-            'team': ('team_average', 'height_ins'),
-            'all_teams': ('team_average', 'height_ins')
+            'player': lambda row, ctx: row.get('height_ins'),
+            'team': lambda row, ctx: team_average(lambda p, c: p.get('height_ins'), ctx),
+            'all_teams': lambda row, ctx: team_average(lambda p, c: p.get('height_ins'), ctx)
         }
     },
     'wt': {
@@ -259,10 +299,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('weight_lbs',)},
+            'team': {'fields': ('weight_lbs',), 'source': 'players'},
+            'all_teams': {'fields': ('weight_lbs',), 'source': 'players'},
+        },
         'values': {
-            'player': '{weight_lbs}',
-            'team': ('team_average', 'weight_lbs'),
-            'all_teams': ('team_average', 'weight_lbs')
+            'player': lambda row, ctx: row.get('weight_lbs'),
+            'team': lambda row, ctx: team_average(lambda p, c: p.get('weight_lbs'), ctx),
+            'all_teams': lambda row, ctx: team_average(lambda p, c: p.get('weight_lbs'), ctx)
         }
     },
     'ws': {
@@ -283,10 +328,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('wingspan_ins',)},
+            'team': {'fields': ('wingspan_ins',), 'source': 'players'},
+            'all_teams': {'fields': ('wingspan_ins',), 'source': 'players'},
+        },
         'values': {
-            'player': '{wingspan_ins}',
-            'team': ('team_average', 'wingspan_ins'),
-            'all_teams': ('team_average', 'wingspan_ins')
+            'player': lambda row, ctx: row.get('wingspan_ins'),
+            'team': lambda row, ctx: team_average(lambda p, c: p.get('wingspan_ins'), ctx),
+            'all_teams': lambda row, ctx: team_average(lambda p, c: p.get('wingspan_ins'), ctx)
         }
     },
     '🖐️': {
@@ -307,8 +357,11 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('hand',)},
+        },
         'values': {
-            'player': '{hand}'
+            'player': lambda row, ctx: row.get('hand')
         }
     },
     'notes': {
@@ -330,10 +383,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'left',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('notes',)},
+            'team': {'fields': ('notes',)},
+            'all_teams': {'fields': ('notes',)},
+        },
         'values': {
-            'player': '{notes}',
-            'team': '{notes}',
-            'all_teams': '{notes}'
+            'player': lambda row, ctx: row.get('notes'),
+            'team': lambda row, ctx: row.get('notes'),
+            'all_teams': lambda row, ctx: row.get('notes')
         }
     },
     'szn': {
@@ -354,10 +412,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ()},
+            'team': {'fields': ()},
+            'all_teams': {'fields': ()},
+        },
         'values': {
-            'player': ('seasons_in_query',),
-            'team': ('seasons_in_query',),
-            'all_teams': ('seasons_in_query',)
+            'player': lambda row, ctx: seasons_in_query(ctx),
+            'team': lambda row, ctx: seasons_in_query(ctx),
+            'all_teams': lambda row, ctx: seasons_in_query(ctx)
         }
     },
     'gms': {
@@ -378,10 +441,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('games',)},
+            'team': {'fields': ('games',)},
+            'all_teams': {'fields': ('games',)},
+        },
         'values': {
-            'player': ('divide', 'games', ('seasons_in_query',)),
-            'team': ('divide', 'games', ('seasons_in_query',)),
-            'all_teams': ('divide', 'games', ('seasons_in_query',))
+            'player': lambda row, ctx: row.get('games') / seasons_in_query(ctx) if row.get('games') is not None else None,
+            'team': lambda row, ctx: row.get('games') / seasons_in_query(ctx) if row.get('games') is not None else None,
+            'all_teams': lambda row, ctx: row.get('games') / seasons_in_query(ctx) if row.get('games') is not None else None
         },
     },
     'min': {
@@ -403,10 +471,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('minutes_x10', 'games')},
+            'team': {'fields': ('minutes_x10', 'games')},
+            'all_teams': {'fields': ('minutes_x10', 'games')},
+        },
         'values': {
-            'player': ('divide', ('divide', 'minutes_x10', 10), 'games'),
-            'team': ('divide', ('divide', 'minutes_x10', 10), 'games'),
-            'all_teams': ('divide', ('divide', 'minutes_x10', 10), 'games')
+            'player': lambda row, ctx: (row.get('minutes_x10') / 10) / row.get('games') if row.get('minutes_x10') is not None and row.get('games') else None,
+            'team': lambda row, ctx: (row.get('minutes_x10') / 10) / row.get('games') if row.get('minutes_x10') is not None and row.get('games') else None,
+            'all_teams': lambda row, ctx: (row.get('minutes_x10') / 10) / row.get('games') if row.get('minutes_x10') is not None and row.get('games') else None
         }
     },
     'pace': {
@@ -427,10 +500,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('possessions', 'minutes_x10')},
+            'team': {'fields': ('possessions', 'minutes_x10')},
+            'all_teams': {'fields': ('possessions', 'minutes_x10')},
+        },
         'values': {
-            'player': ('divide', ('multiply', 'possessions', 40), ('divide', 'minutes_x10', 10)),
-            'team': ('divide', ('multiply', 'possessions', 40), ('divide', 'minutes_x10', 10)),
-            'all_teams': ('divide', ('multiply', 'possessions', 40), ('divide', 'minutes_x10', 10))
+            'player': lambda row, ctx: (row.get('possessions') * 40) / (row.get('minutes_x10') / 10) if row.get('possessions') is not None and row.get('minutes_x10') else None,
+            'team': lambda row, ctx: (row.get('possessions') * 40) / (row.get('minutes_x10') / 10) if row.get('possessions') is not None and row.get('minutes_x10') else None,
+            'all_teams': lambda row, ctx: (row.get('possessions') * 40) / (row.get('minutes_x10') / 10) if row.get('possessions') is not None and row.get('minutes_x10') else None
         }
     },
     'pts': {
@@ -451,11 +529,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('fg2m', 'fg3m', 'ftm')},
+            'team': {'fields': ('fg2m', 'fg3m', 'ftm')},
+            'all_teams': {'fields': ('fg2m', 'fg3m', 'ftm')},
+            'opponents': {'fields': ('opp_fg2m', 'opp_fg3m', 'opp_ftm')},
+        },
         'values': {
-            'player': ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'),
-            'team': ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'),
-            'all_teams': ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'),
-            'opponents': ('add', ('multiply', 'opp_fg2m', 2), ('multiply', 'opp_fg3m', 3), 'opp_ftm')
+            'player': lambda row, ctx: (row['fg2m'] * 2) + (row['fg3m'] * 3) + row['ftm'],
+            'team': lambda row, ctx: (row['fg2m'] * 2) + (row['fg3m'] * 3) + row['ftm'],
+            'all_teams': lambda row, ctx: (row['fg2m'] * 2) + (row['fg3m'] * 3) + row['ftm'],
+            'opponents': lambda row, ctx: (row['opp_fg2m'] * 2) + (row['opp_fg3m'] * 3) + row['opp_ftm']
         }
     },
     'p/ta': {
@@ -476,11 +560,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('fg2m', 'fg3m', 'ftm', 'fg2a', 'fg3a', 'fta')},
+            'team': {'fields': ('fg2m', 'fg3m', 'ftm', 'fg2a', 'fg3a', 'fta')},
+            'all_teams': {'fields': ('fg2m', 'fg3m', 'ftm', 'fg2a', 'fg3a', 'fta')},
+            'opponents': {'fields': ('opp_fg2m', 'opp_fg3m', 'opp_ftm', 'opp_fg2a', 'opp_fg3a', 'opp_fta')},
+        },
         'values': {
-            'player': ('divide', ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta'))),
-            'team': ('divide', ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta'))),
-            'all_teams': ('divide', ('add', ('multiply', 'fg2m', 2), ('multiply', 'fg3m', 3), 'ftm'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta'))),
-            'opponents': ('divide', ('add', ('multiply', 'opp_fg2m', 2), ('multiply', 'opp_fg3m', 3), 'opp_ftm'), ('add', 'opp_fg2a', 'opp_fg3a', ('multiply', 0.44, 'opp_fta')))
+            'player': lambda row, ctx: ((row['fg2m'] * 2) + (row['fg3m'] * 3) + row['ftm']) / (row['fg2a'] + row['fg3a'] + (row['fta'] * 0.44)),
+            'team': lambda row, ctx: ((row['fg2m'] * 2) + (row['fg3m'] * 3) + row['ftm']) / (row['fg2a'] + row['fg3a'] + (row['fta'] * 0.44)),
+            'all_teams': lambda row, ctx: ((row['fg2m'] * 2) + (row['fg3m'] * 3) + row['ftm']) / (row['fg2a'] + row['fg3a'] + (row['fta'] * 0.44)),
+            'opponents': lambda row, ctx: ((row['opp_fg2m'] * 2) + (row['opp_fg3m'] * 3) + row['opp_ftm']) / (row['opp_fg2a'] + row['opp_fg3a'] + (row['opp_fta'] * 0.44))
         }
     },
     '2a': {
@@ -501,11 +591,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('fg2a',)},
+            'team': {'fields': ('fg2a',)},
+            'all_teams': {'fields': ('fg2a',)},
+            'opponents': {'fields': ('opp_fg2a',)},
+        },
         'values': {
-            'player': '{fg2a}',
-            'team': '{fg2a}',
-            'all_teams': '{fg2a}',
-            'opponents': '{opp_fg2a}'
+            'player': lambda row, ctx: row.get('fg2a'),
+            'team': lambda row, ctx: row.get('fg2a'),
+            'all_teams': lambda row, ctx: row.get('fg2a'),
+            'opponents': lambda row, ctx: row.get('opp_fg2a')
         }
     },
     'p/2': {
@@ -526,11 +622,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('fg2m', 'fg2a')},
+            'team': {'fields': ('fg2m', 'fg2a')},
+            'all_teams': {'fields': ('fg2m', 'fg2a')},
+            'opponents': {'fields': ('opp_fg2m', 'opp_fg2a')},
+        },
         'values': {
-            'player': ('multiply', 2, ('divide', 'fg2m', 'fg2a')),
-            'team': ('multiply', 2, ('divide', 'fg2m', 'fg2a')),
-            'all_teams': ('multiply', 2, ('divide', 'fg2m', 'fg2a')),
-            'opponents': ('multiply', 2, ('divide', 'opp_fg2m', 'opp_fg2a'))
+            'player': lambda row, ctx: 2 * (row.get('fg2m') / row.get('fg2a')) if row.get('fg2m') is not None and row.get('fg2a') else None,
+            'team': lambda row, ctx: 2 * (row.get('fg2m') / row.get('fg2a')) if row.get('fg2m') is not None and row.get('fg2a') else None,
+            'all_teams': lambda row, ctx: 2 * (row.get('fg2m') / row.get('fg2a')) if row.get('fg2m') is not None and row.get('fg2a') else None,
+            'opponents': lambda row, ctx: 2 * (row.get('opp_fg2m') / row.get('opp_fg2a')) if row.get('opp_fg2m') is not None and row.get('opp_fg2a') else None
         }
     },
     'ora': {
@@ -551,10 +653,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('open_rim_fga',)},
+            'team': {'fields': ('open_rim_fga',)},
+            'all_teams': {'fields': ('open_rim_fga',)},
+        },
         'values': {
-            'player': '{open_rim_fga}',
-            'team': '{open_rim_fga}',
-            'all_teams': '{open_rim_fga}'
+            'player': lambda row, ctx: row.get('open_rim_fga'),
+            'team': lambda row, ctx: row.get('open_rim_fga'),
+            'all_teams': lambda row, ctx: row.get('open_rim_fga')
         }
     },
     'p/or': {
@@ -575,10 +682,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('open_rim_fgm', 'open_rim_fga')},
+            'team': {'fields': ('open_rim_fgm', 'open_rim_fga')},
+            'all_teams': {'fields': ('open_rim_fgm', 'open_rim_fga')},
+        },
         'values': {
-            'player': ('multiply', 2, ('divide', 'open_rim_fgm', 'open_rim_fga')),
-            'team': ('multiply', 2, ('divide', 'open_rim_fgm', 'open_rim_fga')),
-            'all_teams': ('multiply', 2, ('divide', 'open_rim_fgm', 'open_rim_fga'))
+            'player': lambda row, ctx: 2 * (row.get('open_rim_fgm') / row.get('open_rim_fga')) if row.get('open_rim_fgm') is not None and row.get('open_rim_fga') else None,
+            'team': lambda row, ctx: 2 * (row.get('open_rim_fgm') / row.get('open_rim_fga')) if row.get('open_rim_fgm') is not None and row.get('open_rim_fga') else None,
+            'all_teams': lambda row, ctx: 2 * (row.get('open_rim_fgm') / row.get('open_rim_fga')) if row.get('open_rim_fgm') is not None and row.get('open_rim_fga') else None
         }
     },
     'cra': {
@@ -599,10 +711,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('cont_rim_fga',)},
+            'team': {'fields': ('cont_rim_fga',)},
+            'all_teams': {'fields': ('cont_rim_fga',)},
+        },
         'values': {
-            'player': '{cont_rim_fga}',
-            'team': '{cont_rim_fga}',
-            'all_teams': '{cont_rim_fga}'
+            'player': lambda row, ctx: row.get('cont_rim_fga'),
+            'team': lambda row, ctx: row.get('cont_rim_fga'),
+            'all_teams': lambda row, ctx: row.get('cont_rim_fga')
         }
     },
     'p/cr': {
@@ -623,10 +740,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('cont_rim_fgm', 'cont_rim_fga')},
+            'team': {'fields': ('cont_rim_fgm', 'cont_rim_fga')},
+            'all_teams': {'fields': ('cont_rim_fgm', 'cont_rim_fga')},
+        },
         'values': {
-            'player': ('multiply', 2, ('divide', 'cont_rim_fgm', 'cont_rim_fga')),
-            'team': ('multiply', 2, ('divide', 'cont_rim_fgm', 'cont_rim_fga')),
-            'all_teams': ('multiply', 2, ('divide', 'cont_rim_fgm', 'cont_rim_fga'))
+            'player': lambda row, ctx: 2 * (row.get('cont_rim_fgm') / row.get('cont_rim_fga')) if row.get('cont_rim_fgm') is not None and row.get('cont_rim_fga') else None,
+            'team': lambda row, ctx: 2 * (row.get('cont_rim_fgm') / row.get('cont_rim_fga')) if row.get('cont_rim_fgm') is not None and row.get('cont_rim_fga') else None,
+            'all_teams': lambda row, ctx: 2 * (row.get('cont_rim_fgm') / row.get('cont_rim_fga')) if row.get('cont_rim_fgm') is not None and row.get('cont_rim_fga') else None
         }
     },
     'uar': {
@@ -647,10 +769,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('unassisted_rim_fgm',)},
+            'team': {'fields': ('unassisted_rim_fgm',)},
+            'all_teams': {'fields': ('unassisted_rim_fgm',)},
+        },
         'values': {
-            'player': '{unassisted_rim_fgm}',
-            'team': '{unassisted_rim_fgm}',
-            'all_teams': '{unassisted_rim_fgm}'
+            'player': lambda row, ctx: row.get('unassisted_rim_fgm'),
+            'team': lambda row, ctx: row.get('unassisted_rim_fgm'),
+            'all_teams': lambda row, ctx: row.get('unassisted_rim_fgm')
         }
     },
     'oma': {
@@ -671,10 +798,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('cont_fg2a', 'cont_rim_fga')},
+            'team': {'fields': ('cont_fg2a', 'cont_rim_fga')},
+            'all_teams': {'fields': ('cont_fg2a', 'cont_rim_fga')},
+        },
         'values': {
-            'player': ('subtract', 'cont_fg2a', 'cont_rim_fga'),
-            'team': ('subtract', 'cont_fg2a', 'cont_rim_fga'),
-            'all_teams': ('subtract', 'cont_fg2a', 'cont_rim_fga')
+            'player': lambda row, ctx: row.get('cont_fg2a') - row.get('cont_rim_fga') if row.get('cont_fg2a') is not None and row.get('cont_rim_fga') is not None else None,
+            'team': lambda row, ctx: row.get('cont_fg2a') - row.get('cont_rim_fga') if row.get('cont_fg2a') is not None and row.get('cont_rim_fga') is not None else None,
+            'all_teams': lambda row, ctx: row.get('cont_fg2a') - row.get('cont_rim_fga') if row.get('cont_fg2a') is not None and row.get('cont_rim_fga') is not None else None
         }
     },
     'p/om': {
@@ -695,10 +827,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('open_fg2m', 'open_rim_fgm', 'open_fg2a', 'open_rim_fga')},
+            'team': {'fields': ('open_fg2m', 'open_rim_fgm', 'open_fg2a', 'open_rim_fga')},
+            'all_teams': {'fields': ('open_fg2m', 'open_rim_fgm', 'open_fg2a', 'open_rim_fga')},
+        },
         'values': {
-            'player': ('multiply', 2, ('divide', ('subtract', 'open_fg2m', 'open_rim_fgm'), ('subtract', 'open_fg2a', 'open_rim_fga'))),
-            'team': ('multiply', 2, ('divide', ('subtract', 'open_fg2m', 'open_rim_fgm'), ('subtract', 'open_fg2a', 'open_rim_fga'))),
-            'all_teams': ('multiply', 2, ('divide', ('subtract', 'open_fg2m', 'open_rim_fgm'), ('subtract', 'open_fg2a', 'open_rim_fga')))
+            'player': lambda row, ctx: 2 * ((row['open_fg2m'] - row['open_rim_fgm']) / (row['open_fg2a'] - row['open_rim_fga'])),
+            'team': lambda row, ctx: 2 * ((row['open_fg2m'] - row['open_rim_fgm']) / (row['open_fg2a'] - row['open_rim_fga'])),
+            'all_teams': lambda row, ctx: 2 * ((row['open_fg2m'] - row['open_rim_fgm']) / (row['open_fg2a'] - row['open_rim_fga']))
         }
     },
     'cma': {
@@ -719,10 +856,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('cont_fg2a', 'cont_rim_fga')},
+            'team': {'fields': ('cont_fg2a', 'cont_rim_fga')},
+            'all_teams': {'fields': ('cont_fg2a', 'cont_rim_fga')},
+        },
         'values': {
-            'player': ('subtract', 'cont_fg2a', 'cont_rim_fga'),
-            'team': ('subtract', 'cont_fg2a', 'cont_rim_fga'),
-            'all_teams': ('subtract', 'cont_fg2a', 'cont_rim_fga')
+            'player': lambda row, ctx: row.get('cont_fg2a') - row.get('cont_rim_fga') if row.get('cont_fg2a') is not None and row.get('cont_rim_fga') is not None else None,
+            'team': lambda row, ctx: row.get('cont_fg2a') - row.get('cont_rim_fga') if row.get('cont_fg2a') is not None and row.get('cont_rim_fga') is not None else None,
+            'all_teams': lambda row, ctx: row.get('cont_fg2a') - row.get('cont_rim_fga') if row.get('cont_fg2a') is not None and row.get('cont_rim_fga') is not None else None
         }
     },
     'p/cm': {
@@ -743,10 +885,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('cont_fg2m', 'cont_rim_fgm', 'cont_fg2a', 'cont_rim_fga')},
+            'team': {'fields': ('cont_fg2m', 'cont_rim_fgm', 'cont_fg2a', 'cont_rim_fga')},
+            'all_teams': {'fields': ('cont_fg2m', 'cont_rim_fgm', 'cont_fg2a', 'cont_rim_fga')},
+        },
         'values': {
-            'player': ('multiply', 2, ('divide', ('subtract', 'cont_fg2m', 'cont_rim_fgm'), ('subtract', 'cont_fg2a', 'cont_rim_fga'))),
-            'team': ('multiply', 2, ('divide', ('subtract', 'cont_fg2m', 'cont_rim_fgm'), ('subtract', 'cont_fg2a', 'cont_rim_fga'))),
-            'all_teams': ('multiply', 2, ('divide', ('subtract', 'cont_fg2m', 'cont_rim_fgm'), ('subtract', 'cont_fg2a', 'cont_rim_fga')))
+            'player': lambda row, ctx: 2 * ((row['cont_fg2m'] - row['cont_rim_fgm']) / (row['cont_fg2a'] - row['cont_rim_fga'])),
+            'team': lambda row, ctx: 2 * ((row['cont_fg2m'] - row['cont_rim_fgm']) / (row['cont_fg2a'] - row['cont_rim_fga'])),
+            'all_teams': lambda row, ctx: 2 * ((row['cont_fg2m'] - row['cont_rim_fgm']) / (row['cont_fg2a'] - row['cont_rim_fga']))
         }
     },
     'uam': {
@@ -767,10 +914,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('unassisted_fg2m', 'unassisted_rim_fgm')},
+            'team': {'fields': ('unassisted_fg2m', 'unassisted_rim_fgm')},
+            'all_teams': {'fields': ('unassisted_fgm', 'unassisted_rim_fgm')},
+        },
         'values': {
-            'player': ('subtract', 'unassisted_fg2m', 'unassisted_rim_fgm'),
-            'team': ('subtract', 'unassisted_fg2m', 'unassisted_rim_fgm'),
-            'all_teams': ('subtract', 'unassisted_fgm', 'unassisted_rim_fgm')
+            'player': lambda row, ctx: row.get('unassisted_fg2m') - row.get('unassisted_rim_fgm') if row.get('unassisted_fg2m') is not None and row.get('unassisted_rim_fgm') is not None else None,
+            'team': lambda row, ctx: row.get('unassisted_fg2m') - row.get('unassisted_rim_fgm') if row.get('unassisted_fg2m') is not None and row.get('unassisted_rim_fgm') is not None else None,
+            'all_teams': lambda row, ctx: row.get('unassisted_fgm') - row.get('unassisted_rim_fgm') if row.get('unassisted_fgm') is not None and row.get('unassisted_rim_fgm') is not None else None
         }
     },
     '3a': {
@@ -791,11 +943,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('fg3a',)},
+            'team': {'fields': ('fg3a',)},
+            'all_teams': {'fields': ('fg3a',)},
+            'opponents': {'fields': ('opp_fg3a',)},
+        },
         'values': {
-            'player': '{fg3a}',
-            'team': '{fg3a}',
-            'all_teams': '{fg3a}',
-            'opponents': '{opp_fg3a}'
+            'player': lambda row, ctx: row.get('fg3a'),
+            'team': lambda row, ctx: row.get('fg3a'),
+            'all_teams': lambda row, ctx: row.get('fg3a'),
+            'opponents': lambda row, ctx: row.get('opp_fg3a')
         }
     },
     'p/3': {
@@ -816,11 +974,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('fg3m', 'fg3a')},
+            'team': {'fields': ('fg3m', 'fg3a')},
+            'all_teams': {'fields': ('fg3m', 'fg3a')},
+            'opponents': {'fields': ('opp_fg3m', 'opp_fg3a')},
+        },
         'values': {
-            'player': ('multiply', 3, ('divide', 'fg3m', 'fg3a')),
-            'team': ('multiply', 3, ('divide', 'fg3m', 'fg3a')),
-            'all_teams': ('multiply', 3, ('divide', 'fg3m', 'fg3a')),
-            'opponents': ('multiply', 3, ('divide', 'opp_fg3m', 'opp_fg3a'))
+            'player': lambda row, ctx: 3 * (row.get('fg3m') / row.get('fg3a')) if row.get('fg3m') is not None and row.get('fg3a') else None,
+            'team': lambda row, ctx: 3 * (row.get('fg3m') / row.get('fg3a')) if row.get('fg3m') is not None and row.get('fg3a') else None,
+            'all_teams': lambda row, ctx: 3 * (row.get('fg3m') / row.get('fg3a')) if row.get('fg3m') is not None and row.get('fg3a') else None,
+            'opponents': lambda row, ctx: 3 * (row.get('opp_fg3m') / row.get('opp_fg3a')) if row.get('opp_fg3m') is not None and row.get('opp_fg3a') else None
         }
     },
     'o3a': {
@@ -841,10 +1005,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('open_fg3a',)},
+            'team': {'fields': ('open_fg3a',)},
+            'all_teams': {'fields': ('open_fg3a',)},
+        },
         'values': {
-            'player': '{open_fg3a}',
-            'team': '{open_fg3a}',
-            'all_teams': '{open_fg3a}'
+            'player': lambda row, ctx: row.get('open_fg3a'),
+            'team': lambda row, ctx: row.get('open_fg3a'),
+            'all_teams': lambda row, ctx: row.get('open_fg3a')
         }
     },
     'p/o3': {
@@ -865,10 +1034,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('open_fg3m', 'open_fg3a')},
+            'team': {'fields': ('open_fg3m', 'open_fg3a')},
+            'all_teams': {'fields': ('open_fg3m', 'open_fg3a')},
+        },
         'values': {
-            'player': ('multiply', 3, ('divide', 'open_fg3m', 'open_fg3a')),
-            'team': ('multiply', 3, ('divide', 'open_fg3m', 'open_fg3a')),
-            'all_teams': ('multiply', 3, ('divide', 'open_fg3m', 'open_fg3a'))
+            'player': lambda row, ctx: 3 * (row.get('open_fg3m') / row.get('open_fg3a')) if row.get('open_fg3m') is not None and row.get('open_fg3a') else None,
+            'team': lambda row, ctx: 3 * (row.get('open_fg3m') / row.get('open_fg3a')) if row.get('open_fg3m') is not None and row.get('open_fg3a') else None,
+            'all_teams': lambda row, ctx: 3 * (row.get('open_fg3m') / row.get('open_fg3a')) if row.get('open_fg3m') is not None and row.get('open_fg3a') else None
         }
     },
     'c3a': {
@@ -889,10 +1063,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('cont_fg3a',)},
+            'team': {'fields': ('cont_fg3a',)},
+            'all_teams': {'fields': ('cont_fg3a',)},
+        },
         'values': {
-            'player': '{cont_fg3a}',
-            'team': '{cont_fg3a}',
-            'all_teams': '{cont_fg3a}'
+            'player': lambda row, ctx: row.get('cont_fg3a'),
+            'team': lambda row, ctx: row.get('cont_fg3a'),
+            'all_teams': lambda row, ctx: row.get('cont_fg3a')
         }
     },
     'p/c3': {
@@ -913,10 +1092,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('cont_fg3m', 'cont_fg3a')},
+            'team': {'fields': ('cont_fg3m', 'cont_fg3a')},
+            'all_teams': {'fields': ('cont_fg3m', 'cont_fg3a')},
+        },
         'values': {
-            'player': ('multiply', 3, ('divide', 'cont_fg3m', 'cont_fg3a')),
-            'team': ('multiply', 3, ('divide', 'cont_fg3m', 'cont_fg3a')),
-            'all_teams': ('multiply', 3, ('divide', 'cont_fg3m', 'cont_fg3a'))
+            'player': lambda row, ctx: 3 * (row.get('cont_fg3m') / row.get('cont_fg3a')) if row.get('cont_fg3m') is not None and row.get('cont_fg3a') else None,
+            'team': lambda row, ctx: 3 * (row.get('cont_fg3m') / row.get('cont_fg3a')) if row.get('cont_fg3m') is not None and row.get('cont_fg3a') else None,
+            'all_teams': lambda row, ctx: 3 * (row.get('cont_fg3m') / row.get('cont_fg3a')) if row.get('cont_fg3m') is not None and row.get('cont_fg3a') else None
         }
     },
     'ua3': {
@@ -937,10 +1121,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('unassisted_fg3m',)},
+            'team': {'fields': ('unassisted_fg3m',)},
+            'all_teams': {'fields': ('unassisted_fg3m',)},
+        },
         'values': {
-            'player': '{unassisted_fg3m}',
-            'team': '{unassisted_fg3m}',
-            'all_teams': '{unassisted_fg3m}'
+            'player': lambda row, ctx: row.get('unassisted_fg3m'),
+            'team': lambda row, ctx: row.get('unassisted_fg3m'),
+            'all_teams': lambda row, ctx: row.get('unassisted_fg3m')
         }
     },
     'tftr': {
@@ -961,11 +1150,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('fta', 'fg2a', 'fg3a')},
+            'team': {'fields': ('fta', 'fg2a', 'fg3a')},
+            'all_teams': {'fields': ('fta', 'fg2a', 'fg3a')},
+            'opponents': {'fields': ('opp_fta', 'opp_fg2a', 'opp_fg3a')},
+        },
         'values': {
-            'player': ('divide', ('multiply', 0.44, 'fta'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta') )),
-            'team': ('divide', ('multiply', 0.44, 'fta'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta') )),
-            'all_teams': ('divide', ('multiply', 0.44, 'fta'), ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta') )),
-            'opponents': ('divide', ('multiply', 0.44, 'opp_fta'), ('add', 'opp_fg2a', 'opp_fg3a', ('multiply', 0.44, 'opp_fta') ))
+            'player': lambda row, ctx: (row['fta'] * 0.44) / (row['fg2a'] + row['fg3a'] + (row['fta'] * 0.44)),
+            'team': lambda row, ctx: (row['fta'] * 0.44) / (row['fg2a'] + row['fg3a'] + (row['fta'] * 0.44)),
+            'all_teams': lambda row, ctx: (row['fta'] * 0.44) / (row['fg2a'] + row['fg3a'] + (row['fta'] * 0.44)),
+            'opponents': lambda row, ctx: (row['opp_fta'] * 0.44) / (row['opp_fg2a'] + row['opp_fg3a'] + (row['opp_fta'] * 0.44))
         }
     },
     'p/ft': {
@@ -987,11 +1182,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('ftm', 'fta')},
+            'team': {'fields': ('ftm', 'fta')},
+            'all_teams': {'fields': ('ftm', 'fta')},
+            'opponents': {'fields': ('opp_ftm', 'opp_fta')},
+        },
         'values': {
-            'player': ('divide', 'ftm', 'fta'),
-            'team': ('divide', 'ftm', 'fta'),
-            'all_teams': ('divide', 'ftm', 'fta'),
-            'opponents': ('divide', 'opp_ftm', 'opp_fta')
+            'player': lambda row, ctx: row.get('ftm') / row.get('fta') if row.get('ftm') is not None and row.get('fta') else None,
+            'team': lambda row, ctx: row.get('ftm') / row.get('fta') if row.get('ftm') is not None and row.get('fta') else None,
+            'all_teams': lambda row, ctx: row.get('ftm') / row.get('fta') if row.get('ftm') is not None and row.get('fta') else None,
+            'opponents': lambda row, ctx: row.get('opp_ftm') / row.get('opp_fta') if row.get('opp_ftm') is not None and row.get('opp_fta') else None
         }
     },
     'dnk': {
@@ -1012,10 +1213,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('dunks',)},
+            'team': {'fields': ('dunks',)},
+            'all_teams': {'fields': ('dunks',)},
+        },
         'values': {
-            'player': '{dunks}',
-            'team': '{dunks}',
-            'all_teams': '{dunks}'
+            'player': lambda row, ctx: row.get('dunks'),
+            'team': lambda row, ctx: row.get('dunks'),
+            'all_teams': lambda row, ctx: row.get('dunks')
         }
     },
     'tou': {
@@ -1036,10 +1242,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('touches',)},
+            'team': {'fields': ('touches',)},
+            'all_teams': {'fields': ('touches',)},
+        },
         'values': {
-            'player': '{touches}',
-            'team': '{touches}',
-            'all_teams': '{touches}'
+            'player': lambda row, ctx: row.get('touches'),
+            'team': lambda row, ctx: row.get('touches'),
+            'all_teams': lambda row, ctx: row.get('touches')
         }
     },
     'spt': {
@@ -1060,10 +1271,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('time_on_ball', 'touches')},
+            'team': {'fields': ('time_on_ball', 'touches')},
+            'all_teams': {'fields': ('time_on_ball', 'touches')},
+        },
         'values': {
-            'player': ('divide', ('multiply', 60, 'time_on_ball'), 'touches'),
-            'team': ('divide', ('multiply', 60, 'time_on_ball'), 'touches'),
-            'all_teams': ('divide', ('multiply', 60, 'time_on_ball'), 'touches')
+            'player': lambda row, ctx: (60 * row.get('time_on_ball')) / row.get('touches') if row.get('time_on_ball') is not None and row.get('touches') else None,
+            'team': lambda row, ctx: (60 * row.get('time_on_ball')) / row.get('touches') if row.get('time_on_ball') is not None and row.get('touches') else None,
+            'all_teams': lambda row, ctx: (60 * row.get('time_on_ball')) / row.get('touches') if row.get('time_on_ball') is not None and row.get('touches') else None
         }
     },
     '%trs': {
@@ -1084,10 +1300,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('fg2a', 'fg3a', 'fta', 'touches')},
+            'team': {'fields': ('fg2a', 'fg3a', 'fta', 'touches')},
+            'all_teams': {'fields': ('fg2a', 'fg3a', 'fta', 'touches')},
+        },
         'values': {
-            'player': ('divide', ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta')), 'touches'),
-            'team': ('divide', ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta')), 'touches'),
-            'all_teams': ('divide', ('add', 'fg2a', 'fg3a', ('multiply', 0.44, 'fta')), 'touches')
+            'player': lambda row, ctx: (row['fg2a'] + row['fg3a'] + (row['fta'] * 0.44)) / row['touches'],
+            'team': lambda row, ctx: (row['fg2a'] + row['fg3a'] + (row['fta'] * 0.44)) / row['touches'],
+            'all_teams': lambda row, ctx: (row['fg2a'] + row['fg3a'] + (row['fta'] * 0.44)) / row['touches']
         }
     },
     '%trp': {
@@ -1108,10 +1329,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('passes', 'touches')},
+            'team': {'fields': ('passes', 'touches')},
+            'all_teams': {'fields': ('passes', 'touches')},
+        },
         'values': {
-            'player': ('divide', 'passes', 'touches'),
-            'team': ('divide', 'passes', 'touches'),
-            'all_teams': ('divide', 'passes', 'touches')
+            'player': lambda row, ctx: row.get('passes') / row.get('touches') if row.get('passes') is not None and row.get('touches') else None,
+            'team': lambda row, ctx: row.get('passes') / row.get('touches') if row.get('passes') is not None and row.get('touches') else None,
+            'all_teams': lambda row, ctx: row.get('passes') / row.get('touches') if row.get('passes') is not None and row.get('touches') else None
         }
     },
     '%trt': {
@@ -1132,10 +1358,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('turnovers', 'touches')},
+            'team': {'fields': ('turnovers', 'touches')},
+            'all_teams': {'fields': ('turnovers', 'touches')},
+        },
         'values': {
-            'player': ('divide', 'turnovers', 'touches'),
-            'team': ('divide', 'turnovers', 'touches'),
-            'all_teams': ('divide', 'turnovers', 'touches')
+            'player': lambda row, ctx: row.get('turnovers') / row.get('touches') if row.get('turnovers') is not None and row.get('touches') else None,
+            'team': lambda row, ctx: row.get('turnovers') / row.get('touches') if row.get('turnovers') is not None and row.get('touches') else None,
+            'all_teams': lambda row, ctx: row.get('turnovers') / row.get('touches') if row.get('turnovers') is not None and row.get('touches') else None
         }
     },
     'ast': {
@@ -1156,11 +1387,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('assists',)},
+            'team': {'fields': ('assists',)},
+            'all_teams': {'fields': ('assists',)},
+            'opponents': {'fields': ('opp_assists',)},
+        },
         'values': {
-            'player': '{assists}',
-            'team': '{assists}',
-            'all_teams': '{assists}',
-            'opponents': '{opp_assists}'
+            'player': lambda row, ctx: row.get('assists'),
+            'team': lambda row, ctx: row.get('assists'),
+            'all_teams': lambda row, ctx: row.get('assists'),
+            'opponents': lambda row, ctx: row.get('opp_assists')
         }
     },
     'past': {
@@ -1181,10 +1418,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('pot_assists',)},
+            'team': {'fields': ('pot_assists',)},
+            'all_teams': {'fields': ('pot_assists',)},
+        },
         'values': {
-            'player': '{pot_assists}',
-            'team': '{pot_assists}',
-            'all_teams': '{pot_assists}'
+            'player': lambda row, ctx: row.get('pot_assists'),
+            'team': lambda row, ctx: row.get('pot_assists'),
+            'all_teams': lambda row, ctx: row.get('pot_assists')
         }
     },
     '2ast': {
@@ -1206,10 +1448,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('sec_assists',)},
+            'team': {'fields': ('sec_assists',)},
+            'all_teams': {'fields': ('sec_assists',)},
+        },
         'values': {
-            'player': '{sec_assists}',
-            'team': '{sec_assists}',
-            'all_teams': '{sec_assists}'
+            'player': lambda row, ctx: row.get('sec_assists'),
+            'team': lambda row, ctx: row.get('sec_assists'),
+            'all_teams': lambda row, ctx: row.get('sec_assists')
         }
     },
     'tov': {
@@ -1230,11 +1477,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('turnovers',)},
+            'team': {'fields': ('turnovers',)},
+            'all_teams': {'fields': ('turnovers',)},
+            'opponents': {'fields': ('opp_turnovers',)},
+        },
         'values': {
-            'player': '{turnovers}',
-            'team': '{turnovers}',
-            'all_teams': '{turnovers}',
-            'opponents': '{opp_turnovers}'
+            'player': lambda row, ctx: row.get('turnovers'),
+            'team': lambda row, ctx: row.get('turnovers'),
+            'all_teams': lambda row, ctx: row.get('turnovers'),
+            'opponents': lambda row, ctx: row.get('opp_turnovers')
         }
     },
     'or%': {
@@ -1255,10 +1508,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('o_reb_pct_x1000',)},
+            'team': {'fields': ('o_reb_pct_x1000',)},
+            'all_teams': {'fields': ('o_reb_pct_x1000',)},
+        },
         'values': {
-            'player': ('divide', 'o_reb_pct_x1000', 1000),
-            'team': ('divide', 'o_reb_pct_x1000', 1000),
-            'all_teams': ('divide', 'o_reb_pct_x1000', 1000)
+            'player': lambda row, ctx: row.get('o_reb_pct_x1000') / 1000 if row.get('o_reb_pct_x1000') is not None else None,
+            'team': lambda row, ctx: row.get('o_reb_pct_x1000') / 1000 if row.get('o_reb_pct_x1000') is not None else None,
+            'all_teams': lambda row, ctx: row.get('o_reb_pct_x1000') / 1000 if row.get('o_reb_pct_x1000') is not None else None
         }
     },
     'cor%': {
@@ -1280,10 +1538,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('cont_o_rebs', 'o_rebs')},
+            'team': {'fields': ('cont_o_rebs', 'o_rebs')},
+            'all_teams': {'fields': ('cont_o_rebs', 'o_rebs')},
+        },
         'values': {
-            'player': ('divide', 'cont_o_rebs', 'o_rebs'),
-            'team': ('divide', 'cont_o_rebs', 'o_rebs'),
-            'all_teams': ('divide', 'cont_o_rebs', 'o_rebs')
+            'player': lambda row, ctx: row.get('cont_o_rebs') / row.get('o_rebs') if row.get('cont_o_rebs') is not None and row.get('o_rebs') else None,
+            'team': lambda row, ctx: row.get('cont_o_rebs') / row.get('o_rebs') if row.get('cont_o_rebs') is not None and row.get('o_rebs') else None,
+            'all_teams': lambda row, ctx: row.get('cont_o_rebs') / row.get('o_rebs') if row.get('cont_o_rebs') is not None and row.get('o_rebs') else None
         }
     },
     'dr%': {
@@ -1304,10 +1567,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_reb_pct_x1000',)},
+            'team': {'fields': ('d_reb_pct_x1000',)},
+            'all_teams': {'fields': ('d_reb_pct_x1000',)},
+        },
         'values': {
-            'player': ('divide', 'd_reb_pct_x1000', 1000),
-            'team': ('divide', 'd_reb_pct_x1000', 1000),
-            'all_teams': ('divide', 'd_reb_pct_x1000', 10)
+            'player': lambda row, ctx: row.get('d_reb_pct_x1000') / 1000 if row.get('d_reb_pct_x1000') is not None else None,
+            'team': lambda row, ctx: row.get('d_reb_pct_x1000') / 1000 if row.get('d_reb_pct_x1000') is not None else None,
+            'all_teams': lambda row, ctx: row.get('d_reb_pct_x1000') / 10 if row.get('d_reb_pct_x1000') is not None else None
         }
     },
     'cdr%': {
@@ -1328,10 +1596,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('cont_d_rebs', 'd_rebs')},
+            'team': {'fields': ('cont_d_rebs', 'd_rebs')},
+            'all_teams': {'fields': ('cont_d_rebs', 'd_rebs')},
+        },
         'values': {
-            'player': ('divide', 'cont_d_rebs', 'd_rebs'),
-            'team': ('divide', 'cont_d_rebs', 'd_rebs'),
-            'all_teams': ('divide', 'cont_d_rebs', 'd_rebs')
+            'player': lambda row, ctx: row.get('cont_d_rebs') / row.get('d_rebs') if row.get('cont_d_rebs') is not None and row.get('d_rebs') else None,
+            'team': lambda row, ctx: row.get('cont_d_rebs') / row.get('d_rebs') if row.get('cont_d_rebs') is not None and row.get('d_rebs') else None,
+            'all_teams': lambda row, ctx: row.get('cont_d_rebs') / row.get('d_rebs') if row.get('cont_d_rebs') is not None and row.get('d_rebs') else None
         }
     },
     'pbs': {
@@ -1352,10 +1625,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('putbacks',)},
+            'team': {'fields': ('putbacks',)},
+            'all_teams': {'fields': ('putbacks',)},
+        },
         'values': {
-            'player': '{putbacks}',
-            'team': '{putbacks}',
-            'all_teams': '{putbacks}'
+            'player': lambda row, ctx: row.get('putbacks'),
+            'team': lambda row, ctx: row.get('putbacks'),
+            'all_teams': lambda row, ctx: row.get('putbacks')
         }
     },
     'odst': {
@@ -1376,10 +1654,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('o_dist_x10',)},
+            'team': {'fields': ('o_dist_x10',)},
+            'all_teams': {'fields': ('o_dist_x10',)},
+        },
         'values': {
-            'player': ('divide', 'o_dist_x10', 10),
-            'team': ('divide', 'o_dist_x10', 10),
-            'all_teams': ('divide', 'o_dist_x10', 10)
+            'player': lambda row, ctx: row.get('o_dist_x10') / 10 if row.get('o_dist_x10') is not None else None,
+            'team': lambda row, ctx: row.get('o_dist_x10') / 10 if row.get('o_dist_x10') is not None else None,
+            'all_teams': lambda row, ctx: row.get('o_dist_x10') / 10 if row.get('o_dist_x10') is not None else None
         }
     },
     'ddst': {
@@ -1400,10 +1683,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_dist_x10',)},
+            'team': {'fields': ('d_dist_x10',)},
+            'all_teams': {'fields': ('d_dist_x10',)},
+        },
         'values': {
-            'player': ('divide', 'd_dist_x10', 10),
-            'team': ('divide', 'd_dist_x10', 10),
-            'all_teams': ('divide', 'd_dist_x10', 10)
+            'player': lambda row, ctx: row.get('d_dist_x10') / 10 if row.get('d_dist_x10') is not None else None,
+            'team': lambda row, ctx: row.get('d_dist_x10') / 10 if row.get('d_dist_x10') is not None else None,
+            'all_teams': lambda row, ctx: row.get('d_dist_x10') / 10 if row.get('d_dist_x10') is not None else None
         }
     },
     'dra': {
@@ -1424,10 +1712,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_rim_fga',)},
+            'team': {'fields': ('d_rim_fga',)},
+            'all_teams': {'fields': ('d_rim_fga',)},
+        },
         'values': {
-            'player': '{d_rim_fga}',
-            'team': '{d_rim_fga}',
-            'all_teams': '{d_rim_fga}'
+            'player': lambda row, ctx: row.get('d_rim_fga'),
+            'team': lambda row, ctx: row.get('d_rim_fga'),
+            'all_teams': lambda row, ctx: row.get('d_rim_fga')
         }
     },
     'p/dr': {
@@ -1448,10 +1741,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_rim_fgm', 'd_rim_fga')},
+            'team': {'fields': ('d_rim_fgm', 'd_rim_fga')},
+            'all_teams': {'fields': ('d_rim_fgm', 'd_rim_fga')},
+        },
         'values': {
-            'player': ('multiply', 2, ('divide', 'd_rim_fgm', 'd_rim_fga')),
-            'team': ('multiply', 2, ('divide', 'd_rim_fgm', 'd_rim_fga')),
-            'all_teams': ('multiply', 2, ('divide', 'd_rim_fgm', 'd_rim_fga'))
+            'player': lambda row, ctx: 2 * (row.get('d_rim_fgm') / row.get('d_rim_fga')) if row.get('d_rim_fgm') is not None and row.get('d_rim_fga') else None,
+            'team': lambda row, ctx: 2 * (row.get('d_rim_fgm') / row.get('d_rim_fga')) if row.get('d_rim_fgm') is not None and row.get('d_rim_fga') else None,
+            'all_teams': lambda row, ctx: 2 * (row.get('d_rim_fgm') / row.get('d_rim_fga')) if row.get('d_rim_fgm') is not None and row.get('d_rim_fga') else None
         }
     },
     'dma': {
@@ -1472,10 +1770,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_fg2a', 'd_rim_fga')},
+            'team': {'fields': ('d_fg2a', 'd_rim_fga')},
+            'all_teams': {'fields': ('d_fg2a', 'd_rim_fga')},
+        },
         'values': {
-            'player': ('subtract', 'd_fg2a', 'd_rim_fga'),
-            'team': ('subtract', 'd_fg2a', 'd_rim_fga'),
-            'all_teams': ('subtract', 'd_fg2a', 'd_rim_fga')
+            'player': lambda row, ctx: row.get('d_fg2a') - row.get('d_rim_fga') if row.get('d_fg2a') is not None and row.get('d_rim_fga') is not None else None,
+            'team': lambda row, ctx: row.get('d_fg2a') - row.get('d_rim_fga') if row.get('d_fg2a') is not None and row.get('d_rim_fga') is not None else None,
+            'all_teams': lambda row, ctx: row.get('d_fg2a') - row.get('d_rim_fga') if row.get('d_fg2a') is not None and row.get('d_rim_fga') is not None else None
         }
     },
     'p/dm': {
@@ -1496,10 +1799,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_fg2m', 'd_rim_fgm', 'd_fg2a', 'd_rim_fga')},
+            'team': {'fields': ('d_fg2m', 'd_rim_fgm', 'd_fg2a', 'd_rim_fga')},
+            'all_teams': {'fields': ('d_fg2m', 'd_rim_fgm', 'd_fg2a', 'd_rim_fga')},
+        },
         'values': {
-            'player': ('multiply', 2, ('divide', ('subtract', 'd_fg2m', 'd_rim_fgm'), ('subtract', 'd_fg2a', 'd_rim_fga'))),
-            'team': ('multiply', 2, ('divide', ('subtract', 'd_fg2m', 'd_rim_fgm'), ('subtract', 'd_fg2a', 'd_rim_fga'))),
-            'all_teams': ('multiply', 2, ('divide', ('subtract', 'd_fg2m', 'd_rim_fgm'), ('subtract', 'd_fg2a', 'd_rim_fga')))
+            'player': lambda row, ctx: 2 * ((row['d_fg2m'] - row['d_rim_fgm']) / (row['d_fg2a'] - row['d_rim_fga'])),
+            'team': lambda row, ctx: 2 * ((row['d_fg2m'] - row['d_rim_fgm']) / (row['d_fg2a'] - row['d_rim_fga'])),
+            'all_teams': lambda row, ctx: 2 * ((row['d_fg2m'] - row['d_rim_fgm']) / (row['d_fg2a'] - row['d_rim_fga']))
         }
     },
     'd3a': {
@@ -1520,10 +1828,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_fg3a',)},
+            'team': {'fields': ('d_fg3a',)},
+            'all_teams': {'fields': ('d_fg3a',)},
+        },
         'values': {
-            'player': '{d_fg3a}',
-            'team': '{d_fg3a}',
-            'all_teams': '{d_fg3a}'
+            'player': lambda row, ctx: row.get('d_fg3a'),
+            'team': lambda row, ctx: row.get('d_fg3a'),
+            'all_teams': lambda row, ctx: row.get('d_fg3a')
         }
     },
     'p/d3': {
@@ -1544,10 +1857,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_fg3m', 'd_fg3a')},
+            'team': {'fields': ('d_fg3m', 'd_fg3a')},
+            'all_teams': {'fields': ('d_fg3m', 'd_fg3a')},
+        },
         'values': {
-            'player': ('multiply', 3, ('divide', 'd_fg3m', 'd_fg3a')),
-            'team': ('multiply', 3, ('divide', 'd_fg3m', 'd_fg3a')),
-            'all_teams': ('multiply', 3, ('divide', 'd_fg3m', 'd_fg3a'))
+            'player': lambda row, ctx: 3 * (row.get('d_fg3m') / row.get('d_fg3a')) if row.get('d_fg3m') is not None and row.get('d_fg3a') else None,
+            'team': lambda row, ctx: 3 * (row.get('d_fg3m') / row.get('d_fg3a')) if row.get('d_fg3m') is not None and row.get('d_fg3a') else None,
+            'all_teams': lambda row, ctx: 3 * (row.get('d_fg3m') / row.get('d_fg3a')) if row.get('d_fg3m') is not None and row.get('d_fg3a') else None
         }
     },
     'cont': {
@@ -1568,10 +1886,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('contests',)},
+            'team': {'fields': ('contests',)},
+            'all_teams': {'fields': ('contests',)},
+        },
         'values': {
-            'player': '{contests}',
-            'team': '{contests}',
-            'all_teams': '{contests}'
+            'player': lambda row, ctx: row.get('contests'),
+            'team': lambda row, ctx: row.get('contests'),
+            'all_teams': lambda row, ctx: row.get('contests')
         }
     },
     'blk': {
@@ -1592,10 +1915,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('blocks',)},
+            'team': {'fields': ('blocks',)},
+            'all_teams': {'fields': ('blocks',)},
+        },
         'values': {
-            'player': '{blocks}',
-            'team': '{blocks}',
-            'all_teams': '{blocks}'
+            'player': lambda row, ctx: row.get('blocks'),
+            'team': lambda row, ctx: row.get('blocks'),
+            'all_teams': lambda row, ctx: row.get('blocks')
         }
     },
     'defl': {
@@ -1616,10 +1944,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('deflections',)},
+            'team': {'fields': ('deflections',)},
+            'all_teams': {'fields': ('deflections',)},
+        },
         'values': {
-            'player': '{deflections}',
-            'team': '{deflections}',
-            'all_teams': '{deflections}'
+            'player': lambda row, ctx: row.get('deflections'),
+            'team': lambda row, ctx: row.get('deflections'),
+            'all_teams': lambda row, ctx: row.get('deflections')
         }
     },
     'stl': {
@@ -1640,10 +1973,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('steals',)},
+            'team': {'fields': ('steals',)},
+            'all_teams': {'fields': ('steals',)},
+        },
         'values': {
-            'player': '{steals}',
-            'team': '{steals}',
-            'all_teams': '{steals}'
+            'player': lambda row, ctx: row.get('steals'),
+            'team': lambda row, ctx: row.get('steals'),
+            'all_teams': lambda row, ctx: row.get('steals')
         }
     },
     'st+c': {
@@ -1664,10 +2002,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('steals', 'charges_drawn')},
+            'team': {'fields': ('steals', 'charges_drawn')},
+            'all_teams': {'fields': ('steals', 'charges_drawn')},
+        },
         'values': {
-            'player': ('add', 'steals', 'charges_drawn'),
-            'team': ('add', 'steals', 'charges_drawn'),
-            'all_teams': ('add', 'steals', 'charges_drawn')
+            'player': lambda row, ctx: row.get('steals') + row.get('charges_drawn') if row.get('steals') is not None and row.get('charges_drawn') is not None else None,
+            'team': lambda row, ctx: row.get('steals') + row.get('charges_drawn') if row.get('steals') is not None and row.get('charges_drawn') is not None else None,
+            'all_teams': lambda row, ctx: row.get('steals') + row.get('charges_drawn') if row.get('steals') is not None and row.get('charges_drawn') is not None else None
         }
     },
     'fls': {
@@ -1688,11 +2031,17 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('fouls',)},
+            'team': {'fields': ('fouls',)},
+            'all_teams': {'fields': ('fouls',)},
+            'opponents': {'fields': ('opp_fouls',)},
+        },
         'values': {
-            'player': '{fouls}',
-            'team': '{fouls}',
-            'all_teams': '{fouls}',
-            'opponents': '{opp_fouls}'
+            'player': lambda row, ctx: row.get('fouls'),
+            'team': lambda row, ctx: row.get('fouls'),
+            'all_teams': lambda row, ctx: row.get('fouls'),
+            'opponents': lambda row, ctx: row.get('opp_fouls')
         }
     },
     'w%': {
@@ -1713,10 +2062,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('wins', 'games')},
+            'team': {'fields': ('wins', 'games')},
+            'all_teams': {'fields': ('wins', 'games')},
+        },
         'values': {
-            'player': ('divide', 'wins', 'games'),
-            'team': ('divide', 'wins', 'games'),
-            'all_teams': ('divide', 'wins', 'games')
+            'player': lambda row, ctx: row.get('wins') / row.get('games') if row.get('wins') is not None and row.get('games') else None,
+            'team': lambda row, ctx: row.get('wins') / row.get('games') if row.get('wins') is not None and row.get('games') else None,
+            'all_teams': lambda row, ctx: row.get('wins') / row.get('games') if row.get('wins') is not None and row.get('games') else None
         }
     },
     'ortg': {
@@ -1738,10 +2092,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('o_rtg_x10',)},
+            'team': {'fields': ('o_rtg_x10',)},
+            'all_teams': {'fields': ('o_rtg_x10',)},
+        },
         'values': {
-            'player': ('divide', 'o_rtg_x10', 10),
-            'team': ('divide', 'o_rtg_x10', 10),
-            'all_teams': ('divide', 'o_rtg_x10', 10)
+            'player': lambda row, ctx: row.get('o_rtg_x10') / 10 if row.get('o_rtg_x10') is not None else None,
+            'team': lambda row, ctx: row.get('o_rtg_x10') / 10 if row.get('o_rtg_x10') is not None else None,
+            'all_teams': lambda row, ctx: row.get('o_rtg_x10') / 10 if row.get('o_rtg_x10') is not None else None
         }
     },
     'drtg': {
@@ -1762,10 +2121,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_rtg_x10',)},
+            'team': {'fields': ('d_rtg_x10',)},
+            'all_teams': {'fields': ('d_rtg_x10',)},
+        },
         'values': {
-            'player': ('divide', 'd_rtg_x10', 10),
-            'team': ('divide', 'd_rtg_x10', 10),
-            'all_teams': ('divide', 'd_rtg_x10', 10)
+            'player': lambda row, ctx: row.get('d_rtg_x10') / 10 if row.get('d_rtg_x10') is not None else None,
+            'team': lambda row, ctx: row.get('d_rtg_x10') / 10 if row.get('d_rtg_x10') is not None else None,
+            'all_teams': lambda row, ctx: row.get('d_rtg_x10') / 10 if row.get('d_rtg_x10') is not None else None
         }
     },
     'nooo': {
@@ -1786,8 +2150,11 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('o_rtg_x10', 'off_o_rtg_x10')},
+        },
         'values': {
-            'player': ('subtract', ('divide', 'o_rtg_x10', 10), ('divide', 'off_o_rtg_x10', 10))
+            'player': lambda row, ctx: (row.get('o_rtg_x10') / 10) - (row.get('off_o_rtg_x10') / 10) if row.get('o_rtg_x10') is not None and row.get('off_o_rtg_x10') is not None else None
         }
     },
     'ndoo': {
@@ -1808,8 +2175,11 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('d_rtg_x10', 'off_d_rtg_x10')},
+        },
         'values': {
-            'player': ('subtract', ('divide', 'd_rtg_x10', 10), ('divide', 'off_d_rtg_x10', 10))
+            'player': lambda row, ctx: (row.get('d_rtg_x10') / 10) - (row.get('off_d_rtg_x10') / 10) if row.get('d_rtg_x10') is not None and row.get('off_d_rtg_x10') is not None else None
         }
     },
     'ID': {
@@ -1830,10 +2200,15 @@ TAB_COLUMNS: Dict[str, Any] = {
         'align': 'center',
         'emphasis': None,
         'font_size': 9,
+        'inputs': {
+            'player': {'fields': ('id',)},
+            'team': {'fields': ('id',)},
+            'all_teams': {'fields': ('id',)},
+        },
         'values': {
-            'player': 'id',
-            'team': 'id',
-            'all_teams': 'id'
+            'player': lambda row, ctx: row.get('id'),
+            'team': lambda row, ctx: row.get('id'),
+            'all_teams': lambda row, ctx: row.get('id')
         }
     }
 }

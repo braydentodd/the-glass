@@ -3,12 +3,13 @@ The Glass - Shared Sheets Sync Utilities
 
 Common Google Sheets operations shared between NBA and NCAA sync pipelines.
 Contains gspread client, worksheet management, formatting application,
-and data writing helpers.
+and data writing helpers with rate limiting.
 """
 
 import logging
 from decimal import Decimal
 
+from src.core.lib.rate_limiter import get_rate_limiter
 from src.publish.lib.formatting import ROW_INDEXES
 from typing import Callable, Optional
 
@@ -114,8 +115,11 @@ def apply_sheet_formatting(worksheet, columns_list, header_merges: list,
     # Execute cleanup as a separate batch so all old state is fully removed
     # before new formatting is applied
     if delete_requests:
+        rate_limiter = get_rate_limiter('google_sheets', is_destination=True)
         try:
-            worksheet.spreadsheet.batch_update({'requests': delete_requests})
+            rate_limiter.with_retry(
+                lambda: worksheet.spreadsheet.batch_update({'requests': delete_requests})
+            )
         except Exception:
             pass  # clearBasicFilter on a sheet with no filter raises a 400
 
@@ -141,8 +145,11 @@ def apply_sheet_formatting(worksheet, columns_list, header_merges: list,
     # so merges would be checked against the sheet's pre-existing frozen layout.
     props = [r for r in requests if 'updateSheetProperties' in r]
     rest = [r for r in requests if 'updateSheetProperties' not in r]
+    rate_limiter = get_rate_limiter('google_sheets', is_destination=True)
     if props:
-        worksheet.spreadsheet.batch_update({'requests': props})
+        rate_limiter.with_retry(
+            lambda: worksheet.spreadsheet.batch_update({'requests': props})
+        )
 
     # Google Sheets API has a ~10 MB request body limit.
     # For large sheets (500+ players), percentile shading alone can
@@ -151,7 +158,9 @@ def apply_sheet_formatting(worksheet, columns_list, header_merges: list,
     for i in range(0, len(rest), CHUNK_SIZE):
         chunk = rest[i:i + CHUNK_SIZE]
         if chunk:
-            worksheet.spreadsheet.batch_update({'requests': chunk})
+            rate_limiter.with_retry(
+                lambda c=chunk: worksheet.spreadsheet.batch_update({'requests': c})
+            )
 
 
 # ============================================================================
@@ -209,8 +218,11 @@ def write_and_format(worksheet, columns, headers, data_rows,
 
     total_rows = len(all_rows)
     worksheet.resize(rows=total_rows, cols=n_cols)
-    worksheet.update(range_name='A1', values=all_rows,
-                     value_input_option='USER_ENTERED')
+    rate_limiter = get_rate_limiter('google_sheets', is_destination=True)
+    rate_limiter.with_retry(
+        lambda: worksheet.update(range_name='A1', values=all_rows,
+                               value_input_option='USER_ENTERED')
+    )
 
     apply_sheet_formatting(
         worksheet, columns,
@@ -230,25 +242,31 @@ def write_and_format(worksheet, columns, headers, data_rows,
     if saved_headers:
         for idx, value in saved_headers.items():
             all_rows[header_row_idx][idx] = value
-        worksheet.update(
-            range_name=f"A{header_row_idx + 1}",
-            values=[all_rows[header_row_idx]],
-            value_input_option='USER_ENTERED',
+        rate_limiter = get_rate_limiter('google_sheets', is_destination=True)
+        rate_limiter.with_retry(
+            lambda: worksheet.update(
+                range_name=f"A{header_row_idx + 1}",
+                values=[all_rows[header_row_idx]],
+                value_input_option='USER_ENTERED',
+            )
         )
 
 
 def move_sheet_to_position(worksheet, index):
     """Move a worksheet to a specific tab position in the workbook."""
     try:
-        worksheet.spreadsheet.batch_update({'requests': [{
-            'updateSheetProperties': {
-                'properties': {
-                    'sheetId': worksheet.id,
-                    'index': index,
-                },
-                'fields': 'index',
-            }
-        }]})
+        rate_limiter = get_rate_limiter('google_sheets', is_destination=True)
+        rate_limiter.with_retry(
+            lambda: worksheet.spreadsheet.batch_update({'requests': [{
+                'updateSheetProperties': {
+                    'properties': {
+                        'sheetId': worksheet.id,
+                        'index': index,
+                    },
+                    'fields': 'index',
+                }
+            }]})
+        )
     except Exception as e:
         logger.warning('Could not move sheet to position %s: %s', index, e)
 

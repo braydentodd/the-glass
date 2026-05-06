@@ -11,7 +11,7 @@ Public surface:
     ensure_league_profile(league, conn) - upsert a core.league_profiles row for a league key
     ensure_all(league, conn=None)       - one-shot orchestrator (called from the CLI)
 
-The generator is purely additive: it CREATEs missing tables and ADD COLUMNs
+The generator is purely additive: it CREATEs missing tables and ADDs
 missing columns, but never drops or alters existing structures.  Schema
 changes that require destructive migrations must be performed deliberately
 outside this module.
@@ -32,7 +32,7 @@ from src.core.definitions.db_tables import (
     THE_GLASS_ID_SEQUENCE,
     THE_GLASS_ID_TYPE,
 )
-from src.core.lib.sources import get_source_id_columns_for_entity
+from src.etl.lib.sources_resolver import get_source_id_columns_for_entity
 from src.core.definitions.columns import DB_COLUMNS
 
 logger = logging.getLogger(__name__)
@@ -193,6 +193,13 @@ def _create_junction_table(cur, table_name: str, meta: Dict[str, Any]) -> int:
     for fk in meta['foreign_keys']:
         fragments.append(_foreign_key_ddl(fk))
     cur.execute(f"CREATE TABLE {qualified} (\n  " + ",\n  ".join(fragments) + "\n)")
+
+    # Create indexes
+    for idx in meta.get('indexes', []):
+        idx_name = f"idx_{table_name}_{idx['name']}"
+        idx_cols = ', '.join(quote_col(c) for c in idx['columns'])
+        cur.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {qualified} ({idx_cols})")
+
     return len(col_list)
 
 
@@ -218,6 +225,13 @@ def _create_stats_table(cur, league_key: str, table_name: str, meta: Dict[str, A
         fragments.append(_foreign_key_ddl(fk))
 
     cur.execute(f"CREATE TABLE {qualified} (\n  " + ",\n  ".join(fragments) + "\n)")
+
+    # Create indexes
+    for idx in meta.get('indexes', []):
+        idx_name = f"idx_{table_name}_{idx['name']}"
+        idx_cols = ', '.join(quote_col(c) for c in idx['columns'])
+        cur.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {qualified} ({idx_cols})")
+
     return len(declared) + 1  # +1 for the_glass_id
 
 
@@ -243,7 +257,23 @@ def _create_operational_table(cur, league_key: str, table_name: str, meta: Dict[
         uk_str = ', '.join(quote_col(c) for c in unique_key)
         fragments.append(f"UNIQUE ({uk_str})")
 
+    for fk in meta.get('foreign_keys', []):
+        # For operational tables, ref_schema may be None (same schema)
+        if fk['ref_schema'] is None:
+            fk_copy = fk.copy()
+            fk_copy['ref_schema'] = league_key
+            fragments.append(_foreign_key_ddl(fk_copy))
+        else:
+            fragments.append(_foreign_key_ddl(fk))
+
     cur.execute(f"CREATE TABLE {qualified} (\n  " + ",\n  ".join(fragments) + "\n)")
+
+    # Create indexes
+    for idx in meta.get('indexes', []):
+        idx_name = f"idx_{table_name}_{idx['name']}"
+        idx_cols = ', '.join(quote_col(c) for c in idx['columns'])
+        cur.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {qualified} ({idx_cols})")
+
     return len(col_list) + 1  # +1 for id
 
 

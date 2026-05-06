@@ -30,15 +30,13 @@ from typing import Optional
 from src.core.lib.cli import progress
 from src.core.lib.logging import phase_marker
 from src.core.lib.postgres import get_db_connection
-from src.core.lib.table_names import get_table_name
-from src.core.lib.sources import get_primary_source
+from src.core.lib.tables_resolver import get_table_name
 from src.core.definitions.leagues import LEAGUES
-from src.core.lib.leagues import (
+from src.core.lib.leagues_resolver import (
     format_season_label,
     get_current_season,
     get_current_season_year,
 )
-from src.core.definitions.runtime import RUNTIME_CONFIG
 from src.publish.definitions.layout import SECTIONS_CONFIG
 from src.publish.definitions.sheets import SHEET_FORMATTING
 from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
@@ -228,9 +226,6 @@ def run_publish(
         raise ValueError(f"Unknown league: {league!r}")
 
     db_schema = league
-    # Cross-check that the league has a primary source registered; we don't
-    # otherwise need the source_key in the publish flow.
-    get_primary_source(league)
 
     league_config = {
         'current_season':      get_current_season(league),
@@ -307,7 +302,7 @@ def run_publish(
     all_tabs = abbrs + aggregate_order
 
     # Auto-resume: resolve pending work (may be subset if resuming)
-    auto_resume = RUNTIME_CONFIG['auto_resume']['publish']
+    auto_resume = True  # Always enabled for publish
     conn = get_db_connection()
     try:
         run_id, pending_items = resolve_work(

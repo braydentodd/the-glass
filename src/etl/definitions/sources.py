@@ -21,7 +21,7 @@ Helpers that resolve source assignments per league/entity live in
 
 from typing import Any, Dict
 
-from src.core.lib.seasons import VALID_ANCHORS, VALID_SHAPES
+from src.core.lib.seasons_resolver import VALID_SHAPES, VALID_ANCHORS
 
 
 VALID_SOURCE_ROLES = frozenset({'authoritative', 'editable'})
@@ -38,6 +38,7 @@ SOURCES_SCHEMA: Dict[str, Dict[str, Any]] = {
     'entity_id_type': {'required': True, 'types': (str, type(None))},
     'applies_to':     {'required': True, 'types': (list,)},
     'season_format':  {'required': True, 'types': (dict, type(None))},
+    'rate_limits':    {'required': False, 'types': (dict, type(None))},
 }
 
 SOURCES: Dict[str, Dict[str, Any]] = {
@@ -47,6 +48,13 @@ SOURCES: Dict[str, Dict[str, Any]] = {
         'entity_id_type': 'BIGINT',
         'applies_to':     ['team', 'player'],
         'season_format':  {'shape': 'YYYY-YY', 'anchor': None},
+        'rate_limits': {
+            'requests_per_second': 0.8,
+            'max_retries': 3,
+            'backoff_base': 30,
+            'timeout_default': 30,
+            'timeout_bulk': 120,
+        },
     },
     'the_glass_sheets': {
         'leagues':        ['nba'],
@@ -54,5 +62,13 @@ SOURCES: Dict[str, Dict[str, Any]] = {
         'entity_id_type': None,
         'applies_to':     ['team', 'player'],
         'season_format':  None,
+        'rate_limits': {
+            'requests_per_second': 1.0,
+            'max_retries': 3,
+            'backoff_base': 30,
+            'timeout_default': 30,
+            'timeout_bulk': 120,
+            'max_consecutive_failures': 5,
+        },
     },
 }

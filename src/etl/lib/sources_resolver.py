@@ -1,20 +1,15 @@
 """
 The Glass - Source Resolvers
 
-Pure resolvers over :data:`src.core.definitions.sources.SOURCES` and the
+Pure resolvers over :data:`src.etl.definitions.sources.SOURCES` and the
 per-league primary-source assignment in
 :data:`src.core.definitions.leagues.LEAGUES`.
-
-Source season-label rendering / parsing is delegated to
-:mod:`src.core.lib.seasons`, which drives both league-canonical and
-source-wire formats off the same shape engine.
 """
 
 from typing import List, Tuple
 
 from src.core.definitions.leagues import LEAGUES
-from src.core.definitions.sources import SOURCES
-from src.core.lib.seasons import parse_season_in_shape, render_season_in_shape
+from src.etl.definitions.sources import SOURCES
 
 
 def get_primary_source(league_key: str) -> str:
@@ -48,14 +43,6 @@ def get_primary_source(league_key: str) -> str:
     return source_key
 
 
-def get_editable_sources(league_key: str) -> List[str]:
-    """Return all editable sources that operate on ``league_key``."""
-    return [
-        key for key, meta in SOURCES.items()
-        if meta['role'] == 'editable' and league_key in meta['leagues']
-    ]
-
-
 def get_source_id_column(source_key: str) -> str:
     """Return the per-source identity column name for profile tables.
 
@@ -81,27 +68,3 @@ def get_source_id_columns_for_entity(entity: str) -> List[Tuple[str, str]]:
             continue
         columns.append((get_source_id_column(source_key), meta['entity_id_type']))
     return columns
-
-
-def render_season_for_source(end_year: int, source_key: str) -> str:
-    """Render an end_year integer in the wire format expected by ``source_key``."""
-    fmt = _require_source_season_format(source_key)
-    return render_season_in_shape(end_year, fmt['shape'], fmt.get('anchor'))
-
-
-def parse_source_season(label: str, source_key: str) -> int:
-    """Inverse of :func:`render_season_for_source`; recovers the end_year."""
-    fmt = _require_source_season_format(source_key)
-    return parse_season_in_shape(label, fmt['shape'], fmt.get('anchor'))
-
-
-def _require_source_season_format(source_key: str) -> dict:
-    if source_key not in SOURCES:
-        raise ValueError(f"Unknown source: {source_key!r}")
-    fmt = SOURCES[source_key].get('season_format')
-    if not fmt:
-        raise ValueError(
-            f"Source {source_key!r} has no season_format; cannot render or "
-            f"parse season labels for it"
-        )
-    return fmt

@@ -27,8 +27,8 @@ from src.core.definitions.db_tables import (
     STATS_TABLES,
     THE_GLASS_ID_COLUMN,
 )
-from src.core.lib.sources import get_primary_source, get_source_id_column
-from src.core.lib.table_names import get_table_name
+from src.etl.lib.sources_resolver import get_primary_source, get_source_id_column
+from src.core.lib.tables_resolver import get_table_name
 
 logger = logging.getLogger(__name__)
 

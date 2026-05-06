@@ -32,12 +32,11 @@ from src.core.lib.cli import progress
 from src.core.lib.ddl import ensure_all, ensure_league_profile
 from src.core.lib.logging import phase_marker
 from src.core.lib.postgres import db_connection, quote_col
-from src.core.lib.sources import get_primary_source, get_source_id_column
+from src.etl.lib.sources_resolver import get_primary_source, get_source_id_column
 from src.core.definitions.leagues import LEAGUES
-from src.core.definitions.runtime import RUNTIME_CONFIG
 from src.core.definitions.db_tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
-from src.core.definitions.sources import SOURCES
-from src.core.lib.leagues import get_current_season, get_retained_seasons
+from src.etl.definitions.sources import SOURCES
+from src.core.lib.leagues_resolver import get_current_season, get_retained_seasons
 from src.etl.lib.cleanup import (
     cleanup_stat_domains,
     prune_orphan_profiles,
@@ -115,7 +114,6 @@ def _get_active_team_source_ids(league_key: str, source_key: str) -> Dict[str, i
 # ============================================================================
 
 def _run_groups(
-    run_type: str,
     scope: str,
     entities: List[str],
     seasons: List[str],
@@ -143,7 +141,7 @@ def _run_groups(
                 continue
 
             logger.info(
-                '%s: %s %s -- %d call groups', run_type, ent, season, len(groups),
+                '%s: %s %s -- %d call groups', scope, ent, season, len(groups),
             )
 
             ctx = ExecutionContext(
@@ -163,12 +161,12 @@ def _run_groups(
 
             with db_connection() as conn:
                 run_id, work_items = resolve_work(
-                    conn, league_key, ent, season, season_type, groups, run_type,
-                    RUNTIME_CONFIG['auto_resume']['etl'],
+                    conn, league_key, ent, season, season_type, groups,
+                    True,  # auto_resume
                 )
 
                 entity_rows = 0
-                bar_desc = f'{run_type}/{ent}/{season}'
+                bar_desc = f'{scope}/{ent}/{season}'
                 try:
                     with progress(
                         total=len(work_items),
@@ -219,7 +217,7 @@ def _discover_entities(
     """Phase: populate core.{entity}_profiles from current-season data."""
     logger.info(phase_marker('discover'))
     return _run_groups(
-        'discover', 'entity', entities, [season],
+        'entity', entities, [season],
         season_type, season_type_name, team_ids, failed,
         **source_kw,
     )
@@ -276,7 +274,7 @@ def _backfill(
     """Phase: fetch stats for every season in the retention window."""
     logger.info(phase_marker('backfill', f'{len(seasons)} seasons'))
     return _run_groups(
-        'backfill', 'stats', entities, seasons,
+        'stats', entities, seasons,
         season_type, season_type_name, team_ids, failed,
         **source_kw,
     )
@@ -294,7 +292,7 @@ def _update_current(
     """Phase: refresh stats for the current season only."""
     logger.info(phase_marker('update', f'season={season}'))
     return _run_groups(
-        'update', 'stats', entities, [season],
+        'stats', entities, [season],
         season_type, season_type_name, team_ids, failed,
         **source_kw,
     )

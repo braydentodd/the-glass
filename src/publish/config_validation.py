@@ -133,10 +133,6 @@ def validate_config() -> List[str]:
         STAT_RATES,
         STAT_RATES_SCHEMA,
     )
-    from src.core.definitions.runtime import (
-        RUNTIME_CONFIG,
-        RUNTIME_CONFIG_SCHEMA,
-    )
     from src.publish.definitions.sheets import (
         SHEET_FORMATTING,
         SHEET_FORMATTING_SCHEMA,
@@ -169,7 +165,6 @@ def validate_config() -> List[str]:
     # Flat dict schemas
     errors.extend(validate_flat_config(SHEET_FORMATTING, SHEET_FORMATTING_SCHEMA, 'SHEET_FORMATTING'))
     errors.extend(validate_flat_config(COLOR_THRESHOLDS, COLOR_THRESHOLDS_SCHEMA, 'COLOR_THRESHOLDS'))
-    errors.extend(validate_flat_config(RUNTIME_CONFIG, RUNTIME_CONFIG_SCHEMA, 'RUNTIME_CONFIG'))
 
     # Scalar-valued mappings
     errors.extend(validate_scalar_dict(

@@ -142,19 +142,33 @@ def evaluate_formula(col_key: str, entity_data: dict,
                      context: Optional[dict] = None) -> Any:
     """Evaluate a column's value expression against entity data.
 
-    Resolves the expression from col_def['values'][entity_type] and
-    walks the tuple tree via evaluate_expression().
+    Expression must be a callable: ``lambda row, ctx: ...``
+    Any ``TypeError``/``ZeroDivisionError``/``KeyError`` is surfaced as
+    None, matching the legacy interpreter's null-propagation contract.
     """
     col_def = TAB_COLUMNS.get(col_key)
     if not col_def:
         return None
 
-    values = col_def.get('values', {})
-    expr = values.get(entity_type)
+    expr = col_def.get('values', {}).get(entity_type)
     if expr is None:
         return None
 
-    return evaluate_expression(expr, entity_data, context)
+    if not callable(expr):
+        logger.warning(
+            'Column %s.%s has non-callable expression: %r',
+            col_key, entity_type, type(expr),
+        )
+        return None
+
+    try:
+        return expr(entity_data, context)
+    except (TypeError, ZeroDivisionError, KeyError) as exc:
+        logger.debug(
+            'Formula %s.%s returned None (%s: %s)',
+            col_key, entity_type, type(exc).__name__, exc,
+        )
+        return None
 
 
 def _coerce_positive(*candidates: Optional[float]) -> Optional[float]:
@@ -425,38 +439,26 @@ def get_percentile_rank(value: Any, sorted_weighted: List, reverse: bool = False
 # FIELD DERIVATION (consolidated from field_derivation.py)
 # ============================================================================
 
-def _extract_db_refs(expr) -> set:
-    """Walk an expression tree and return all referenced DB column names."""
-    if expr is None:
-        return set()
-    if isinstance(expr, (int, float)):
-        return set()
-    if isinstance(expr, str):
-        if expr.startswith('{') and expr.endswith('}'):
-            return {expr[1:-1]}
-        if expr and expr[0].isupper():
-            return set()
-        return {expr}
-    if isinstance(expr, tuple):
-        op = expr[0]
-        if op == 'lookup':
-            return _extract_db_refs(expr[1])
-        if op == 'team_average':
-            return _extract_db_refs(expr[1])
-        if op == 'calculate_age':
-            return _extract_db_refs(expr[1])
-        if op == 'seasons_in_query':
-            return set()
-        refs = set()
-        for item in expr[1:]:
-            refs |= _extract_db_refs(item)
-        return refs
-    return set()
 
 
 def derive_db_fields(league: str = None, stats_sections: frozenset = None,
                      computed_fields: set = None) -> Dict[str, set]:
     """Derive the DB column sets needed by publish queries from TAB_COLUMNS.
+
+    Dependency resolution requires an explicit ``inputs`` declaration on the
+    column definition. The shape is::
+
+        'inputs': {
+            '<values_key>': {
+                'fields': ('col_a', 'col_b', ...),
+                'source': 'players',  # optional override; see below
+            },
+            ...
+        }
+
+    ``source: 'players'`` signals that a team-row formula aggregates from
+    its constituent players (e.g. ``team_average``), so the fields go to
+    ``stat_fields`` / ``player_entity_fields`` instead of the team buckets.
 
     Returns a dict with keys:
         player_entity_fields, team_entity_fields, stat_fields, team_stat_fields
@@ -475,31 +477,29 @@ def derive_db_fields(league: str = None, stats_sections: frozenset = None,
 
         sections = set(col_def.get('sections', []))
         is_stats = bool(sections & stats_sections)
-        values = col_def.get('values', {})
 
-        for values_key, expr in values.items():
-            entity_type = VALUES_KEY_ENTITY.get(values_key)
-            if entity_type is None:
-                continue
-
-            refs = _extract_db_refs(expr)
-            if not refs:
-                continue
-
-            # team_average implies we extract info from the player entity/stats
-            if isinstance(expr, tuple) and expr[0] == 'team_average':
-                entity_type = 'player'
-
-            if is_stats:
-                if entity_type == 'player':
-                    player_stats |= refs
+        inputs = col_def.get('inputs')
+        if inputs is not None:
+            for values_key, spec in inputs.items():
+                entity_type = VALUES_KEY_ENTITY.get(values_key)
+                if entity_type is None:
+                    continue
+                fields = set(spec.get('fields', ()))
+                if not fields:
+                    continue
+                if spec.get('source') == 'players':
+                    entity_type = 'player'
+                if is_stats:
+                    if entity_type == 'player':
+                        player_stats |= fields
+                    else:
+                        team_stats |= fields
                 else:
-                    team_stats |= refs
-            else:
-                if entity_type == 'player':
-                    player_entity |= refs
-                else:
-                    team_entity |= refs
+                    if entity_type == 'player':
+                        player_entity |= fields
+                    else:
+                        team_entity |= fields
+            continue
 
     return {
         'player_entity_fields': player_entity - computed_fields,

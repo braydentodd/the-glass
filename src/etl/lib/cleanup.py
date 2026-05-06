@@ -30,8 +30,8 @@ from src.core.definitions.db_tables import (
     THE_GLASS_ID_COLUMN,
 )
 from src.core.definitions.stats import STAT_DOMAINS
-from src.core.lib.leagues import get_oldest_retained_season
-from src.core.lib.table_names import get_table_name
+from src.core.lib.leagues_resolver import get_oldest_retained_season
+from src.core.lib.tables_resolver import get_table_name
 from src.core.definitions.columns import DB_COLUMNS
 
 logger = logging.getLogger(__name__)

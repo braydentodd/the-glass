@@ -25,8 +25,8 @@ from typing import Any, Dict, Iterable, List, Set, Tuple
 
 from src.core.lib.ddl import ensure_league_profile
 from src.core.lib.postgres import db_connection, quote_col
-from src.core.lib.sources import get_source_id_column
-from src.core.definitions.db_tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
+from src.etl.lib.sources_resolver import get_source_id_column
+from src.core.lib.tables_resolver import CORE_SCHEMA, THE_GLASS_ID_COLUMN
 
 logger = logging.getLogger(__name__)
 

@@ -34,8 +34,8 @@ def create_run(
     with conn.cursor() as cur:
         cur.execute(
             f"INSERT INTO {db_schema}.runs "
-            f"(pipeline, run_type, status, entity_type, total_items) "
-            f"VALUES (%s, 'publish', 'running', %s, %s) RETURNING id",
+            f"(pipeline, entity_type, total_items) "
+            f"VALUES (%s, %s, %s) RETURNING id",
             (_PIPELINE, league, total_tabs),
         )
         run_id = cur.fetchone()[0]
@@ -85,8 +85,8 @@ def register_tabs(
         for tab_name in tabs:
             cur.execute(
                 f"INSERT INTO {db_schema}.tasks "
-                f"(run_id, pipeline, item_key, status) "
-                f"VALUES (%s, %s, %s, 'pending') RETURNING id",
+                f"(run_id, pipeline, item_key) "
+                f"VALUES (%s, %s, %s) RETURNING id",
                 (run_id, _PIPELINE, tab_name),
             )
             task_ids.append(cur.fetchone()[0])

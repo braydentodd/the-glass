@@ -9,9 +9,8 @@ Schemas are co-located with their declarative data:
 
   - LEAGUES_SCHEMA, SOURCES_SCHEMA, schema constants     -> src/core/definitions/
   - DB_COLUMNS_SCHEMA                                     -> src/core/definitions/schema.py
-  - RUNTIME_CONFIG_SCHEMA                                 -> src/core/definitions/runtime.py
   - OPERATIONAL_TABLES_SCHEMA                             -> src/core/definitions/db_tables.py
-  - DATASETS_SCHEMA, SEASON_TYPES_SCHEMA                  -> src/etl/sources/<source>/config.py
+  - DATASETS_SCHEMA, SEASON_TYPES_SCHEMA, API_CONFIG_SCHEMA -> src/etl/sources/<source>/config.py
 
 Add a new config?  Define a schema dict next to the data, then register it
 in :func:`validate_config`.
@@ -256,8 +255,7 @@ def validate_config(
         STATS_TABLES_SCHEMA,
     )
     from src.core.definitions.leagues import LEAGUES, LEAGUES_SCHEMA
-    from src.core.definitions.runtime import RUNTIME_CONFIG, RUNTIME_CONFIG_SCHEMA
-    from src.core.definitions.sources import SOURCES, SOURCES_SCHEMA
+    from src.etl.definitions.sources import SOURCES, SOURCES_SCHEMA
     from src.core.definitions.columns import DB_COLUMNS
 
     errors: List[str] = []
@@ -272,7 +270,6 @@ def validate_config(
     errors.extend(validate_dict_config(STATS_TABLES, STATS_TABLES_SCHEMA, 'STATS_TABLES'))
     errors.extend(validate_dict_config(JUNCTION_TABLES, JUNCTION_TABLES_SCHEMA, 'JUNCTION_TABLES'))
     errors.extend(validate_dict_config(OPERATIONAL_TABLES, OPERATIONAL_TABLES_SCHEMA, 'OPERATIONAL_TABLES'))
-    errors.extend(validate_flat_config(RUNTIME_CONFIG, RUNTIME_CONFIG_SCHEMA, 'RUNTIME_CONFIG'))
 
     if datasets and datasets_schema:
         errors.extend(validate_dict_config(datasets, datasets_schema, 'DATASETS'))
@@ -362,11 +359,6 @@ def _validate_nba_api(cfg_mod) -> List[str]:
         getattr(cfg_mod, 'API_CONFIG', {}),
         getattr(cfg_mod, 'API_CONFIG_SCHEMA', {}),
         'nba_api.API_CONFIG',
-    ))
-    errors.extend(validate_flat_config(
-        getattr(cfg_mod, 'RETRY_CONFIG', {}),
-        getattr(cfg_mod, 'RETRY_CONFIG_SCHEMA', {}),
-        'nba_api.RETRY_CONFIG',
     ))
     errors.extend(validate_dict_config(
         getattr(cfg_mod, 'SEASON_TYPES', {}),

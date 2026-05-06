@@ -50,18 +50,8 @@ SEASON_TYPES: Dict[str, Dict[str, Any]] = {
 # API OPERATIONAL SETTINGS
 # ============================================================================
 
+# NBA-specific API parameters (not rate limiting)
 API_CONFIG = {
-    'rate_limit_delay': 1.2,
-    'per_player_rate_limit': 2.5,
-    'timeout_default': 30,
-    'timeout_bulk': 120,
-    'backoff_divisor': 5,
-    'cooldown_after_batch_seconds': 30,
-    'max_consecutive_failures': 5,
-
-    'roster_batch_size': 175,
-    'roster_batch_cooldown': 120,
-
     'league_id': '00',
     'per_mode_simple': 'Totals',
     'per_mode_time': 'Totals',
@@ -70,11 +60,6 @@ API_CONFIG = {
     'month': '0',
     'opponent_team_id': '0',
     'period': '0',
-}
-
-RETRY_CONFIG = {
-    'max_retries': 3,
-    'backoff_base': 30,
 }
 
 
@@ -295,15 +280,6 @@ SOURCE_META_SCHEMA = {
 }
 
 API_CONFIG_SCHEMA = {
-    'rate_limit_delay': {'required': True, 'types': (int, float)},
-    'per_player_rate_limit': {'required': True, 'types': (int, float)},
-    'timeout_default': {'required': True, 'types': (int, float)},
-    'timeout_bulk': {'required': True, 'types': (int, float)},
-    'backoff_divisor': {'required': True, 'types': (int, float)},
-    'cooldown_after_batch_seconds': {'required': True, 'types': (int, float)},
-    'max_consecutive_failures': {'required': True, 'types': (int,)},
-    'roster_batch_size': {'required': True, 'types': (int,)},
-    'roster_batch_cooldown': {'required': True, 'types': (int, float)},
     'league_id': {'required': True, 'types': (str,)},
     'per_mode_simple': {'required': True, 'types': (str,)},
     'per_mode_time': {'required': True, 'types': (str,)},
@@ -312,11 +288,6 @@ API_CONFIG_SCHEMA = {
     'month': {'required': True, 'types': (str,)},
     'opponent_team_id': {'required': True, 'types': (str,)},
     'period': {'required': True, 'types': (str,)},
-}
-
-RETRY_CONFIG_SCHEMA = {
-    'max_retries': {'required': True, 'types': (int,)},
-    'backoff_base': {'required': True, 'types': (int, float)},
 }
 
 DATASETS_SCHEMA = {

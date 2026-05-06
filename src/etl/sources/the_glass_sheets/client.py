@@ -25,7 +25,7 @@ load_dotenv()
 
 from src.core.definitions.db_tables import THE_GLASS_ID_COLUMN
 from src.core.lib.postgres import db_connection, quote_col
-from src.core.lib.table_names import get_table_name
+from src.core.lib.tables_resolver import get_table_name
 from src.publish.definitions.columns import TAB_COLUMNS
 from src.publish.definitions.sheets import SHEET_FORMATTING
 from src.publish.destinations.sheets.client import get_sheets_client

@@ -11,14 +11,13 @@ No classes -- all functions operate on plain data.
 import importlib
 import inspect
 import logging
-import time
 import warnings
 from typing import Any, Callable, Dict, Optional
 
+from src.core.lib.rate_limiter import get_rate_limiter
 from src.etl.sources.nba_api.config import (
     API_CONFIG,
     DATASETS,
-    RETRY_CONFIG,
     SOURCE_META,
 )
 
@@ -132,6 +131,7 @@ def create_api_call(
     params: Dict[str, Any],
     dataset_name: str = '',
     timeout: Optional[int] = None,
+    rate_limiter: Optional[Any] = None,
 ) -> Callable:
     """Build a zero-arg callable that executes an NBA API request.
 
@@ -153,7 +153,10 @@ def create_api_call(
     if not has_kwargs:
         clean_params = {k: v for k, v in clean_params.items() if k in accepted}
 
-    call_timeout = timeout or API_CONFIG['timeout_default']
+    if rate_limiter:
+        call_timeout = timeout or rate_limiter.get_timeout()
+    else:
+        call_timeout = timeout or 30
 
     def _call() -> Dict[str, Any]:
         result = dataset_class(**clean_params, timeout=call_timeout)
@@ -166,29 +169,18 @@ def create_api_call(
 # RETRY WRAPPER
 # ============================================================================
 
-def with_retry(func: Callable, max_retries: Optional[int] = None) -> Any:
-    """Execute *func* with exponential back-off on failure.
+def with_retry(func: Callable, rate_limiter: Any, max_retries: Optional[int] = None) -> Any:
+    """Execute *func* with exponential back-off on failure using rate limiter.
 
-    Always applies the configured rate-limit delay before each attempt.
-    Returns the first successful result or re-raises the last exception.
+    Args:
+        func: Zero-arg callable to execute.
+        rate_limiter: RateLimiter instance.
+        max_retries: Override default max_retries from rate limiter config.
+
+    Returns:
+        The first successful result or re-raises the last exception.
     """
-    retries = max_retries or RETRY_CONFIG['max_retries']
-    backoff = RETRY_CONFIG['backoff_base']
-
-    for attempt in range(1, retries + 1):
-        try:
-            time.sleep(API_CONFIG['rate_limit_delay'])
-            return func()
-        except Exception:
-            if attempt >= retries:
-                raise
-            wait = attempt * (backoff // API_CONFIG['backoff_divisor'])
-            logger.warning(
-                'Attempt %d failed, retrying in %ds...', attempt, wait,
-            )
-            time.sleep(wait)
-
-    raise RuntimeError(f"with_retry exhausted {retries} attempts")
+    return rate_limiter.with_retry(func, max_retries)
 
 
 # ============================================================================
@@ -260,6 +252,8 @@ def make_fetcher(season: str, season_type_name: str, entity: str) -> Callable:
     a fully parameterized NBA API call with retry logic.
     Virtual datasets (e.g. team_metadata) are routed to dedicated handlers.
     """
+    rate_limiter = get_rate_limiter('nba_api')
+
     def fetch(dataset: str, extra_params: Optional[Dict[str, Any]] = None) -> Optional[Dict]:
         ds_cfg = DATASETS.get(dataset, {})
         if ds_cfg.get('virtual'):
@@ -271,8 +265,8 @@ def make_fetcher(season: str, season_type_name: str, entity: str) -> Callable:
         full_params = build_dataset_params(
             dataset, season, season_type_name, entity, extra_params or {},
         )
-        api_call = create_api_call(DatasetClass, full_params, dataset_name=dataset)
-        return with_retry(api_call)
+        api_call = create_api_call(DatasetClass, full_params, dataset_name=dataset, rate_limiter=rate_limiter)
+        return with_retry(api_call, rate_limiter)
     return fetch
 
 
@@ -351,6 +345,8 @@ def _fetch_team_metadata(season: str) -> Dict:
     from nba_api.stats.static import teams as static_teams
     from nba_api.stats.endpoints import leaguestandings
 
+    rate_limiter = get_rate_limiter('nba_api')
+
     # Static abbreviations keyed by team ID
     abbr_map = {t['id']: t['abbreviation'] for t in static_teams.get_teams()}
 
@@ -360,8 +356,9 @@ def _fetch_team_metadata(season: str) -> Dict:
         leaguestandings.LeagueStandings,
         {'season': season, 'league_id': '00'},
         dataset_name='leaguestandings',
+        rate_limiter=rate_limiter,
     )
-    standings = with_retry(standings_call)
+    standings = with_retry(standings_call, rate_limiter)
 
     conf_map: Dict[int, str] = {}
     for rs in standings.get('resultSets', []):

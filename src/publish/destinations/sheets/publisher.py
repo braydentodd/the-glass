@@ -7,7 +7,7 @@ from the core Executor and translates them into Google Sheets batch API requests
 
 import logging
 
-from src.publish.destinations.sheets.api_builder import build_formatting_requests
+from src.publish.destinations.sheets.request_builders import build_formatting_requests
 from src.publish.destinations.sheets.client import get_or_create_worksheet, write_and_format
 
 logger = logging.getLogger(__name__)

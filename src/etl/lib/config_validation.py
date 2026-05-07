@@ -8,8 +8,8 @@ and source structure checks.  Uses the generic validation engine from
 Schemas are co-located with their declarative data:
 
   - LEAGUES_SCHEMA, SOURCES_SCHEMA, schema constants     -> src/core/definitions/
-  - DB_COLUMNS_SCHEMA                                     -> src/core/definitions/schema.py
-  - OPERATIONAL_TABLES_SCHEMA                             -> src/core/definitions/db_tables.py
+  - DB_COLUMNS_SCHEMA                                     -> src/core/definitions/columns.py
+  - OPERATIONAL_TABLES_SCHEMA                             -> src/core/definitions/tables.py
   - DATASETS_SCHEMA, SEASON_TYPES_SCHEMA, API_CONFIG_SCHEMA -> src/etl/sources/<source>/config.py
 
 Add a new config?  Define a schema dict next to the data, then register it
@@ -19,7 +19,7 @@ in :func:`validate_config`.
 import logging
 from typing import Any, Dict, List, Optional
 
-from src.core.lib.config_validation import validate_dict_config, validate_flat_config
+from src.core.lib.config_validation import validate_dict_config
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ VALID_TRANSFORMS = {
 
 def _validate_pg_types(db_columns: Dict[str, Dict]) -> List[str]:
     """Validate that all DB_COLUMNS types are valid PostgreSQL types."""
-    from src.core.definitions.db_tables import VALID_PG_TYPES
+    from src.core.definitions.tables import VALID_PG_TYPES
 
     errors = []
     for col_name, meta in db_columns.items():
@@ -56,7 +56,7 @@ def _validate_source_structure(
     Each provider key must exist in SOURCES, and each entity key must be in
     VALID_ENTITY_TYPES and in the provider's ``applies_to`` list.
     """
-    from src.core.definitions.db_tables import VALID_ENTITY_TYPES
+    from src.core.definitions.tables import VALID_ENTITY_TYPES
     errors = []
     for col_name, meta in db_columns.items():
         col_sources = meta.get('sources')
@@ -129,7 +129,7 @@ def _validate_stats_primary_keys(
 ) -> List[str]:
     """Validate that every PK column on a stats table is either the synthetic
     ``the_glass_id`` or a column declared in DB_COLUMNS."""
-    from src.core.definitions.db_tables import THE_GLASS_ID_COLUMN
+    from src.core.definitions.tables import THE_GLASS_ID_COLUMN
     errors = []
     for table_name, meta in stats_tables.items():
         for col in meta.get('primary_key', []):
@@ -199,7 +199,7 @@ def _validate_fk_targets(
 ) -> List[str]:
     """Every FK ref_schema/ref_table must resolve to a known table, and the
     on_update / on_delete actions must be in the allowed set."""
-    from src.core.definitions.db_tables import VALID_FK_ACTIONS
+    from src.core.definitions.tables import VALID_FK_ACTIONS
 
     core_tables = set(profile_tables) | set(junction_tables)
     errors: List[str] = []
@@ -243,7 +243,7 @@ def validate_config(
         RuntimeError: if any validation errors are found.
     """
     from src.core.lib.config_validation import validate_core_constants
-    from src.core.definitions.db_tables import (
+    from src.core.definitions.tables import (
         DB_COLUMNS_SCHEMA,
         JUNCTION_TABLES,
         JUNCTION_TABLES_SCHEMA,

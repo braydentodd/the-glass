@@ -34,7 +34,7 @@ from src.core.lib.logging import phase_marker
 from src.core.lib.postgres import db_connection, quote_col
 from src.etl.lib.sources_resolver import get_primary_source, get_source_id_column
 from src.core.definitions.leagues import LEAGUES
-from src.core.definitions.db_tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
+from src.core.definitions.tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
 from src.etl.definitions.sources import SOURCES
 from src.core.lib.leagues_resolver import get_current_season, get_retained_seasons
 from src.etl.lib.cleanup import (

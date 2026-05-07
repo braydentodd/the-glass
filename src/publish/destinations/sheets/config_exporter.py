@@ -6,14 +6,15 @@ from pathlib import Path
 
 from src.publish.definitions.columns import TAB_COLUMNS
 from src.publish.definitions.layout import SECTIONS_CONFIG
-from src.publish.definitions.sheets import HEADER_ROWS
+from src.publish.definitions.presentation import PRESENTATION_DEFAULTS
+from src.publish.lib.row_structure import HEADER_ROWS
+from src.publish.lib.column_structure import build_tab_columns, get_column_index
 from src.publish.definitions.stats import (
     DEFAULT_STAT_RATE,
     HISTORICAL_TIMEFRAMES,
     STAT_RATES,
 )
 from src.publish.destinations.sheets.config import GOOGLE_SHEETS_CONFIG
-from src.publish.lib.layout import build_tab_columns, get_column_index
 
 logger = logging.getLogger(__name__)
 

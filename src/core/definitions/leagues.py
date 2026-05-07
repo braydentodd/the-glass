@@ -8,7 +8,17 @@ helpers live in :mod:`src.core.lib.leagues`.
 
 from typing import Any, Dict
 
-from src.core.lib.seasons_resolver import VALID_LEAGUE_SEASON_FORMATS
+
+# ============================================================================
+# VALIDATION CONSTANTS
+# ============================================================================
+
+VALID_LEAGUE_SEASON_FORMATS = frozenset({'same_year', 'split_year'})
+
+
+# ============================================================================
+# SCHEMA
+# ============================================================================
 
 
 LEAGUES_SCHEMA: Dict[str, Dict[str, Any]] = {

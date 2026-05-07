@@ -2,10 +2,10 @@
 The Glass - Schema Helpers
 
 Pure resolvers over the table registries in
-:mod:`src.core.definitions.db_tables`.  Builds qualified table names.
+:mod:`src.core.definitions.tables`.  Builds qualified table names.
 """
 
-from src.core.definitions.db_tables import (
+from src.core.definitions.tables import (
     CORE_SCHEMA,
     PROFILE_TABLES,
     STATS_TABLES,

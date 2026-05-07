@@ -13,20 +13,13 @@ if a source emits two-digit labels for seasons before 1980.
 
 from typing import Optional, Tuple
 
+from src.core.definitions.leagues import VALID_LEAGUE_SEASON_FORMATS
+from src.etl.definitions.sources import VALID_SHAPES, VALID_ANCHORS
+
 
 # ---------------------------------------------------------------------------
-# Shape vocabulary
+# League format mapping
 # ---------------------------------------------------------------------------
-
-VALID_SHAPES = frozenset({
-    'YYYY', 'YY',
-    'YYYY-YY', 'YY-YY', 'YYYY-YYYY',
-    'YYYY/YY', 'YY/YY', 'YYYY/YYYY',
-})
-
-VALID_ANCHORS = frozenset({'start', 'end', None})
-
-VALID_LEAGUE_SEASON_FORMATS = frozenset({'same_year', 'split_year'})
 
 _LEAGUE_FORMAT_TO_SHAPE: dict = {
     'same_year':  ('YYYY',    'end'),

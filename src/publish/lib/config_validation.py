@@ -133,15 +133,17 @@ def validate_config() -> List[str]:
         STAT_RATES,
         STAT_RATES_SCHEMA,
     )
-    from src.publish.definitions.sheets import (
-        SHEET_FORMATTING,
-        SHEET_FORMATTING_SCHEMA,
+    from src.publish.definitions.presentation import (
+        PRESENTATION_DEFAULTS,
+        PRESENTATION_DEFAULTS_SCHEMA,
     )
     from src.publish.destinations.sheets.config import (
         GOOGLE_SHEETS_CONFIG,
         GOOGLE_SHEETS_CONFIG_SCHEMA,
+        SHEETS_FORMATTING,
+        SHEETS_FORMATTING_SCHEMA,
     )
-    from src.publish.definitions.style import (
+    from src.publish.definitions.presentation import (
         COLOR_THRESHOLDS,
         COLOR_THRESHOLDS_SCHEMA,
         COLORS,
@@ -163,7 +165,8 @@ def validate_config() -> List[str]:
     errors.extend(validate_dict_config(SUBSECTIONS, SUBSECTIONS_SCHEMA, 'SUBSECTIONS'))
 
     # Flat dict schemas
-    errors.extend(validate_flat_config(SHEET_FORMATTING, SHEET_FORMATTING_SCHEMA, 'SHEET_FORMATTING'))
+    errors.extend(validate_flat_config(SHEETS_FORMATTING, SHEETS_FORMATTING_SCHEMA, 'SHEETS_FORMATTING'))
+    errors.extend(validate_flat_config(PRESENTATION_DEFAULTS, PRESENTATION_DEFAULTS_SCHEMA, 'PRESENTATION_DEFAULTS'))
     errors.extend(validate_flat_config(COLOR_THRESHOLDS, COLOR_THRESHOLDS_SCHEMA, 'COLOR_THRESHOLDS'))
 
     # Scalar-valued mappings

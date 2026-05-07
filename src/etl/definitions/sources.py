@@ -11,9 +11,8 @@ source's relationship to the data model, *not* the I/O direction:
 
 ``season_format`` describes the source's *wire* format -- how it expects /
 emits season labels in API requests and responses.  ``shape`` is one of
-:data:`src.core.lib.seasons.VALID_SHAPES`; ``anchor`` is required for
-single-segment shapes (``YYYY`` / ``YY``) and ignored for two-segment shapes
-(set to ``None``).
+:data:`VALID_SHAPES`; ``anchor`` is required for single-segment shapes
+(``YYYY`` / ``YY``) and ignored for two-segment shapes (set to ``None``).
 
 Helpers that resolve source assignments per league/entity live in
 :mod:`src.core.lib.sources`.
@@ -21,10 +20,19 @@ Helpers that resolve source assignments per league/entity live in
 
 from typing import Any, Dict
 
-from src.core.lib.seasons_resolver import VALID_SHAPES, VALID_ANCHORS
 
+# ============================================================================
+# VALIDATION CONSTANTS
+# ============================================================================
 
 VALID_SOURCE_ROLES = frozenset({'authoritative', 'editable'})
+
+VALID_SHAPES = frozenset({
+    'YYYY', 'YY',
+    'YYYY-YY', 'YY-YY', 'YYYY-YYYY',
+    'YYYY/YY', 'YY/YY', 'YYYY/YYYY',
+})
+VALID_ANCHORS = frozenset({'start', 'end', None})
 
 
 SOURCE_SEASON_FORMAT_SCHEMA: Dict[str, Dict[str, Any]] = {

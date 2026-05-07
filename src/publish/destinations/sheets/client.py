@@ -10,7 +10,7 @@ import logging
 from decimal import Decimal
 
 from src.core.lib.rate_limiter import get_rate_limiter
-from src.publish.lib.formatting import ROW_INDEXES
+from src.publish.lib.row_structure import ROW_INDEXES
 from typing import Callable, Optional
 
 import gspread
@@ -177,7 +177,7 @@ def write_and_format(worksheet, columns, headers, data_rows,
     autoResizeDimensions sizes based on data only.  The real headers are
     written back in a second pass after formatting is applied.
     """
-    from src.publish.definitions.style import WIDTH_CLASSES
+    from src.publish.definitions.presentation import WIDTH_CLASSES
 
     n_cols = len(columns)
     filter_row = [''] * n_cols

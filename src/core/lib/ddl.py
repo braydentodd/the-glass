@@ -22,7 +22,7 @@ from typing import Any, Dict, Iterable, List, Tuple
 
 from src.core.lib.postgres import get_db_connection, quote_col
 from src.core.definitions.leagues import LEAGUES
-from src.core.definitions.db_tables import (
+from src.core.definitions.tables import (
     CORE_SCHEMA,
     JUNCTION_TABLES,
     OPERATIONAL_TABLES,
@@ -32,10 +32,33 @@ from src.core.definitions.db_tables import (
     THE_GLASS_ID_SEQUENCE,
     THE_GLASS_ID_TYPE,
 )
-from src.etl.lib.sources_resolver import get_source_id_columns_for_entity
 from src.core.definitions.columns import DB_COLUMNS
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Source ID column resolution (private helper for DDL)
+# ---------------------------------------------------------------------------
+
+def _get_source_id_columns_for_entity(entity: str) -> List[Tuple[str, str]]:
+    """Source-id columns to add to ``entity``'s profile table, in stable order.
+
+    A source contributes a column when it has a non-null ``entity_id_type``
+    and includes ``entity`` in its ``applies_to`` list.
+    """
+    from src.etl.definitions.sources import SOURCES
+    from src.etl.lib.sources_resolver import get_source_id_column
+
+    columns: List[Tuple[str, str]] = []
+    for source_key in sorted(SOURCES):
+        meta = SOURCES[source_key]
+        if meta.get('entity_id_type') is None:
+            continue
+        if entity not in meta.get('applies_to', []):
+            continue
+        columns.append((get_source_id_column(source_key), meta['entity_id_type']))
+    return columns
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +180,7 @@ def _create_profile_table(cur, table_name: str, meta: Dict[str, Any]) -> int:
     qualified = f'{CORE_SCHEMA}.{table_name}'
 
     columns = _data_columns_for(scope='entities', entity=entity)
-    source_id_cols = get_source_id_columns_for_entity(entity)
+    source_id_cols = _get_source_id_columns_for_entity(entity)
 
     fragments: List[str] = [_the_glass_id_pk_clause()]
     fragments.extend(_column_ddl(name, m) for name, m in columns)
@@ -313,7 +336,7 @@ def _sync_profile_table(cur, table_name: str, meta: Dict[str, Any]) -> List[str]
     expected.append((THE_GLASS_ID_COLUMN, THE_GLASS_ID_TYPE))
     for name, m in _data_columns_for(scope='entities', entity=meta['entity']):
         expected.append((name, m['type']))
-    expected.extend(get_source_id_columns_for_entity(meta['entity']))
+    expected.extend(_get_source_id_columns_for_entity(meta['entity']))
 
     _add_missing_columns(cur, CORE_SCHEMA, table_name, expected, actions)
     return actions

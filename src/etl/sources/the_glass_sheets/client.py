@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Tuple
 from dotenv import load_dotenv
 load_dotenv()
 
-from src.core.definitions.db_tables import THE_GLASS_ID_COLUMN
+from src.core.definitions.tables import THE_GLASS_ID_COLUMN
 from src.core.lib.postgres import db_connection, quote_col
 from src.core.lib.tables_resolver import get_table_name
 from src.publish.definitions.columns import TAB_COLUMNS

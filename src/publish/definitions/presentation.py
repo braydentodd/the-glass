@@ -1,11 +1,34 @@
 """
-The Glass - Visual Style Definitions
+The Glass - Presentation Configuration
 
-Color palette, percentile color thresholds, and column-width classes used
-by the publish layout and formatting engines.
+Cross-destination presentation configuration: fonts, colors, alignment,
+wrap strategy, visual assets, and column width classes used by the publish
+layout and formatting engines. Destination-specific config (spreadsheet IDs,
+OAuth scopes, frozen panes) lives in :mod:`src.publish.destinations.sheets.config`.
 """
 
 from typing import Any, Dict, Optional
+
+
+# ============================================================================
+# PRESENTATION DEFAULTS
+# ============================================================================
+
+PRESENTATION_DEFAULTS: Dict[str, Any] = {
+    'header_font':                    'Staatliches',
+    'data_font':                      'Sofia Sans',
+    'header_bg':                      'black',
+    'header_fg':                      'white',
+    'data_row_even_bg':               'white',
+    'data_row_odd_bg':                'light_gray',
+    'data_fg':                        'black',
+    'horizontal_align':               'CENTER',
+    'vertical_align':                 'MIDDLE',
+    'wrap_strategy':                  'CLIP',
+    'hide_advanced_columns':          True,
+    'percentile_companion_width':     18,
+    'percentile_companion_font_size': 5,
+}
 
 
 # ============================================================================
@@ -51,6 +74,17 @@ WIDTH_CLASSES: Dict[str, Optional[int]] = {
 # ============================================================================
 # VALIDATION SCHEMAS
 # ============================================================================
+
+PRESENTATION_DEFAULTS_SCHEMA: Dict[str, Dict[str, Any]] = {
+    'header_font':                    {'required': True, 'types': (str,)},
+    'data_font':                      {'required': True, 'types': (str,)},
+    'header_bg':                      {'required': True, 'types': (str,)},
+    'header_fg':                      {'required': True, 'types': (str,)},
+    'wrap_strategy':                  {'required': True, 'types': (str,)},
+    'hide_advanced_columns':          {'required': True, 'types': (bool,)},
+    'percentile_companion_width':     {'required': True, 'types': (int,)},
+    'percentile_companion_font_size': {'required': True, 'types': (int,)},
+}
 
 COLORS_SCHEMA: Dict[str, Dict[str, Any]] = {
     'red':   {'required': True, 'types': (int, float)},

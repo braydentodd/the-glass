@@ -4,9 +4,10 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from src.publish.definitions.columns import TAB_COLUMNS
 from src.publish.definitions.layout import SECTIONS_CONFIG, SUBSECTIONS
-from src.publish.definitions.sheets import HEADER_ROWS, SHEET_FORMATTING
+from src.publish.definitions.presentation import PRESENTATION_DEFAULTS
 from src.publish.definitions.stats import DEFAULT_STAT_RATE, STAT_RATES
-from src.publish.lib.formatting import ROW_INDEXES, format_section_header
+from src.publish.lib.row_structure import HEADER_ROWS
+from src.publish.lib.formatters import format_section_header
 
 
 @dataclass(frozen=True)
@@ -127,9 +128,9 @@ def _make_separator(context_key: str, visible: bool, separator_type: str = 'sect
     sep_def = dict(_SEPARATOR_DEF)
     sep_def['separator_type'] = separator_type
     if separator_type == 'subsection':
-        sep_def['width_class'] = SHEET_FORMATTING.get('subsection_separator_width', 2)
+        sep_def['width_class'] = PRESENTATION_DEFAULTS.get('subsection_separator_width', 2)
     else:
-        sep_def['width_class'] = SHEET_FORMATTING.get('section_separator_width', 4)
+        sep_def['width_class'] = PRESENTATION_DEFAULTS.get('section_separator_width', 4)
     return ('_sep', sep_def, visible, context_key)
 
 def generate_percentile_columns() -> dict:
@@ -175,7 +176,7 @@ def _make_companion_def(base_def: dict, base_key: str,
         'base_percentile': base_def.get('percentile', 'standard'),
         'values': base_def.get('values', {}),
         'is_opponent_col': base_def.get('is_opponent_col', False),
-        'width_class': SHEET_FORMATTING.get('percentile_companion_width', 10),
+        'width_class': PRESENTATION_DEFAULTS.get('percentile_companion_width', 10),
         'tabs': base_def.get('tabs', ['all_teams', 'all_players', 'individual_team']),
     }
 
@@ -317,7 +318,7 @@ def build_tab_columns(entity: str = 'player', stats_mode: str = 'both',
     Percentile columns are interleaved immediately after their base stat column.
     Columns are filtered by their 'tabs' array and 'leagues' list.
     """
-    fmt = SHEET_FORMATTING
+    fmt = PRESENTATION_DEFAULTS
     hide_advanced = fmt.get('hide_advanced_columns', True)
 
     _TAB_TYPE_KEY = {
@@ -458,182 +459,4 @@ def get_column_index(column_key: str, columns_list: List[Tuple],
 # HEADER BUILDING
 # ============================================================================
 
-def build_headers(columns_list: List[Tuple], mode: str = 'per_possession',
-                  team_name: str = '',
-                  current_season: int = 0,
-                  historical_config: Optional[dict] = None,
-                  hist_timeframe: str = '',
-                  post_timeframe: str = '',
-                  season_format_fn: Callable[[int], str] = str) -> dict:
-    """
-    Build header rows for Google Sheets (4-row layout).
-
-    Row 0: Section headers (one merge per section/mode variant)
-    Row 1: Subsection headers (hidden by default)
-    Row 2: Column names
-    Row 3: Empty filter row
-
-    Composite context keys like 'current_stats__per_possession' produce
-    mode-specific section headers (e.g. "2024-25 Stats (per 100 Poss)").
-    """
-    row1, row2, row3, row3_clean = [], [], [], []
-    merges = []
-
-    cur_section = None
-    sec_start = 0
-    cur_subsection = None
-    sub_start = 0
-
-    def _get_display(section):
-        base = _base_section(section)
-        if base == 'entities':
-            return team_name
-        
-        if isinstance(section, ColumnContext):
-            sec_mode = section.rate if section.rate else mode
-            local_hist_config = {'mode': 'seasons', 'value': section.timeframe} if section.timeframe else historical_config
-        else:
-            sec_mode = section.split('__')[1] if isinstance(section, str) and '__' in section else mode
-            local_hist_config = historical_config
-            m = re.search(r'_(?:[a-zA-Z]+_)?(\d+)yr(?:__|$)', str(section)) or re.search(r'_(\d+)yr(?:__|$)', str(section))
-            if m:
-                local_hist_config = {'mode': 'seasons', 'value': int(m.group(1))}
-            
-        base_cfg = SECTIONS_CONFIG.get(base, {})
-        if base_cfg.get('stats_timeframe') and current_season:
-            return format_section_header(
-                base, current_season=current_season,
-                historical_config=local_hist_config,
-                is_postseason=(base == 'postseason_stats'),
-                mode=sec_mode,
-                season_format_fn=season_format_fn)
-        
-        if isinstance(section, ColumnContext):
-             return base_cfg.get('display_name', section.base_section)
-        return base_cfg.get('display_name', str(section))
-
-    for idx, entry in enumerate(columns_list):
-        col_key, col_def = entry[0], entry[1]
-        section = entry[3] if len(entry) > 3 else (col_def.get('sections', ['unknown'])[0])
-        subsection = _normalize_subsection_key(col_def.get('subsection'))
-
-        # Separator columns break merges and emit empty cells
-        if col_def.get('is_separator'):
-            sep_type = col_def.get('separator_type', 'section')
-            if sep_type == 'section':
-                if cur_section is not None and sec_start < idx:
-                    merges.append({'row': ROW_INDEXES['section_header_row'], 'start_col': sec_start, 'end_col': idx, 'value': _get_display(cur_section)})
-                cur_section = None
-                sec_start = idx + 1
-            if cur_subsection is not None and sub_start < idx:
-                merges.append({'row': ROW_INDEXES['subsection_header_row'], 'start_col': sub_start, 'end_col': idx, 'value': _subsection_display_name(cur_subsection)})
-            cur_subsection = None
-            sub_start = idx + 1
-            if sep_type == 'section':
-                row1.append('')
-            else:
-                # If subsection separator, the section merge continues
-                # but we emit an empty cell for row1 (won't be seen because it's merged)
-                row1.append('')
-            row2.append('')
-            row3.append('')
-            continue
-
-        # Row 0: Section headers (grouped by section)
-        if section != cur_section:
-            if cur_section is not None and sec_start < idx:
-                display = _get_display(cur_section)
-                merges.append({'row': ROW_INDEXES['section_header_row'], 'start_col': sec_start, 'end_col': idx, 'value': display})
-            # Close pending subsection merge before switching sections
-            if cur_subsection is not None and sub_start < idx:
-                sub_display = _subsection_display_name(cur_subsection)
-                merges.append({'row': ROW_INDEXES['subsection_header_row'], 'start_col': sub_start, 'end_col': idx, 'value': sub_display})
-            cur_section = section
-            sec_start = idx
-            row1.append(_get_display(section))
-            # Reset subsection tracking on section change
-            cur_subsection = None
-            sub_start = idx
-        else:
-            row1.append('')
-
-        # Row 1: Subsection headers (all sections with subsections)
-        if subsection:
-            if subsection != cur_subsection:
-                if cur_subsection is not None and sub_start < idx:
-                    sub_display = _subsection_display_name(cur_subsection)
-                    merges.append({'row': ROW_INDEXES['subsection_header_row'], 'start_col': sub_start, 'end_col': idx, 'value': sub_display})
-                cur_subsection = subsection
-                sub_start = idx
-                row2.append(_subsection_display_name(subsection))
-            else:
-                row2.append('')
-        else:
-            # Close pending subsection merge when entering a column with no subsection
-            if cur_subsection is not None and sub_start < idx:
-                sub_display = _subsection_display_name(cur_subsection)
-                merges.append({'row': ROW_INDEXES['subsection_header_row'], 'start_col': sub_start, 'end_col': idx, 'value': sub_display})
-            cur_subsection = None
-            row2.append('')
-
-        # Row 2: Column display names — use mode from composite context key
-        # Format: "{description}{spacer}{col_key}{spacer}{description}"
-        # The spacer creates a wide string. CLIP truncation shows just the key;
-        # clicking the cell reveals the full description in the formula bar.
-        if isinstance(section, ColumnContext):
-            col_mode = section.rate if section.rate else mode
-        else:
-            col_mode = section.split('__')[1] if isinstance(section, str) and '__' in section else mode
-        override = col_def.get('mode_overrides', {}).get(col_mode)
-        active_def = override if override else col_def
-        description = active_def.get('description', col_def.get('description', ''))
-        header_key = active_def.get('display_name', col_key)
-        if col_def.get('is_generated_percentile', False):
-            row3.append('')
-            row3_clean.append('')
-        elif description:
-            spacer = ' ' * HEADER_ROWS['columns'].get('description_spacer_count', 100)
-            row3.append(f"{description}{spacer}{header_key}{spacer}{description}")
-            row3_clean.append(header_key)
-        else:
-            row3.append(header_key)
-            row3_clean.append(header_key)
-
-    # Close final merges
-    n = len(columns_list)
-    if cur_section:
-        display = _get_display(cur_section)
-        merges.append({'row': ROW_INDEXES['section_header_row'], 'start_col': sec_start, 'end_col': n, 'value': display})
-    if cur_subsection:
-        sub_display = _subsection_display_name(cur_subsection)
-        merges.append({'row': ROW_INDEXES['subsection_header_row'], 'start_col': sub_start, 'end_col': n, 'value': sub_display})
-
-    # ---- Merge column header (row 2) across stat + companion pairs ----
-    # Each companion column is immediately after its base stat column.
-    # Merge them so the stat name spans both columns.
-    col_header_row = ROW_INDEXES['column_header_row']
-    filter_row_idx = ROW_INDEXES['filter_row']
-    for idx, entry in enumerate(columns_list):
-        col_def = entry[1]
-        if col_def.get('is_generated_percentile', False) and idx > 0:
-            # Merge column header: stat name spans stat + companion
-            merges.append({
-                'row': col_header_row,
-                'start_col': idx - 1,
-                'end_col': idx + 1,
-                'value': row3[idx - 1],  # stat's display name
-            })
-            # Merge filter row too (keeps auto-filter dropdown only on stat col)
-            merges.append({
-                'row': filter_row_idx,
-                'start_col': idx - 1,
-                'end_col': idx + 1,
-                'value': '',
-            })
-
-    return {
-        'row1': row1, 'row2': row2, 'row3': row3, 'row3_clean': row3_clean,
-        'merges': merges
-    }
-
-
+# build_headers moved to src.publish.lib.tabular_layout (tabular-specific)

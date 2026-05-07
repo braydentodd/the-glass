@@ -22,7 +22,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from psycopg2.extras import execute_values
 
 from src.core.lib.postgres import db_connection, quote_col
-from src.core.definitions.db_tables import (
+from src.core.definitions.tables import (
     PROFILE_TABLES,
     STATS_TABLES,
     THE_GLASS_ID_COLUMN,

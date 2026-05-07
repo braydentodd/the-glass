@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from psycopg2.extras import RealDictCursor
 
 from src.core.lib.postgres import get_db_connection
-from src.core.definitions.db_tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
+from src.core.definitions.tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
 from src.core.definitions.stats import SEASON_TYPE_GROUPS
 
 logger = logging.getLogger(__name__)

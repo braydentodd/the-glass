@@ -38,9 +38,11 @@ from src.core.lib.leagues_resolver import (
     get_current_season_year,
 )
 from src.publish.definitions.layout import SECTIONS_CONFIG
-from src.publish.definitions.sheets import SHEET_FORMATTING
 from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
-from src.publish.destinations.sheets.config import GOOGLE_SHEETS_CONFIG
+from src.publish.destinations.sheets.config import (
+    GOOGLE_SHEETS_CONFIG,
+    SHEETS_FORMATTING,
+)
 from src.publish.destinations.sheets.client import get_sheets_client
 from src.publish.lib.calculations import derive_db_fields
 from src.publish.lib.executor import (
@@ -50,7 +52,7 @@ from src.publish.lib.executor import (
     sync_team_tab,
     sync_teams_tab,
 )
-from src.publish.lib.export_config import export_config
+from src.publish.destinations.sheets.config_exporter import export_config
 from src.publish.lib.progress_tracker import (
     complete_run,
     fail_run,
@@ -216,8 +218,9 @@ def run_publish(
     data_only: bool,
     priority_tab: Optional[str],
     config_export: bool = True,
+    destination: str = 'google_sheets',
 ) -> None:
-    """Run a full Google Sheets sync for a league.
+    """Run a full sync for a league to the specified destination.
 
     Caller (the CLI) is expected to have configured logging and validated
     config before calling this function; nothing here touches stdout.
@@ -248,7 +251,7 @@ def run_publish(
     ctx = SyncContext(
         league=league,
         google_sheets_config=GOOGLE_SHEETS_CONFIG[league],
-        sheet_formatting=SHEET_FORMATTING,
+        sheet_formatting=SHEETS_FORMATTING,
         league_config=league_config,
         db_schema=db_schema,
         player_entity_table=get_table_name('player', 'entity', db_schema),
@@ -383,6 +386,7 @@ def run_publish(
     complete_run(conn, db_schema, run_id)
     conn.close()
 
-    if config_export:
+    # Apps Script config export is Google Sheets-specific
+    if config_export and destination == 'google_sheets':
         logger.info(phase_marker('apps_script_push'))
         _push_apps_script_config(league)

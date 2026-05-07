@@ -20,7 +20,7 @@ from typing import Callable, Set
 from src.core.lib.postgres import get_db_connection
 from src.publish.definitions.layout import TABS_CONFIG
 from src.publish.definitions.stats import STAT_RATES
-from src.publish.destinations.sheets.api_builder import build_formatting_requests
+from src.publish.destinations.sheets.request_builders import build_formatting_requests
 from src.publish.destinations.sheets.client import (
     get_or_create_worksheet,
     move_sheet_to_position,
@@ -34,7 +34,8 @@ from src.publish.lib.data_populator import (
     build_merged_entity_row,
     build_summary_rows,
 )
-from src.publish.lib.layout import build_headers, build_tab_columns
+from src.publish.lib.column_structure import build_tab_columns
+from src.publish.lib.row_structure import build_headers
 from src.publish.lib.queries import (
     fetch_all_players,
     fetch_all_teams,

@@ -1,11 +1,24 @@
-from typing import Any, Callable, List, Optional
+"""
+Value formatting utilities for display.
+"""
 
-from src.publish.definitions.columns import TAB_COLUMNS
+from typing import Any, Callable, Optional
+
 from src.publish.definitions.stats import STAT_RATES
-from src.publish.definitions.sheets import HEADER_ROWS, SHEET_FORMATTING
+
 
 def format_stat_value(value: Any, fmt: str, decimals: int, nullable: bool) -> Any:
-    """Format a stat value for display according to column definition."""
+    """Format a stat value for display according to column definition.
+    
+    Args:
+        value: The stat value to format
+        fmt: Format type ('percentage', etc.)
+        decimals: Number of decimal places
+        nullable: If False, show 0 instead of blank for None values
+        
+    Returns:
+        Formatted value (int, float, or empty string)
+    """
     if value is None:
         # Non-nullable columns (games, seasons) show 0 instead of blank
         if not nullable:
@@ -28,7 +41,14 @@ def format_stat_value(value: Any, fmt: str, decimals: int, nullable: bool) -> An
 
 
 def format_height(inches: Any) -> str:
-    """Format height in inches to feet-inches string. 80 → 6'8\", 78.5 → 6'6.5\"."""
+    """Format height in inches to feet-inches string. 80 → 6'8\", 78.5 → 6'6.5\".
+    
+    Args:
+        inches: Height in inches (int or float)
+        
+    Returns:
+        Formatted height string (e.g., "6'8\"" or "6'6.5\"")
+    """
     if not inches:
         return ''
     feet = int(inches // 12)
@@ -60,6 +80,9 @@ def format_section_header(section: str, historical_config: Optional[dict] = None
         season_format_fn: League-bound formatter that turns the end-year integer
             into a season label.  Defaults to ``str`` so unbound callers still
             render something readable.
+
+    Returns:
+        Formatted section header string
     """
     season_label = 'Postseason' if is_postseason else 'Regular Season'
 
@@ -95,69 +118,3 @@ def format_section_header(section: str, historical_config: Optional[dict] = None
         timeframe_str = f"(Previous {num} Seasons)"
 
     return f"{season_label} Stats{rate_str} {timeframe_str}"
-
-
-def format_seasons_range(historical_config: Optional[dict], current_season: int) -> str:
-    """
-    Returns a prefix string for section headers.
-    """
-    if not historical_config:
-        return 'Previous 3 Seasons'
-    mode = historical_config.get('mode', 'seasons')
-    if mode == 'seasons':
-        value = historical_config.get('value', 3)
-        if isinstance(value, int):
-            if value == 1:
-                return 'Previous Season'
-            return f'Previous {value} Seasons'
-        elif isinstance(value, list):
-            n = len(value)
-            if n == 1:
-                return 'Previous Season'
-            return f'Previous {n} Seasons'
-    return 'Previous 3 Seasons'
-
-
-def get_reverse_stats() -> List[str]:
-    """Get list of stat column keys where lower is better."""
-    return [k for k, v in TAB_COLUMNS.items() if v.get('percentile') == 'reverse']
-
-
-def get_editable_fields() -> List[str]:
-    """Get list of field names that users can edit (wingspan, notes, hand)."""
-    fields = []
-    for col_key, col_def in TAB_COLUMNS.items():
-        if col_def.get('editable', False):
-            # Get the actual DB field from the player value
-            formula = col_def.get('values', {}).get('player')
-            if formula and isinstance(formula, str):
-                fields.append(formula)
-
-
-
-def _get_row_indexes():
-    indexes = {}
-    current_row = 0
-    for row_key, rules in HEADER_ROWS.items():
-        if row_key == 'sections':
-            indexes['section_header_row'] = current_row
-        elif row_key == 'subsections':
-            indexes['subsection_header_row'] = current_row
-        elif row_key == 'columns':
-            indexes['column_header_row'] = current_row
-        elif row_key == 'filters':
-            indexes['filter_row'] = current_row
-            
-        current_row += 1
-        
-        if rules.get('divider_row_weight') and rules.get('divider_row_direction') == 'below':
-            if row_key == 'sections':
-                indexes['section_divider_row'] = current_row
-            elif row_key == 'subsections':
-                indexes['subsection_divider_row'] = current_row
-            current_row += 1
-            
-    indexes['data_start_row'] = SHEET_FORMATTING.get('header_rows', current_row)
-    return indexes
-
-ROW_INDEXES = _get_row_indexes()

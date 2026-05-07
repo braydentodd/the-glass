@@ -31,7 +31,7 @@ load_dotenv()
 import logging
 import sys
 
-from src.core.lib.cli import (
+from src.core.lib.terminal import (
     HelpFormatter,
     make_base_parser,
     print_banner,
@@ -39,101 +39,13 @@ from src.core.lib.cli import (
     style,
 )
 from src.core.lib.logging import setup_logging
-from src.core.definitions.leagues import LEAGUES
-from src.etl.orchestrator import VALID_PHASES, run_etl
-from src.publish.definitions.stats import (
-    DEFAULT_STAT_RATE,
-    HISTORICAL_TIMEFRAMES,
-    STAT_RATES,
-)
+from src.etl.cli import add_subparser as add_etl_subparser
+from src.etl.orchestrator import run_etl
+from src.publish.cli import add_subparser as add_publish_subparser
 from src.publish.lib.export_config import export_config
 from src.publish.orchestrator import run_publish
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Subparser builders
-# ---------------------------------------------------------------------------
-
-def _add_etl_subparser(subparsers) -> None:
-    p = subparsers.add_parser(
-        'etl',
-        help='ETL pipeline (extract -> transform -> load).',
-        formatter_class=HelpFormatter,
-        epilog=(
-            "Phases:\n"
-            "  full        full league run\n"
-            "  discover    profile rows for the current season\n"
-            "  rosters     league/team and team/player junctions\n"
-            "  backfill    stats for every retained season\n"
-            "  update      stats for the current season only\n"
-            "  prune       per-league retention pruning\n"
-            "  orphan      cross-league orphan profile sweep"
-        ),
-    )
-    p.add_argument(
-        '--league', type=str, default=None, choices=sorted(LEAGUES),
-        help='League key. Required for every phase except "orphan".',
-    )
-    p.add_argument(
-        '--phase', type=str, default='full', choices=sorted(VALID_PHASES),
-        help='ETL phase to run.',
-    )
-    p.add_argument(
-        '--season', type=str, default=None,
-        help="Season label (e.g. 2024-25). Defaults to the league's current season.",
-    )
-    p.add_argument(
-        '--season-type', type=str, default='rs', choices=['rs', 'po', 'pi'],
-        help='Season type code.',
-    )
-    p.add_argument(
-        '--entity', type=str, default='all', choices=['player', 'team', 'all'],
-        help='Limit to one entity type.',
-    )
-
-
-def _add_publish_subparser(subparsers) -> None:
-    p = subparsers.add_parser(
-        'publish',
-        help='Publish league data to Google Sheets.',
-        formatter_class=HelpFormatter,
-    )
-    p.add_argument(
-        '--league', choices=sorted({'nba', 'ncaa'}), required=True,
-        help='League to sync.',
-    )
-    p.add_argument(
-        '--tab', metavar='NAME', default=None,
-        help='Sync this tab first (team abbr like "BOS", or "all_players" / "all_teams").',
-    )
-    p.add_argument(
-        '--stat-rate', choices=sorted(STAT_RATES), default=DEFAULT_STAT_RATE,
-        help='Default visible stat rate.',
-    )
-    p.add_argument(
-        '--historical-timeframe', type=int,
-        choices=sorted(HISTORICAL_TIMEFRAMES),
-        default=min(HISTORICAL_TIMEFRAMES),
-        help='Number of previous seasons to include in historical sections.',
-    )
-    p.add_argument(
-        '--show-advanced', action='store_true',
-        help='Render advanced stat columns visible by default.',
-    )
-    p.add_argument(
-        '--data-only', action='store_true',
-        help='Fast sync: skip structural formatting, only update data + colors.',
-    )
-    p.add_argument(
-        '--export-config', action='store_true',
-        help='Export the Apps Script config JS file and exit (no sheet sync).',
-    )
-    p.add_argument(
-        '--skip-config-export', action='store_true',
-        help='Skip config build/export and clasp push entirely.',
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -148,8 +60,8 @@ def _build_parser():
     root.formatter_class = HelpFormatter
     subparsers = root.add_subparsers(dest='pipeline', metavar='PIPELINE')
     subparsers.required = True
-    _add_etl_subparser(subparsers)
-    _add_publish_subparser(subparsers)
+    add_etl_subparser(subparsers)
+    add_publish_subparser(subparsers)
     return root
 
 
@@ -158,7 +70,7 @@ def _build_parser():
 # ---------------------------------------------------------------------------
 
 def _run_etl(args) -> int:
-    from src.etl.config_validation import validate_all
+    from src.etl.lib.config_validation import validate_all
 
     print_banner('The Glass -- ETL', f'phase={args.phase}  league={args.league or "<n/a>"}')
     print_summary(
@@ -196,14 +108,16 @@ def _run_etl(args) -> int:
 
 
 def _run_publish(args) -> int:
-    from src.publish.config_validation import validate_all
+    from src.publish.lib.config_validation import validate_all
+    from src.publish.destinations.sheets.config_exporter import export_config
 
     league = args.league.lower()
     historical_config = {'mode': 'seasons', 'value': args.historical_timeframe}
+    destination = args.destination
 
     print_banner(
         'The Glass -- Publish',
-        f'league={league}  stat_rate={args.stat_rate}  data_only={args.data_only}',
+        f'league={league}  stat_rate={args.stat_rate}  data_only={args.data_only}  destination={destination}',
     )
     print_summary(
         {
@@ -214,6 +128,7 @@ def _run_publish(args) -> int:
             'data_only':          args.data_only,
             'show_advanced':      args.show_advanced,
             'export_config_only': args.export_config,
+            'destination':        destination,
         },
         title='Run parameters',
     )
@@ -224,7 +139,11 @@ def _run_publish(args) -> int:
         logger.error('Config validation failed: %s', exc)
         return 2
 
+    # Apps Script config export is Google Sheets-specific
     if args.export_config and not args.skip_config_export:
+        if destination != 'google_sheets':
+            logger.error('--export-config is only supported for google_sheets destination')
+            return 2
         path = export_config(league)
         logger.info('Config exported to %s', path)
         return 0
@@ -238,6 +157,7 @@ def _run_publish(args) -> int:
             data_only=args.data_only,
             priority_tab=args.tab,
             config_export=not args.skip_config_export,
+            destination=destination,
         )
     except KeyboardInterrupt:
         logger.warning('Interrupted by user.')

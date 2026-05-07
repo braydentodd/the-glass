@@ -3,15 +3,15 @@ from typing import List, Optional, Any, Tuple
 from src.publish.definitions.columns import TAB_COLUMNS
 from src.publish.definitions.layout import SECTIONS_CONFIG, SUMMARY_THRESHOLDS
 from src.publish.definitions.stats import DEFAULT_STAT_RATE, STAT_RATES
-from src.publish.lib.layout import ColumnContext
+from src.publish.lib.column_structure import ColumnContext
+from src.publish.lib.column_structure import _base_section, _format_companion
 from src.publish.lib.calculations import (
     calculate_entity_stats,
     evaluate_expression,
     evaluate_formula,
     get_percentile_rank,
 )
-from src.publish.lib.formatting import format_height, format_stat_value
-from src.publish.lib.layout import _base_section, _format_companion
+from src.publish.lib.formatters import format_height, format_stat_value
 
 # ============================================================================
 # ROW BUILDING

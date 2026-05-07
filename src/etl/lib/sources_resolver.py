@@ -6,8 +6,6 @@ per-league primary-source assignment in
 :data:`src.core.definitions.leagues.LEAGUES`.
 """
 
-from typing import List, Tuple
-
 from src.core.definitions.leagues import LEAGUES
 from src.etl.definitions.sources import SOURCES
 
@@ -51,20 +49,3 @@ def get_source_id_column(source_key: str) -> str:
     if source_key not in SOURCES:
         raise ValueError(f"Unknown source: {source_key!r}")
     return f'{source_key}_id'
-
-
-def get_source_id_columns_for_entity(entity: str) -> List[Tuple[str, str]]:
-    """Source-id columns to add to ``entity``'s profile table, in stable order.
-
-    A source contributes a column when it has a non-null ``entity_id_type``
-    and includes ``entity`` in its ``applies_to`` list.
-    """
-    columns: List[Tuple[str, str]] = []
-    for source_key in sorted(SOURCES):
-        meta = SOURCES[source_key]
-        if meta.get('entity_id_type') is None:
-            continue
-        if entity not in meta.get('applies_to', []):
-            continue
-        columns.append((get_source_id_column(source_key), meta['entity_id_type']))
-    return columns

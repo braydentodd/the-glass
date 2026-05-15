@@ -11,7 +11,7 @@ by sources/destinations providing their own rate_limits configuration.
 
 import logging
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Union
 
 from src.core.definitions.rate_limits import DEFAULT_RATE_LIMITS
 
@@ -27,7 +27,7 @@ class RateLimiter:
         source_key: Optional identifier for the source/destination (for logging).
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None, source_key: Optional[str] = None):
+    def __init__(self, config: Union[Dict[str, Any], None] = None, source_key: Union[str, None] = None):
         self.config = {**DEFAULT_RATE_LIMITS, **(config or {})}
         self.source_key = source_key
         self._last_request_time = 0.0
@@ -86,7 +86,7 @@ class RateLimiter:
             return self.config.get('timeout_bulk', 120)
         return self.config.get('timeout_default', 30)
 
-    def with_retry(self, func: Callable, max_retries: Optional[int] = None) -> Any:
+    def with_retry(self, func: Callable, max_retries: Union[int, None] = None) -> Any:
         """Execute func with exponential backoff on failure.
 
         Args:
@@ -128,7 +128,7 @@ class RateLimiter:
         raise RuntimeError(f'with_retry exhausted {retries} attempts')
 
 
-def get_rate_limiter(source_key: str, config: Optional[Dict[str, Any]] = None, is_destination: bool = False) -> RateLimiter:
+def get_rate_limiter(source_key: str, config: Union[Dict[str, Any], None] = None, is_destination: bool = False) -> RateLimiter:
     """Get a RateLimiter instance for a given source or destination key.
 
     Args:

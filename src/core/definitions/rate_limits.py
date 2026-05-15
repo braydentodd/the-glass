@@ -34,12 +34,3 @@ DEFAULT_RATE_LIMITS: Dict[str, Any] = {
     'auto_restart': True,
 }
 
-RATE_LIMITS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'requests_per_second': {'required': True, 'types': (int, float)},
-    'max_retries': {'required': True, 'types': (int,)},
-    'backoff_base': {'required': True, 'types': (int, float)},
-    'timeout_default': {'required': True, 'types': (int, float)},
-    'timeout_bulk': {'required': True, 'types': (int, float)},
-    'max_consecutive_failures': {'required': True, 'types': (int,)},
-    'auto_restart': {'required': True, 'types': (bool,)},
-}

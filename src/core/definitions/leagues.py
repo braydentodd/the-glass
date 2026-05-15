@@ -1,4 +1,5 @@
 """
+
 The Glass - League Definitions
 
 Per-league operational settings: calendar window, retention, season grammar,
@@ -6,7 +7,7 @@ and source role ownership. Pure declarative data;
 helpers live in :mod:`src.core.lib.leagues`.
 """
 
-from typing import Any, Dict
+from typing import Dict, List, TypedDict
 
 
 # ============================================================================
@@ -17,25 +18,37 @@ VALID_LEAGUE_SEASON_FORMATS = frozenset({'same_year', 'split_year'})
 VALID_LEAGUE_GENDERS = frozenset({'M', 'W'})
 VALID_SOURCE_ROLE_KEYS = frozenset({'roster_maintainer', 'retained_discoverer'})
 
-
 # ============================================================================
 # SCHEMA
 # ============================================================================
 
+class SourceRoleParams(TypedDict):
+    is_only_current_season: str
 
-LEAGUES_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'name':                   {'required': True, 'types': (str,)},
-    'abbr':                   {'required': True, 'types': (str,)},
-    'gender':                 {'required': True, 'types': (str,), 'allowed_values': VALID_LEAGUE_GENDERS},
-    'season_format':          {'required': True, 'types': (str,), 'allowed_values': VALID_LEAGUE_SEASON_FORMATS},
-    'regular_season_types':   {'required': True, 'types': (list,)},
-    'postseason_types':       {'required': True, 'types': (list,)},
-    'calendar_flip_md':       {'required': True, 'types': (str,)},
-    'retention_seasons':      {'required': True, 'types': (int,)},
-    'source_roles':           {'required': True, 'types': (dict,)},
-}
+class SourceRoleDef(TypedDict):
+    dataset: str
+    team_id_field: str
+    player_id_field: str
+    jersey_field: str
+    params: SourceRoleParams
 
-LEAGUES: Dict[str, Dict[str, Any]] = {
+class LeagueRoles(TypedDict):
+    roster_maintainer: Dict[str, SourceRoleDef]
+    retained_discoverer: Dict[str, SourceRoleDef]
+
+class LeagueDef(TypedDict):
+    name: str
+    abbr: str
+    gender: str
+    season_format: str
+    regular_season_types: List[str]
+    postseason_types: List[str]
+    calendar_flip_md: str
+    retention_seasons: int
+    source_roles: LeagueRoles
+
+LEAGUES: Dict[str, LeagueDef] = {
+
     'nba': {
         'name':                   'National Basketball Association',
         'abbr':                   'NBA',

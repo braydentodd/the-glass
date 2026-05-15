@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from src.core.lib.rate_limiter import get_rate_limiter
 from src.publish.lib.row_structure import ROW_INDEXES
-from typing import Callable, Optional
+from typing import Callable, Union
 
 import gspread
 from google.oauth2.service_account import Credentials
@@ -62,7 +62,7 @@ def apply_sheet_formatting(worksheet, columns_list, header_merges: list,
                            tab_type: str = 'team',
                            show_advanced: bool = False,
                            data_only: bool = False,
-                           build_fn: Optional[Callable] = None):
+                           build_fn: Union[Callable, None] = None):
     """
     Apply ALL Google Sheets formatting via batch API requests.
     Delegates to the league-specific build_formatting_requests function passed

@@ -1,4 +1,4 @@
-from typing import List, Optional, Any, Tuple
+from typing import List, Any, Tuple, Union
 
 from src.publish.definitions.columns import TAB_COLUMNS
 from src.publish.definitions.layout import SECTIONS_CONFIG, SUMMARY_THRESHOLDS
@@ -20,9 +20,9 @@ from src.publish.lib.formatters import format_height, format_stat_value
 def build_entity_row(entity_data: dict, columns_list: List[Tuple],
                      percentiles: dict, entity_type: str = 'player',
                      mode: str = 'per_possession', seasons_str: str = '',
-                     row_section: Optional[str] = None,
-                     section_data: Optional[dict] = None,
-                     context: Optional[dict] = None) -> list:
+                     row_section: Union[str, None] = None,
+                     section_data: Union[dict, None] = None,
+                     context: Union[dict, None] = None) -> list:
     """
     Build a single data row for any entity type.
 
@@ -165,14 +165,14 @@ def build_entity_row(entity_data: dict, columns_list: List[Tuple],
 # MOVED FROM FORMATTING.PY
 # ============================
 def build_merged_entity_row(player_id, columns_list: List[Tuple],
-                            current_data: Optional[dict],
-                            historical_data: Optional[dict],
-                            postseason_data: Optional[dict],
+                            current_data: Union[dict, None],
+                            historical_data: Union[dict, None],
+                            postseason_data: Union[dict, None],
                             pct_by_rate: dict,
                             entity_type: str = 'player',
                             historical_timeframe: str = '', post_seasons: str = '',
-                            opp_percentiles: Optional[dict] = None,
-                            context: Optional[dict] = None) -> Tuple[list, List[dict], List[dict]]:
+                            opp_percentiles: Union[dict, None] = None,
+                            context: Union[dict, None] = None) -> Tuple[list, List[dict], List[dict]]:
     """
     Build a single merged data row with current + historical + postseason stats.
 
@@ -435,7 +435,7 @@ def _get_value_at_percentile(sorted_values: List, percentile: float,
 def build_summary_rows(columns_list: List[Tuple],
                        percentile_pops: dict,
                        mode: str = 'per_possession',
-                       opp_percentiles: Optional[dict] = None) -> Tuple[List[list], List[dict]]:
+                       opp_percentiles: Union[dict, None] = None) -> Tuple[List[list], List[dict]]:
     """
     Build summary rows (Best, 75th, Average, 25th, Worst) for Teams/Players sheets.
 

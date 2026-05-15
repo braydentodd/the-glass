@@ -13,7 +13,7 @@ pending item.
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -268,7 +268,7 @@ def find_resumable_run(
     db_schema: str,
     pipeline: str,
     **filters: Any,
-) -> Optional[int]:
+) -> Union[int, None]:
     """Find an interrupted run matching the given filters.
     
     Args:

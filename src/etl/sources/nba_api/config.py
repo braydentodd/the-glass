@@ -14,7 +14,37 @@ Validation is folded into :func:`src.etl.config_validation._validate_nba_api`.
 from typing import Any, Dict
 
 
-SEASON_TYPES: Dict[str, Dict[str, Any]] = {
+
+from typing import TypedDict, Dict, List, Union, Any
+
+class ApiConfigDef(TypedDict):
+    league_id: str
+    per_mode_simple: str
+    per_mode_time: str
+    per_mode_detailed: str
+    last_n_games: str
+    month: str
+    opponent_team_id: str
+    period: str
+    
+class DatasetDef(TypedDict):
+    min_season: Union[str, None]
+    execution_tier: str
+    default_result_set: str
+    season_type_param: Union[str, None]
+    per_mode_param: Union[str, None]
+    entity_types: List[str]
+    requires_params: List[str]
+    virtual: bool
+    season_param: str
+
+class SeasonTypeDef(TypedDict):
+    name: str
+    param: str
+    min_season: Union[str, None]
+
+SEASON_TYPES: Dict[str, SeasonTypeDef] = {
+
     'rs': {
         'name':       'Regular Season',
         'param':      'Regular Season',
@@ -38,7 +68,7 @@ SEASON_TYPES: Dict[str, Dict[str, Any]] = {
 # ============================================================================
 
 # NBA-specific API parameters (not rate limiting)
-API_CONFIG = {
+API_CONFIG: ApiConfigDef = {
     'league_id': '00',
     'per_mode_simple': 'Totals',
     'per_mode_time': 'Totals',
@@ -54,7 +84,7 @@ API_CONFIG = {
 # DATASET DEFINITIONS
 # ============================================================================
 
-DATASETS: Dict[str, Dict[str, Any]] = {
+DATASETS: Dict[str, DatasetDef] = {
 
     # --- Basic stats (since 2003-04) ---
 
@@ -247,7 +277,7 @@ DATASETS: Dict[str, Dict[str, Any]] = {
 # API FIELD NAME MAPPINGS
 # ============================================================================
 
-API_FIELD_NAMES = {
+API_FIELD_NAMES: Dict[str, Dict[str, Any]] = {
     'entity_id':   {'player': 'PLAYER_ID', 'team': 'TEAM_ID'},
     'entity_name': {'player': 'PLAYER_NAME', 'team': 'TEAM_NAME'},
     'special_ids': {'person': 'PERSON_ID'},
@@ -259,32 +289,4 @@ API_FIELD_NAMES = {
 # VALIDATION SCHEMAS  (co-located with the config they describe)
 # ============================================================================
 
-VALID_EXECUTION_TIERS = {'per_league', 'per_player', 'per_team'}
 
-API_CONFIG_SCHEMA = {
-    'league_id': {'required': True, 'types': (str,)},
-    'per_mode_simple': {'required': True, 'types': (str,)},
-    'per_mode_time': {'required': True, 'types': (str,)},
-    'per_mode_detailed': {'required': True, 'types': (str,)},
-    'last_n_games': {'required': True, 'types': (str,)},
-    'month': {'required': True, 'types': (str,)},
-    'opponent_team_id': {'required': True, 'types': (str,)},
-    'period': {'required': True, 'types': (str,)},
-}
-
-DATASETS_SCHEMA = {
-    'min_season': {'required': True, 'types': (str, type(None))},
-    'execution_tier': {'required': True, 'types': (str,), 'allowed_values': VALID_EXECUTION_TIERS},
-    'default_result_set': {'required': True, 'types': (str,)},
-    'season_type_param': {'required': True, 'types': (str, type(None))},
-    'per_mode_param': {'required': True, 'types': (str, type(None))},
-    'entity_types': {'required': True, 'types': (list,), 'list_item_values': {'player', 'team'}},
-    'requires_params': {'required': False, 'types': (list,)},
-    'virtual': {'required': False, 'types': (bool,)},
-}
-
-SEASON_TYPES_SCHEMA = {
-    'name': {'required': True, 'types': (str,)},
-    'param': {'required': True, 'types': (str,)},
-    'min_season': {'required': True, 'types': (str, type(None))},
-}

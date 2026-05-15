@@ -16,10 +16,10 @@ Null propagation contract:
 """
 
 from datetime import date, datetime
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Union
 
 
-def calculate_age(birthdate: Any) -> Optional[float]:
+def calculate_age(birthdate: Any) -> Union[float, None]:
     """Age in years rounded to one decimal.
 
     Accepts datetime, date, or ISO date string. Returns None on null or
@@ -42,7 +42,7 @@ def calculate_age(birthdate: Any) -> Optional[float]:
 
 
 def lookup(key_value: Any, table: str, field: str,
-           ctx: Optional[dict]) -> Any:
+           ctx: Union[dict, None]) -> Any:
     """Resolve a foreign-key style lookup against `ctx['lookup_tables']`.
 
     Lookup tables are structured `{table_name: {key: {field: value}}}`.
@@ -55,13 +55,13 @@ def lookup(key_value: Any, table: str, field: str,
     return entry.get(field) if entry else None
 
 
-def seasons_in_query(ctx: Optional[dict]) -> int:
+def seasons_in_query(ctx: Union[dict, None]) -> int:
     """Return the season count from runtime context (default 1)."""
     return (ctx or {}).get('seasons_in_query', 1)
 
 
-def team_average(value_fn: Callable[[dict, Optional[dict]], Any],
-                 ctx: Optional[dict]) -> Optional[float]:
+def team_average(value_fn: Callable[[dict, Union[dict, None]], Any],
+                 ctx: Union[dict, None]) -> Union[float, None]:
     """Minute-weighted average of `value_fn(player, ctx)` across the team.
 
     `ctx['team_players']` provides the iterable of player rows. Each player

@@ -11,7 +11,7 @@ module source-agnostic.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set, Union
 
 from src.core.definitions.columns import DB_COLUMNS
 from src.etl.definitions.sources import SOURCES
@@ -51,8 +51,8 @@ def _get_source_definition(
     col_meta: Dict[str, Any],
     entity: str,
     source_key: str,
-    league_key: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+    league_key: Union[str, None] = None,
+) -> Union[Dict[str, Any], None]:
     """Resolve per-entity source definition for a column.
 
     Supports both shapes:
@@ -86,16 +86,6 @@ def _get_source_definition(
     return None
 
 
-def _effective_update_frequency(col_meta: Dict[str, Any], source_key: str) -> Optional[str]:
-    """Resolve the effective update frequency for a column/source pair.
-
-    External=False sources are always treated as per_execution.
-    """
-    source_meta = SOURCES.get(source_key, {})
-    if not source_meta.get('external', True):
-        return 'per_execution'
-    return col_meta.get('update_frequency')
-
 
 # ============================================================================
 # DATASET AVAILABILITY
@@ -124,8 +114,8 @@ def get_columns_for_dataset(
     dataset_name: str,
     entity: str,
     source_key: str,
-    params: Optional[Dict[str, Any]] = None,
-    league_key: Optional[str] = None,
+    params: Union[Dict[str, Any], None] = None,
+    league_key: Union[str, None] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Find all columns whose source definition maps to the given dataset.
 
@@ -160,8 +150,8 @@ def get_all_sources_for_entity(
     entity: str,
     source_key: str,
     datasets: Dict[str, Dict[str, Any]],
-    season: Optional[str] = None,
-    league_key: Optional[str] = None,
+    season: Union[str, None] = None,
+    league_key: Union[str, None] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Return every column with a source definition for the given entity.
 
@@ -222,11 +212,10 @@ def build_call_groups(
     season: str,
     source_key: str,
     datasets: Dict[str, Dict[str, Any]],
-    scope: Optional[str] = None,
-    league_key: Optional[str] = None,
-    include_columns: Optional[Set[str]] = None,
-    exclude_columns: Optional[Set[str]] = None,
-    update_frequencies: Optional[Set[Optional[str]]] = None,
+    scope: Union[str, None] = None,
+    league_key: Union[str, None] = None,
+    include_columns: Union[Set[str], None] = None,
+    exclude_columns: Union[Set[str], None] = None,
 ) -> List[Dict[str, Any]]:
     """Group all columns for ``entity`` into API call batches.
 
@@ -239,7 +228,6 @@ def build_call_groups(
                value or is ``'both'``.
         include_columns: Optional allow-list of DB column names.
         exclude_columns: Optional deny-list of DB column names.
-        update_frequencies: Optional allow-list of effective update frequencies.
 
     Returns a list of dicts, each with:
         dataset, params, tier, columns ({col_name: enriched_source})
@@ -253,10 +241,6 @@ def build_call_groups(
         if exclude_columns is not None and col_name in exclude_columns:
             continue
 
-        if update_frequencies is not None:
-            effective_frequency = _effective_update_frequency(col_meta, source_key)
-            if effective_frequency not in update_frequencies:
-                continue
 
         if scope:
             col_scopes = col_meta.get('scope', [])

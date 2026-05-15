@@ -1,6 +1,6 @@
 import logging
 from datetime import date, datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Union
 
 from src.core.definitions.stats import STAT_DOMAINS
 from src.publish.definitions.columns import TAB_COLUMNS
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 def evaluate_expression(expr, entity_data: dict,
-                        context: Optional[dict] = None) -> Any:
+                        context: Union[dict, None] = None) -> Any:
     """Recursively evaluate an expression tree built by the marker DSL above.
 
     Args:
@@ -139,7 +139,7 @@ def evaluate_expression(expr, entity_data: dict,
 
 def evaluate_formula(col_key: str, entity_data: dict,
                      entity_type: str = 'player', mode: str = 'per_possession',
-                     context: Optional[dict] = None) -> Any:
+                     context: Union[dict, None] = None) -> Any:
     """Evaluate a column's value expression against entity data.
 
     Expression must be a callable: ``lambda row, ctx: ...``
@@ -171,7 +171,7 @@ def evaluate_formula(col_key: str, entity_data: dict,
         return None
 
 
-def _coerce_positive(*candidates: Optional[float]) -> Optional[float]:
+def _coerce_positive(*candidates: Union[float, None]) -> Union[float, None]:
     """Return the first candidate that is a positive number, else None.
 
     Drives the domain -> base fallback chain for rate denominators.
@@ -192,9 +192,9 @@ def _apply_scaling(
     raw_value: Any,
     mode: str,
     *,
-    domain_games: Optional[float], base_games: Optional[float],
-    domain_minutes: Optional[float], base_minutes: Optional[float],
-    domain_possessions: Optional[float], base_possessions: Optional[float],
+    domain_games: Union[float, None], base_games: Union[float, None],
+    domain_minutes: Union[float, None], base_minutes: Union[float, None],
+    domain_possessions: Union[float, None], base_possessions: Union[float, None],
 ) -> Any:
     """Apply mode-based scaling with a strict domain -> base fallback chain.
 
@@ -230,7 +230,7 @@ def _apply_scaling(
 
 def calculate_entity_stats(entity_data: dict, entity_type: str = 'player',
                            mode: str = 'per_possession',
-                           context: Optional[dict] = None) -> dict:
+                           context: Union[dict, None] = None) -> dict:
     """
     Calculate all stat values for an entity in a given mode.
 
@@ -338,7 +338,7 @@ def calculate_entity_stats(entity_data: dict, entity_type: str = 'player',
 
 def calculate_all_percentiles(all_entities: List[dict], entity_type: str,
                               mode: str = 'per_possession',
-                              context: Optional[dict] = None,
+                              context: Union[dict, None] = None,
                               context_fn=None) -> dict:
     """
     Calculate minute-weighted percentile populations for all stat columns.

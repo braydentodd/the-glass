@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Tuple, Union
 
 from src.publish.definitions.columns import TAB_COLUMNS
 from src.publish.definitions.layout import SECTIONS_CONFIG, SUBSECTIONS
@@ -14,8 +14,8 @@ from src.publish.lib.formatters import format_section_header
 class ColumnContext:
     """Composite key tagging mode-specific column mappings (rate + timeframe)."""
     base_section: str
-    rate:         Optional[str] = None
-    timeframe:    Optional[int] = None
+    rate:         Union[str, None] = None
+    timeframe:    Union[int, None] = None
 
 def _base_section(ctx: Any) -> str:
     """Extract the base section name from a context."""
@@ -36,7 +36,7 @@ def _base_section(ctx: Any) -> str:
     return ctx_prefix
 
 
-def _normalize_subsection_key(subsection: Optional[str]) -> Optional[str]:
+def _normalize_subsection_key(subsection: Union[str, None]) -> Union[str, None]:
     """Map subsection keys to canonical SUBSECTIONS keys (case-insensitive)."""
     if subsection is None:
         return None
@@ -53,7 +53,7 @@ def _normalize_subsection_key(subsection: Optional[str]) -> Optional[str]:
     return raw
 
 
-def _subsection_display_name(subsection: Optional[str]) -> str:
+def _subsection_display_name(subsection: Union[str, None]) -> str:
     """Resolve display name for a subsection key with sensible fallback."""
     key = _normalize_subsection_key(subsection)
     if key is None:
@@ -76,7 +76,7 @@ def _strip_trailing_decimal_zeros(s: str) -> str:
     return f"{int_part}.{frac_part}" if frac_part else int_part
 
 
-def _format_companion(rank: float, diff: Optional[float], base_def: dict) -> str:
+def _format_companion(rank: float, diff: Union[float, None], base_def: dict) -> str:
     """Format a percentile companion cell as 'rank\\n+/-diff'.
 
     Displays the percentile rank on the first line and the over/under
@@ -444,7 +444,7 @@ def build_column_index_map(columns_list: List[Tuple]) -> dict:
     return idx_map
 
 def get_column_index(column_key: str, columns_list: List[Tuple],
-                     context_section: Optional[str] = None) -> Optional[int]:
+                     context_section: Union[str, None] = None) -> Union[int, None]:
     """
     Legacy wrapper. In high-frequency loops, prefer building the index map directly
     via build_column_index_map() instead.

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Tuple, Union
 
 from src.publish.definitions.layout import SECTIONS_CONFIG
 from src.publish.definitions.presentation import COLORS, PRESENTATION_DEFAULTS, WIDTH_CLASSES
@@ -31,8 +31,8 @@ class SheetContext:
 def build_formatting_requests(ws_id: int, columns_list: List[Tuple],
                               header_merges: list, n_data_rows: int,
                               team_name: str,
-                              percentile_cells: Optional[List[dict]] = None,
-                              n_player_rows: int = 0, link_cells: Optional[List[dict]] = None,
+                              percentile_cells: Union[List[dict], None] = None,
+                              n_player_rows: int = 0, link_cells: Union[List[dict], None] = None,
                               tab_type: str = 'team',
                               show_advanced: bool = False,
                               data_only: bool = False) -> list:
@@ -258,8 +258,8 @@ def _build_link_requests(ws_id: int, link_cells: list) -> list:
     return requests
 
 
-def build_partial_update_requests(ws_id: int, percentile_cells: Optional[List[dict]],
-                                   link_cells: Optional[List[dict]], columns_list: List[Tuple],
+def build_partial_update_requests(ws_id: int, percentile_cells: Union[List[dict], None],
+                                   link_cells: Union[List[dict], None], columns_list: List[Tuple],
                                    data_start: int, n_player_rows: int, n_data_rows: int,
                                    tab_type: str) -> list:
     """Build partial update requests for fast sync (mode/timeframe changes only).
@@ -816,7 +816,7 @@ def _build_filter(ctx: SheetContext) -> list:
     return [{'setBasicFilter': {'filter': {'range': _range(ctx.ws_id, ROW_INDEXES['filter_row'], filter_end, 0, ctx.n_cols)}}}]
 
 
-def _build_data_overlays(ctx: SheetContext, percentile_cells: Optional[List[dict]], link_cells: Optional[List[dict]]) -> list:
+def _build_data_overlays(ctx: SheetContext, percentile_cells: Union[List[dict], None], link_cells: Union[List[dict], None]) -> list:
     """Build data overlay requests (percentile shading, hyperlinks, null formula backgrounds, bottom border)."""
     requests = []
     

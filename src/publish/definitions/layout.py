@@ -18,7 +18,28 @@ from typing import Any, Dict, List, Tuple
 # any priority-tab reordering is applied on top.
 AGGREGATE_TABS: List[str] = ['all_players', 'all_teams']
 
-TABS_CONFIG: Dict[str, Dict[str, Any]] = {
+from typing import TypedDict, Dict, List, Union, Any, Union
+
+class TabConfigDef(TypedDict):
+    tab_name: Union[str, None]
+    move_to_front: bool
+    footer: Union[str, None]
+    footer_divider_row_height: Union[int, None]
+
+class CategoryGroupDef(TypedDict):
+    sections: List[str]
+    border_color: str
+
+class SectionDef(TypedDict):
+    title: str
+    column: str
+
+class SubsectionDef(TypedDict):
+    title: str
+    columns: List[str]
+
+TABS_CONFIG: Dict[str, TabConfigDef] = {
+
     'all_players': {
         'tab_name':                  'Players',
         'move_to_front':             True,
@@ -43,7 +64,7 @@ TABS_CONFIG: Dict[str, Dict[str, Any]] = {
 # SECTIONS
 # ============================================================================
 
-SECTIONS_CONFIG: Dict[str, Dict[str, Any]] = {
+SECTIONS_CONFIG = {
     'entities': {
         'menu_label':         None,
         'stats_timeframe':    None,
@@ -96,7 +117,7 @@ SECTIONS_CONFIG: Dict[str, Dict[str, Any]] = {
 # SUBSECTIONS  (Row 2 grouping headers)
 # ============================================================================
 
-SUBSECTIONS: Dict[str, Dict[str, Any]] = {
+SUBSECTIONS: Dict[str, SectionDef] = {
     'league': {
         'display_name': 'League',
         'sections':     ['profile'],
@@ -180,23 +201,5 @@ VALUES_KEY_ENTITY: Dict[str, str] = {
 # VALIDATION SCHEMAS
 # ============================================================================
 
-TABS_CONFIG_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'move_to_front':             {'required': True, 'types': (bool,)},
-    'footer':                    {'required': True, 'types': (str, type(None))},
-    'footer_divider_row_height': {'required': True, 'types': (int,)},
-}
 
-SECTIONS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'menu_label':         {'required': True, 'types': (str, type(None))},
-    # A non-None stats_timeframe identifies a section as a stats section
-    # (consumed by the publish layer to decide percentile / rate scaling).
-    'stats_timeframe':    {'required': True, 'types': (str, type(None))},
-    'toggleable':         {'required': True, 'types': (bool,)},
-    'visible_by_default': {'required': True, 'types': (bool,)},
-}
 
-SUBSECTIONS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'display_name': {'required': True, 'types': (str,)},
-    'sections':     {'required': True, 'types': (list,)},
-    'tabs':         {'required': True, 'types': (list,)},
-}

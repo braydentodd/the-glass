@@ -10,7 +10,7 @@ JSON response that the provider client returns.
 """
 
 import logging
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Union
 
 from src.etl.lib.transform import apply_transform, safe_int
 
@@ -55,7 +55,7 @@ def extract_derived_field(
     row: List[Any],
     headers: List[str],
     source: Dict[str, Any],
-) -> Optional[int]:
+) -> Union[int, None]:
     """Extract a derived field (e.g. FGM - FG3M for 2-point FGM).
 
     If the source has a ``derived.subtract_field`` key, the base field
@@ -86,8 +86,8 @@ def extract_columns_from_result(
     columns: Dict[str, Dict[str, Any]],
     entity: Literal['player', 'team'],
     entity_id_field: str,
-    result_set_name: Optional[str] = None,
-    id_aliases: Optional[Dict[str, List[str]]] = None,
+    result_set_name: Union[str, None] = None,
+    id_aliases: Union[Dict[str, List[str]], None] = None,
 ) -> Dict[int, Dict[str, Any]]:
     """Extract all mapped columns from an API result for every entity.
 
@@ -188,14 +188,14 @@ def extract_single_field(
     api_result: Dict[str, Any],
     field: str,
     entity_id_field: str,
-    result_set_name: Optional[str] = None,
-) -> Dict[int, Optional[int]]:
+    result_set_name: Union[str, None] = None,
+) -> Dict[int, Union[int, None]]:
     """Extract a single field from an API result, keyed by entity ID.
 
     Returns ``{entity_id: safe_int(value)}`` for each entity in the result.
     Used by multi-call columns that accumulate a field across API calls.
     """
-    extracted: Dict[int, Optional[int]] = {}
+    extracted: Dict[int, Union[int, None]] = {}
 
     for rs in api_result.get('resultSets', []):
         if result_set_name and rs['name'] != result_set_name:
@@ -218,7 +218,7 @@ def extract_single_field(
 def extract_raw_rows(
     api_result: Dict[str, Any],
     entity_id_field: str,
-    result_set_name: Optional[str] = None,
+    result_set_name: Union[str, None] = None,
 ) -> Dict[int, List[Dict[str, Any]]]:
     """Extract raw row dicts from an API result, grouped by entity ID.
 

@@ -6,7 +6,7 @@ Excel, HTML tables). Contains row-class formatting, row index computation,
 and header building logic.
 """
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 from src.publish.definitions.layout import SECTIONS_CONFIG, SUBSECTIONS
 from src.publish.definitions.stats import STAT_RATES
@@ -113,7 +113,7 @@ ROW_INDEXES = get_row_indexes()
 def build_headers(columns_list: List[Tuple], mode: str = 'per_possession',
                   team_name: str = '',
                   current_season: int = 0,
-                  historical_config: Optional[dict] = None,
+                  historical_config: Union[dict, None] = None,
                   hist_timeframe: str = '',
                   post_timeframe: str = '',
                   season_format_fn: Callable[[int], str] = str) -> dict:
@@ -153,7 +153,7 @@ def build_headers(columns_list: List[Tuple], mode: str = 'per_possession',
             return ctx_prefix
         return str(ctx)
 
-    def _normalize_subsection_key(subsection: Optional[str]) -> Optional[str]:
+    def _normalize_subsection_key(subsection: Union[str, None]) -> Union[str, None]:
         """Map subsection keys to canonical SUBSECTIONS keys (case-insensitive)."""
         if subsection is None:
             return None
@@ -169,7 +169,7 @@ def build_headers(columns_list: List[Tuple], mode: str = 'per_possession',
 
         return raw
 
-    def _subsection_display_name(subsection: Optional[str]) -> str:
+    def _subsection_display_name(subsection: Union[str, None]) -> str:
         """Resolve display name for a subsection key with sensible fallback."""
         key = _normalize_subsection_key(subsection)
         if key is None:

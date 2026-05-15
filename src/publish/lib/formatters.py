@@ -2,7 +2,7 @@
 Value formatting utilities for display.
 """
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Union
 
 from src.publish.definitions.stats import STAT_RATES
 
@@ -59,10 +59,10 @@ def format_height(inches: Any) -> str:
     return f"{feet}'{remaining:.1f}\""
 
 
-def format_section_header(section: str, historical_config: Optional[dict] = None,
+def format_section_header(section: str, historical_config: Union[dict, None] = None,
                           current_season: int = 0,
                           is_postseason: bool = False,
-                          mode: Optional[str] = None,
+                          mode: Union[str, None] = None,
                           season_format_fn: Callable[[int], str] = str) -> str:
     """
     Build the full section header display string.

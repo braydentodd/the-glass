@@ -7,14 +7,42 @@ layout and formatting engines. Destination-specific config (spreadsheet IDs,
 OAuth scopes, frozen panes) lives in :mod:`src.publish.destinations.sheets.config`.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Union
 
 
 # ============================================================================
 # PRESENTATION DEFAULTS
 # ============================================================================
 
-PRESENTATION_DEFAULTS: Dict[str, Any] = {
+from typing import TypedDict, Dict, List, Optional, Any, Union
+
+class PresentationDefaultsDef(TypedDict):
+    header_font: str
+    data_font: str
+    header_bg: str
+    header_fg: str
+    data_row_even_bg: str
+    data_row_odd_bg: str
+    data_fg: str
+    horizontal_align: str
+    vertical_align: str
+    wrap_strategy: str
+    hide_advanced_columns: bool
+    percentile_companion_width: int
+    percentile_companion_font_size: int
+
+class ColorDef(TypedDict):
+    red: float
+    green: float
+    blue: float
+
+class ColumnTypeParamsDef(TypedDict):
+    pixel_width: int
+    font_size: int
+    bold: bool
+
+PRESENTATION_DEFAULTS: PresentationDefaultsDef = {
+
     'header_font':                    'Staatliches',
     'data_font':                      'Sofia Sans',
     'header_bg':                      'black',
@@ -35,7 +63,7 @@ PRESENTATION_DEFAULTS: Dict[str, Any] = {
 # COLOR PALETTE
 # ============================================================================
 
-COLORS: Dict[str, Dict[str, float]] = {
+COLORS: Dict[str, ColorDef] = {
     'red':        {'red': 0.933, 'green': 0.294, 'blue': 0.169},
     'yellow':     {'red': 0.988, 'green': 0.961, 'blue': 0.373},
     'green':      {'red': 0.298, 'green': 0.733, 'blue': 0.090},
@@ -60,7 +88,7 @@ COLOR_THRESHOLDS: Dict[str, int] = {
 # COLUMN WIDTH CLASSES
 # ============================================================================
 
-WIDTH_CLASSES: Dict[str, Optional[int]] = {
+WIDTH_CLASSES: Dict[str, Union[int, None]] = {
     'auto':           None,
     'measurement':    34,
     'four_char':      31,
@@ -75,25 +103,5 @@ WIDTH_CLASSES: Dict[str, Optional[int]] = {
 # VALIDATION SCHEMAS
 # ============================================================================
 
-PRESENTATION_DEFAULTS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'header_font':                    {'required': True, 'types': (str,)},
-    'data_font':                      {'required': True, 'types': (str,)},
-    'header_bg':                      {'required': True, 'types': (str,)},
-    'header_fg':                      {'required': True, 'types': (str,)},
-    'wrap_strategy':                  {'required': True, 'types': (str,)},
-    'hide_advanced_columns':          {'required': True, 'types': (bool,)},
-    'percentile_companion_width':     {'required': True, 'types': (int,)},
-    'percentile_companion_font_size': {'required': True, 'types': (int,)},
-}
 
-COLORS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'red':   {'required': True, 'types': (int, float)},
-    'green': {'required': True, 'types': (int, float)},
-    'blue':  {'required': True, 'types': (int, float)},
-}
 
-COLOR_THRESHOLDS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'low':  {'required': True, 'types': (int, float)},
-    'mid':  {'required': True, 'types': (int, float)},
-    'high': {'required': True, 'types': (int, float)},
-}

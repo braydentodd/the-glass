@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import importlib
 import logging
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
 from src.core.lib.terminal import progress
 from src.core.lib.ddl import ensure_all, ensure_league_profile
@@ -40,10 +40,8 @@ from src.etl.lib.sources_resolver import (
 from src.core.definitions.leagues import LEAGUES
 from src.core.definitions.tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
 from src.etl.definitions.pipeline import (
-    HANDLER_UPDATE_FREQUENCY_FILTERS,
     PIPELINE_PHASES,
     PIPELINE_STEPS,
-    PROFILE_BOOTSTRAP_COLUMNS,
     VALID_ETL_PHASES,
 )
 from src.etl.definitions.sources import SOURCES
@@ -144,13 +142,12 @@ def _run_groups(
     api_field_names: dict,
     api_config: dict,
     make_fetcher: Callable,
-    include_columns: Optional[Set[str]] = None,
-    exclude_columns: Optional[Set[str]] = None,
-    update_frequencies: Optional[Set[Optional[str]]] = None,
-    groups_override: Optional[Dict[Tuple[str, str], List[Dict[str, Any]]]] = None,
-    on_entity_finished: Optional[
+    include_columns: Union[Set[str], None] = None,
+    exclude_columns: Union[Set[str], None] = None,
+    groups_override: Union[Dict[Tuple[str, str], List[Dict[str, Any]]], None] = None,
+    on_entity_finished: Union[
         Callable[[str, str, List[Dict[str, Any]], int, bool], None]
-    ] = None,
+    , None] = None,
 ) -> int:
     """Execute call groups for a given scope across entities and seasons."""
     total_rows = 0
@@ -165,7 +162,6 @@ def _run_groups(
                     league_key=league_key,
                     include_columns=include_columns,
                     exclude_columns=exclude_columns,
-                    update_frequencies=update_frequencies,
                 )
             if not groups:
                 continue
@@ -251,9 +247,8 @@ def _discover_entities(
     season_type_name: str,
     team_ids: Dict[str, int],
     failed: List[Dict[str, Any]],
-    include_columns: Optional[Set[str]] = None,
-    exclude_columns: Optional[Set[str]] = None,
-    update_frequencies: Optional[Set[Optional[str]]] = None,
+    include_columns: Union[Set[str], None] = None,
+    exclude_columns: Union[Set[str], None] = None,
     **source_kw,
 ) -> int:
     """Phase: populate core.{entity}_profiles from configured discovery seasons."""
@@ -263,7 +258,6 @@ def _discover_entities(
         season_type, season_type_name, team_ids, failed,
         include_columns=include_columns,
         exclude_columns=exclude_columns,
-        update_frequencies=update_frequencies,
         **source_kw,
     )
 
@@ -275,9 +269,8 @@ def _populate_profiles(
     season_type_name: str,
     team_ids: Dict[str, int],
     failed: List[Dict[str, Any]],
-    include_columns: Optional[Set[str]] = None,
-    exclude_columns: Optional[Set[str]] = None,
-    update_frequencies: Optional[Set[Optional[str]]] = None,
+    include_columns: Union[Set[str], None] = None,
+    exclude_columns: Union[Set[str], None] = None,
     **source_kw,
 ) -> int:
     """Phase: enrich core.{entity}_profiles with non-identity attributes."""
@@ -287,7 +280,6 @@ def _populate_profiles(
         season_type, season_type_name, team_ids, failed,
         include_columns=include_columns,
         exclude_columns=exclude_columns,
-        update_frequencies=update_frequencies,
         **source_kw,
     )
 
@@ -340,7 +332,6 @@ def _backfill(
     season_type_name: str,
     team_ids: Dict[str, int],
     failed: List[Dict[str, Any]],
-    update_frequencies: Optional[Set[Optional[str]]] = None,
     **source_kw,
 ) -> int:
     """Phase: fetch stats for every season in the retention window."""
@@ -358,7 +349,6 @@ def _backfill(
                     source_kw['datasets'],
                     scope='stats',
                     league_key=source_kw['league_key'],
-                    update_frequencies=update_frequencies,
                 )
                 if not groups:
                     continue
@@ -425,7 +415,6 @@ def _backfill(
     return _run_groups(
         'stats', entities, seasons,
         season_type, season_type_name, team_ids, failed,
-        update_frequencies=update_frequencies,
         groups_override=groups_to_run,
         on_entity_finished=_record_backfill,
         **source_kw,
@@ -439,7 +428,6 @@ def _update_current(
     season_type_name: str,
     team_ids: Dict[str, int],
     failed: List[Dict[str, Any]],
-    update_frequencies: Optional[Set[Optional[str]]] = None,
     **source_kw,
 ) -> int:
     """Phase: refresh stats for the current season only."""
@@ -447,7 +435,6 @@ def _update_current(
     return _run_groups(
         'stats', entities, [season],
         season_type, season_type_name, team_ids, failed,
-        update_frequencies=update_frequencies,
         **source_kw,
     )
 
@@ -472,7 +459,7 @@ def _resolve_stage_season_type(
     regular_st_name: str,
     requested_st: str,
     requested_st_name: str,
-) -> Tuple[Optional[str], Optional[str]]:
+) -> Tuple[Union[str, None], Union[str, None]]:
     """Resolve stage season-type mode from declarative stage config."""
     mode = stage['season_type_mode']
     if mode == 'regular':
@@ -501,10 +488,10 @@ def _resolve_source_season_type_names(
 # ============================================================================
 
 def run_etl(
-    league_key: Optional[str] = None,
+    league_key: Union[str, None] = None,
     phase: str = 'full',
     entity: str = 'all',
-    season: Optional[str] = None,
+    season: Union[str, None] = None,
     season_type: str = 'rs',
 ) -> None:
     """Run one or more ETL phases for a league.
@@ -575,7 +562,6 @@ def run_etl(
 
     requested_entities = ['team', 'player'] if entity == 'all' else [entity]
     season_range = get_retained_seasons(league_key, season)
-    identity_columns = set(PROFILE_BOOTSTRAP_COLUMNS)
     failed: List[Dict[str, Any]] = []
     total_rows = 0
 
@@ -609,18 +595,14 @@ def run_etl(
         handler = stage['handler']
         stage_entities = requested_entities
 
-        stage_include_columns: Optional[Set[str]] = None
-        stage_exclude_columns: Optional[Set[str]] = None
+        stage_include_columns: Union[Set[str], None] = None
+        stage_exclude_columns: Union[Set[str], None] = None
         if handler == 'discover_entities':
             stage_include_columns = identity_columns
         elif handler == 'populate_profiles':
             stage_exclude_columns = identity_columns
 
-        raw_stage_frequencies = HANDLER_UPDATE_FREQUENCY_FILTERS.get(handler)
-        stage_update_frequencies: Optional[Set[Optional[str]]] = (
-            set(raw_stage_frequencies) if raw_stage_frequencies is not None else None
-        )
-
+        
         stage_seasons = _resolve_stage_seasons(stage, season, season_range)
         if not stage_seasons:
             logger.info('Skipping stage %s: no seasons resolved', stage_name)
@@ -676,7 +658,6 @@ def run_etl(
                         failed,
                         include_columns=stage_include_columns,
                         exclude_columns=stage_exclude_columns,
-                        update_frequencies=stage_update_frequencies,
                         **stage_source_kw,
                     )
                 elif handler == 'populate_profiles':
@@ -689,7 +670,6 @@ def run_etl(
                         failed,
                         include_columns=stage_include_columns,
                         exclude_columns=stage_exclude_columns,
-                        update_frequencies=stage_update_frequencies,
                         **stage_source_kw,
                     )
                 elif handler == 'backfill_stats':
@@ -700,7 +680,6 @@ def run_etl(
                         stage_st_name,
                         stage_team_ids,
                         failed,
-                        update_frequencies=stage_update_frequencies,
                         **stage_source_kw,
                     )
                 elif handler == 'update_current_stats':
@@ -711,7 +690,6 @@ def run_etl(
                         stage_st_name,
                         stage_team_ids,
                         failed,
-                        update_frequencies=stage_update_frequencies,
                         **stage_source_kw,
                     )
         elif handler == 'sync_rosters':

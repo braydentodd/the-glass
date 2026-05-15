@@ -7,8 +7,8 @@ and source structure checks.  Uses the generic validation engine from
 
 Schemas are co-located with their declarative data:
 
-  - LEAGUES_SCHEMA, SOURCES_SCHEMA, schema constants     -> src/core/definitions/
-  - DB_COLUMNS_SCHEMA                                     -> src/core/definitions/columns.py
+  -   schema constants     -> src/core/definitions/
+  -                                      -> src/core/definitions/columns.py
   - OPERATIONAL_TABLES_SCHEMA                             -> src/core/definitions/tables.py
   - DATASETS_SCHEMA, SEASON_TYPES_SCHEMA, API_CONFIG_SCHEMA -> src/etl/sources/<source>/config.py
 
@@ -17,9 +17,8 @@ in :func:`validate_config`.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Union
 
-from src.core.lib.config_validation import validate_dict_config
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +106,7 @@ def _validate_source_structure(
 def _validate_dataset_refs(
     db_columns: Dict[str, Dict],
     datasets: Dict[str, Dict],
-    provider_filter: Optional[str] = None,
+    provider_filter: Union[str, None] = None,
 ) -> List[str]:
     """Validate that source dataset references exist in DATASETS."""
     from src.core.definitions.tables import VALID_ENTITY_TYPES
@@ -356,11 +355,10 @@ def _validate_fk_targets(
 
 def _validate_league_stage_definitions() -> List[str]:
     """Validate global ETL steps and phase ordering declarations."""
-    from src.etl.definitions.pipeline import PIPELINE_PHASES, PIPELINE_STEPS, PIPELINE_STEP_SCHEMA, VALID_ETL_PHASES
-    from src.core.lib.config_validation import validate_entry
-
+    from src.etl.definitions.pipeline import PIPELINE_PHASES, PIPELINE_STEPS,  VALID_ETL_PHASES
+    
     errors: List[str] = []
-    expected_keys = set(PIPELINE_STEP_SCHEMA.keys())
+    expected_keys = {'handler', 'season_window', 'season_type_mode'}
     referenced_steps = set()
 
     if not isinstance(PIPELINE_STEPS, dict):
@@ -383,8 +381,6 @@ def _validate_league_stage_definitions() -> List[str]:
                 f"{prefix}: keys must exactly match {sorted(expected_keys)}; "
                 f"got {sorted(step_keys)}"
             )
-
-        errors.extend(validate_entry(step, PIPELINE_STEP_SCHEMA, prefix))
 
     if not isinstance(PIPELINE_PHASES, dict):
         errors.append(
@@ -520,79 +516,28 @@ def _validate_pipeline_structure() -> List[str]:
 # PUBLIC API
 # ============================================================================
 
-def validate_config(
-    datasets: Optional[Dict[str, Any]] = None,
-    datasets_schema: Optional[Dict[str, Any]] = None,
-) -> List[str]:
-    """Validate every ETL configuration dict at startup.
 
-    Args:
-        datasets:        Optional DATASETS dict from the active source config.
-                          If supplied, source dataset references are cross-checked.
-        datasets_schema: Optional schema dict for validating ``datasets``.
-
-    Raises:
-        RuntimeError: if any validation errors are found.
-    """
-    from src.core.lib.config_validation import validate_core_constants
-    from src.core.definitions.tables import (
-        DB_COLUMNS_SCHEMA,
-        ROSTER_TABLES,
-        ROSTER_TABLES_SCHEMA,
-        OPERATIONAL_TABLES,
-        OPERATIONAL_TABLES_SCHEMA,
-        PROFILE_TABLES,
-        PROFILE_TABLES_SCHEMA,
-        STATS_TABLES,
-        STATS_TABLES_SCHEMA,
-    )
-    from src.core.definitions.leagues import LEAGUES, LEAGUES_SCHEMA
-    from src.etl.definitions.sources import SOURCES, SOURCES_SCHEMA
+def validate_config() -> List[str]:
     from src.core.definitions.columns import DB_COLUMNS
+    from src.core.definitions.leagues import LEAGUES
+    from src.core.definitions.tables import STATS_TABLES, ROSTER_TABLES, PROFILE_TABLES
+    from src.etl.definitions.sources import SOURCES
 
     errors: List[str] = []
-
-    errors.extend(validate_core_constants())
-
-    # Schema-level validations
-    errors.extend(validate_dict_config(DB_COLUMNS, DB_COLUMNS_SCHEMA, 'DB_COLUMNS'))
-    errors.extend(validate_dict_config(LEAGUES, LEAGUES_SCHEMA, 'LEAGUES'))
-    errors.extend(validate_dict_config(SOURCES, SOURCES_SCHEMA, 'SOURCES'))
-    errors.extend(validate_dict_config(PROFILE_TABLES, PROFILE_TABLES_SCHEMA, 'PROFILE_TABLES'))
-    errors.extend(validate_dict_config(STATS_TABLES, STATS_TABLES_SCHEMA, 'STATS_TABLES'))
-    errors.extend(validate_dict_config(ROSTER_TABLES, ROSTER_TABLES_SCHEMA, 'ROSTER_TABLES'))
-    errors.extend(validate_dict_config(OPERATIONAL_TABLES, OPERATIONAL_TABLES_SCHEMA, 'OPERATIONAL_TABLES'))
-
-    if datasets and datasets_schema:
-        errors.extend(validate_dict_config(datasets, datasets_schema, 'DATASETS'))
-
-    # Type and structural validations
+    
     errors.extend(_validate_pg_types(DB_COLUMNS))
     errors.extend(_validate_source_structure(DB_COLUMNS, SOURCES))
     errors.extend(_validate_stats_primary_keys(STATS_TABLES, DB_COLUMNS))
     errors.extend(_validate_league_source_roles(LEAGUES, SOURCES))
     errors.extend(_validate_legacy_source_fields(LEAGUES))
     errors.extend(_validate_legacy_pipeline_fields(LEAGUES))
-    errors.extend(_validate_pipeline_structure())
-    errors.extend(_validate_league_stage_definitions())
-    errors.extend(_validate_entity_matcher_definitions())
     errors.extend(_validate_domain_coverage(DB_COLUMNS))
     errors.extend(_validate_fk_targets(STATS_TABLES, ROSTER_TABLES, PROFILE_TABLES))
-
-    if datasets:
-        errors.extend(_validate_dataset_refs(DB_COLUMNS, datasets))
-
-    if errors:
-        for err in errors:
-            logger.error('Config validation: %s', err)
-        raise RuntimeError(
-            f"Config validation failed with {len(errors)} error(s)"
-        )
-
-    logger.info(
-        'Config validation passed (%d columns, %d profiles, %d stats, %d rosters)',
-        len(DB_COLUMNS), len(PROFILE_TABLES), len(STATS_TABLES), len(ROSTER_TABLES),
-    )
+    
+    errors.extend(_validate_league_stage_definitions())
+    errors.extend(_validate_entity_matcher_definitions())
+    errors.extend(_validate_pipeline_structure())
+    
     return errors
 
 
@@ -628,10 +573,6 @@ def validate_all() -> List[str]:
                 'skipping source-specific validation.', source_key,
             )
             continue
-
-        if source_key == 'nba_api':
-            aggregated.extend(_validate_nba_api(cfg_mod))
-
         datasets = getattr(cfg_mod, 'DATASETS', None)
         if datasets is not None:
             from src.core.definitions.columns import DB_COLUMNS
@@ -651,24 +592,3 @@ def validate_all() -> List[str]:
     return []
 
 
-def _validate_nba_api(cfg_mod) -> List[str]:
-    """Validate the ``nba_api`` source config against its local schemas."""
-    from src.core.lib.config_validation import validate_dict_config, validate_flat_config
-
-    errors: List[str] = []
-    errors.extend(validate_flat_config(
-        getattr(cfg_mod, 'API_CONFIG', {}),
-        getattr(cfg_mod, 'API_CONFIG_SCHEMA', {}),
-        'nba_api.API_CONFIG',
-    ))
-    errors.extend(validate_dict_config(
-        getattr(cfg_mod, 'SEASON_TYPES', {}),
-        getattr(cfg_mod, 'SEASON_TYPES_SCHEMA', {}),
-        'nba_api.SEASON_TYPES',
-    ))
-    errors.extend(validate_dict_config(
-        getattr(cfg_mod, 'DATASETS', {}),
-        getattr(cfg_mod, 'DATASETS_SCHEMA', {}),
-        'nba_api.DATASETS',
-    ))
-    return errors

@@ -32,22 +32,28 @@ VALID_SHAPES = frozenset({
 VALID_ANCHORS = frozenset({'start', 'end', None})
 
 
-SOURCE_SEASON_FORMAT_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'shape':  {'required': True, 'types': (str, type(None)), 'allowed_values': VALID_SHAPES | {None}},
-    'anchor': {'required': True, 'types': (str, type(None)), 'allowed_values': VALID_ANCHORS},
-}
 
-SOURCES_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'leagues':        {'required': True, 'types': (list,)},
-    'external':       {'required': True, 'types': (bool,)},
-    'entity_id_type': {'required': True, 'types': (str, type(None))},
-    'id_column':      {'required': True, 'types': (str, type(None))},
-    'applies_to':     {'required': True, 'types': (list,)},
-    'season_format':  {'required': True, 'types': (dict, type(None))},
-    'rate_limits':    {'required': True, 'types': (dict,)},
-}
 
-SOURCES: Dict[str, Dict[str, Any]] = {
+from typing import TypedDict, Dict, List, Union, Any
+
+class SeasonFormatDef(TypedDict):
+    shape: str
+    anchor: Union[str, None]
+
+class RateLimitsDef(TypedDict):
+    proxy_name_mask: Union[str, None]
+
+class SourceDef(TypedDict):
+    leagues: List[str]
+    external: bool
+    entity_id_type: str
+    id_column: str
+    applies_to: List[str]
+    season_format: SeasonFormatDef
+    rate_limits: RateLimitsDef
+
+SOURCES: Dict[str, SourceDef] = {
+
     'nba_api': {
         'leagues':        ['nba'],
         'external':       True,

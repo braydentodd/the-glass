@@ -25,7 +25,6 @@ import time
 from collections import defaultdict
 from functools import partial
 from pathlib import Path
-from typing import Optional
 
 from src.core.lib.terminal import progress
 from src.core.lib.logging import phase_marker
@@ -307,7 +306,7 @@ def run_publish(
     show_advanced: bool,
     historical_config: dict,
     data_only: bool,
-    priority_tab: Optional[str],
+    priority_tab: Union[str, None],
     config_export: bool = True,
     destination: str = 'google_sheets',
 ) -> None:

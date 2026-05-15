@@ -12,7 +12,7 @@ import importlib
 import inspect
 import logging
 import warnings
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Union
 
 from src.core.lib.rate_limiter import get_rate_limiter
 from src.etl.sources.nba_api.config import (
@@ -89,7 +89,7 @@ def _patch_nba_api_headers() -> None:
 _dataset_class_cache: Dict[str, Any] = {}
 
 
-def load_dataset_class(dataset_name: str) -> Optional[Any]:
+def load_dataset_class(dataset_name: str) -> Union[Any, None]:
     """Dynamically import and cache an nba_api dataset class by name.
 
     Returns ``None`` (with a warning) if the module doesn't exist.
@@ -129,8 +129,8 @@ def create_api_call(
     dataset_class: Any,
     params: Dict[str, Any],
     dataset_name: str = '',
-    timeout: Optional[int] = None,
-    rate_limiter: Optional[Any] = None,
+    timeout: Union[int, None] = None,
+    rate_limiter: Union[Any, None] = None,
 ) -> Callable:
     """Build a zero-arg callable that executes an NBA API request.
 
@@ -168,7 +168,7 @@ def create_api_call(
 # RETRY WRAPPER
 # ============================================================================
 
-def with_retry(func: Callable, rate_limiter: Any, max_retries: Optional[int] = None) -> Any:
+def with_retry(func: Callable, rate_limiter: Any, max_retries: Union[int, None] = None) -> Any:
     """Execute *func* with exponential back-off on failure using rate limiter.
 
     Args:
@@ -191,7 +191,7 @@ def build_dataset_params(
     season: str,
     season_type_name: str,
     entity: str,
-    extra_params: Optional[Dict[str, Any]] = None,
+    extra_params: Union[Dict[str, Any], None] = None,
 ) -> Dict[str, Any]:
     """Assemble the full parameter dict for an NBA API call.
 
@@ -253,7 +253,7 @@ def make_fetcher(season: str, season_type_name: str, entity: str) -> Callable:
     """
     rate_limiter = get_rate_limiter('nba_api')
 
-    def fetch(dataset: str, extra_params: Optional[Dict[str, Any]] = None) -> Optional[Dict]:
+    def fetch(dataset: str, extra_params: Union[Dict[str, Any], None] = None) -> Union[Dict, None]:
         ds_cfg = DATASETS.get(dataset, {})
         if ds_cfg.get('virtual'):
             return _fetch_virtual(dataset, season)
@@ -273,7 +273,7 @@ def make_fetcher(season: str, season_type_name: str, entity: str) -> Callable:
 # VIRTUAL DATASET HANDLERS
 # ============================================================================
 
-def _fetch_virtual(dataset: str, season: str) -> Optional[Dict]:
+def _fetch_virtual(dataset: str, season: str) -> Union[Dict, None]:
     """Dispatch virtual datasets to their handlers."""
     if dataset == 'team_metadata':
         return _fetch_team_metadata(season)
@@ -289,7 +289,7 @@ def fetch_roster_memberships(
     league_key: str,
     season: str,
     season_type_name: str = 'Regular Season',
-    roster_snapshot: Optional[Dict[str, Any]] = None,
+    roster_snapshot: Union[Dict[str, Any], None] = None,
 ) -> list:
     """Return ``[(team_source_id, player_source_id, jersey_num), ...]`` for every active
     roster slot in the league for the given season.

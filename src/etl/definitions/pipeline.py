@@ -6,9 +6,7 @@ Keep this intentionally small: define step behavior once, then map phases
 to ordered step keys.
 """
 
-from typing import Any, Dict, List, Optional
-
-from src.core.definitions.tables import VALID_UPDATE_FREQUENCIES
+from typing import Any, Dict, List
 
 
 VALID_ETL_PHASES = frozenset({'full', 'discover', 'rosters', 'backfill', 'update', 'prune'})
@@ -30,11 +28,6 @@ VALID_ENTITY_MATCHER_MODES = frozenset({
 })
 
 
-PIPELINE_STEP_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'handler':             {'required': True, 'types': (str,), 'allowed_values': VALID_ETL_STEP_HANDLERS},
-    'season_window':       {'required': True, 'types': (str,), 'allowed_values': VALID_SEASON_WINDOWS},
-    'season_type_mode':    {'required': True, 'types': (str,), 'allowed_values': VALID_SEASON_TYPE_MODES},
-}
 
 
 ENTITY_MATCHER_POLICY: Dict[str, Any] = {

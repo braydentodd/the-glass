@@ -8,7 +8,7 @@ The pipeline engine executes multi-step transformations defined in config.
 
 import logging
 from datetime import date, datetime
-from typing import Any, Callable, Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Literal, Union
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # TYPE CONVERTERS
 # ============================================================================
 
-def safe_int(value: Any, scale: int = 1) -> Optional[int]:
+def safe_int(value: Any, scale: int = 1) -> Union[int, None]:
     """Convert value to scaled integer, returning None for unparseable input."""
     if value is None:
         return None
@@ -27,7 +27,7 @@ def safe_int(value: Any, scale: int = 1) -> Optional[int]:
         return None
 
 
-def safe_str(value: Any) -> Optional[str]:
+def safe_str(value: Any) -> Union[str, None]:
     """Safely convert to string, returning None for empty/NaN."""
     if value is None or value == '':
         return None
@@ -39,7 +39,7 @@ def safe_str(value: Any) -> Optional[str]:
     return str(value)
 
 
-def null_if_zero(value: Any) -> Optional[int]:
+def null_if_zero(value: Any) -> Union[int, None]:
     """Return None for 0/empty values; otherwise safe_int."""
     if value is None or value == '' or str(value).lower() == 'nan':
         return None
@@ -51,7 +51,7 @@ def null_if_zero(value: Any) -> Optional[int]:
     return safe_int(value)
 
 
-def parse_height(height_str: Any) -> Optional[int]:
+def parse_height(height_str: Any) -> Union[int, None]:
     """Parse height string (e.g. '6-10') to total inches. Returns None on failure."""
     if not height_str or height_str == '' or height_str == 'None':
         return None
@@ -65,7 +65,7 @@ def parse_height(height_str: Any) -> Optional[int]:
         return None
 
 
-def parse_birthdate(date_str: Any) -> Optional[date]:
+def parse_birthdate(date_str: Any) -> Union[date, None]:
     """Parse birthdate string to date object. Tries multiple formats."""
     if not date_str or date_str == '' or str(date_str).lower() == 'nan':
         return None
@@ -78,7 +78,7 @@ def parse_birthdate(date_str: Any) -> Optional[date]:
     return None
 
 
-def format_season(from_year: Any) -> Optional[str]:
+def format_season(from_year: Any) -> Union[str, None]:
     """Convert FROM_YEAR (e.g. 2012) to season string (e.g. '2012-13')."""
     if from_year is None or from_year == '' or str(from_year).lower() == 'nan':
         return None

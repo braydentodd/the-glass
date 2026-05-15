@@ -12,19 +12,30 @@ from typing import Any, Dict
 
 VALID_DESTINATION_ROLES = frozenset({'primary', 'backup'})
 
-APPS_SCRIPT_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'enabled':   {'required': True, 'types': (bool,)},
-    'directory': {'required': True, 'types': (str,)},
-}
 
-DESTINATIONS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'leagues':      {'required': True,  'types': (list,)},
-    'role':         {'required': True,  'types': (str,), 'allowed_values': VALID_DESTINATION_ROLES},
-    'rate_limits':  {'required': False, 'types': (dict, type(None))},
-    'apps_script':  {'required': False, 'types': (dict, type(None))},
-}
 
-DESTINATIONS: Dict[str, Dict[str, Any]] = {
+from typing import TypedDict, Dict, List, Optional, Any
+
+class RateLimitsDef(TypedDict):
+    requests_per_second: float
+    max_retries: int
+    backoff_base: int
+    timeout_default: int
+    timeout_bulk: int
+    max_consecutive_failures: int
+
+class AppsScriptDef(TypedDict):
+    enabled: bool
+    directory: str
+
+class DestinationDef(TypedDict):
+    leagues: List[str]
+    role: str
+    rate_limits: RateLimitsDef
+    apps_script: AppsScriptDef
+
+DESTINATIONS: Dict[str, DestinationDef] = {
+
     'google_sheets': {
         'leagues': ['nba'],
         'role': 'primary',

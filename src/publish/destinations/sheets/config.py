@@ -1,4 +1,5 @@
 """
+
 The Glass - Google Sheets Destination Configuration
 
 Sheets-API-only configuration: per-league spreadsheet identifiers, OAuth
@@ -9,21 +10,18 @@ live in :mod:`src.publish.definitions.presentation` and
 abstractions, not Sheets-specific.
 """
 
+from typing import Dict, List, TypedDict, Union, Any, FrozenSet, Set, Tuple
+
+
 import os
-from typing import Any, Dict
 
+class SheetsConfigDef(TypedDict):
+    credentials_file: str
+    spreadsheet_id: Union[str, None]
+    scopes: List[str]
 
-# ============================================================================
-# GOOGLE SHEETS CREDENTIALS
-# ============================================================================
+GOOGLE_SHEETS_CONFIG: Dict[str, SheetsConfigDef] = {
 
-GOOGLE_SHEETS_CONFIG_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'credentials_file': {'required': True, 'types': (str, type(None))},
-    'spreadsheet_id':   {'required': True, 'types': (str, type(None))},
-    'scopes':           {'required': True, 'types': (list,)},
-}
-
-GOOGLE_SHEETS_CONFIG: Dict[str, Dict[str, Any]] = {
     'nba': {
         'credentials_file': 'google-credentials.json',
         'spreadsheet_id':   os.getenv('NBA_SPREADSHEET_ID'),
@@ -42,7 +40,6 @@ GOOGLE_SHEETS_CONFIG: Dict[str, Dict[str, Any]] = {
     },
 }
 
-
 # ============================================================================
 # SHEETS-SPECIFIC PRESENTATION SETTINGS
 # ============================================================================
@@ -55,10 +52,3 @@ SHEETS_FORMATTING: Dict[str, Any] = {
     'data_only_sync_delay_seconds': 0,
 }
 
-SHEETS_FORMATTING_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'frozen_columns':               {'required': True, 'types': (int,)},
-    'frozen_rows':                  {'required': True, 'types': (int,)},
-    'header_rows':                  {'required': True, 'types': (int,)},
-    'sync_delay_seconds':           {'required': True, 'types': (int,)},
-    'data_only_sync_delay_seconds': {'required': True, 'types': (int,)},
-}

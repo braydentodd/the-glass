@@ -8,7 +8,7 @@ timeframes offered to the publish UI.
 from typing import Any, Dict
 
 
-STAT_RATES: Dict[str, Dict[str, Any]] = {
+STAT_RATES = {
     'per_possession': {
         'short_label': 'Poss',
         'rate':        100,
@@ -49,8 +49,3 @@ DEFAULT_STAT_RATE: str = next(
 # VALIDATION SCHEMAS
 # ============================================================================
 
-STAT_RATES_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'short_label': {'required': True, 'types': (str,)},
-    'rate':        {'required': True, 'types': (int, float, type(None))},
-    'default':     {'required': True, 'types': (bool,)},
-}

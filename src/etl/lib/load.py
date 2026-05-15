@@ -17,7 +17,7 @@ ID model:
 
 import logging
 from io import StringIO
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Set, Tuple, Union
 
 from psycopg2.extras import execute_values
 
@@ -46,7 +46,7 @@ def bulk_upsert(
     columns: List[str],
     data: List[tuple],
     conflict_columns: List[str],
-    update_columns: Optional[List[str]] = None,
+    update_columns: Union[List[str], None] = None,
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> int:
     """``INSERT ... ON CONFLICT DO UPDATE SET`` for a batch of rows.
@@ -242,7 +242,7 @@ def write_entity_rows(
     season: str,
     season_type: str,
     league_key: str,
-    source_key: Optional[str] = None,
+    source_key: Union[str, None] = None,
 ) -> int:
     """Write extracted rows to the database.
 

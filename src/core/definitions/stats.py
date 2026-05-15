@@ -53,13 +53,4 @@ SEASON_TYPE_GROUPS: Dict[str, tuple] = {
 # VALIDATION SCHEMAS  (consumed by src.core.config_validation)
 # ============================================================================
 
-STAT_DOMAINS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'minutes_col': {'required': True, 'types': (str,)},
-    'games_col':   {'required': True, 'types': (str,)},
-    'primary':     {'required': True, 'types': (bool,)}
-}
 
-SEASON_TYPE_GROUPS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'regular_season': {'required': True, 'types': (tuple, list)},
-    'postseason':     {'required': True, 'types': (tuple, list)}
-}

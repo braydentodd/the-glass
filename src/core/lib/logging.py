@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Optional
 
 # Fixed-width slots keep multi-process output aligned for human scanning.
 _LEVEL_WIDTH = 7      # ' WARNING' (with leading space) is 8; longest is 'CRITICAL' (8)
@@ -95,7 +94,7 @@ _BAR = '=' * 78
 _RULE = '-' * 78
 
 
-def phase_marker(name: str, detail: Optional[str] = None) -> str:
+def phase_marker(name: str, detail: Union[str, None] = None) -> str:
     """Return a single-line phase boundary string.
 
     Use with ``logger.info(phase_marker('rosters', 'league=nba'))``.  The
@@ -107,12 +106,12 @@ def phase_marker(name: str, detail: Optional[str] = None) -> str:
     return label
 
 
-def phase_block(name: str, detail: Optional[str] = None) -> str:
+def phase_block(name: str, detail: Union[str, None] = None) -> str:
     """Multi-line phase header (rule + label + rule)."""
     return f"\n{_RULE}\n{phase_marker(name, detail)}\n{_RULE}"
 
 
-def banner(title: str, subtitle: Optional[str] = None) -> str:
+def banner(title: str, subtitle: Union[str, None] = None) -> str:
     """Multi-line top-of-run banner."""
     out = [_BAR, f"  {title}"]
     if subtitle:

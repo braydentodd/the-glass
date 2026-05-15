@@ -42,27 +42,7 @@ _VALID_LEAGUES = {'nba', 'ncaa'}
 _VALID_ALIGNS = {'left', 'center'}
 _VALID_EMPHASIS = {'bold', None}
 
-TAB_COLUMNS_SCHEMA = {
-    'description':     {'required': True,  'types': (str,)},
-    'sections':        {'required': True,  'types': (list,),        'list_item_values': _VALID_SECTIONS},
-    'subsection':      {'required': True,  'types': (str, type(None)), 'allowed_values': _VALID_SUBSECTIONS | {None}},
-    'tabs':            {'required': True,  'types': (list,),        'list_item_values': _VALID_TABS},
-    'stats_mode':      {'required': True,  'types': (str,),         'allowed_values': _VALID_STATS_MODES},
-    'percentile':      {'required': True,  'types': (str, type(None)), 'allowed_values': {'standard', 'reverse', None}},
-    'editable':        {'required': True,  'types': (bool, list, tuple, type(None))},
-    'rate_domain':     {'required': True,  'types': (str, type(None))},
-    'format':          {'required': True,  'types': (str,),         'allowed_values': _VALID_FORMATS},
-    'decimal_places':  {'required': True,  'types': (int, type(None))},
-    'width_class':     {'required': True,  'types': _VALID_WIDTH_CLASS_TYPES},
-    'leagues':         {'required': True,  'types': (list,),        'list_item_values': _VALID_LEAGUES},
-    'default':         {'required': True,  'types': (str, int, float, type(None))},
-    'align':           {'required': False, 'types': (str,),         'allowed_values': _VALID_ALIGNS, 'default': 'center'},
-    'emphasis':        {'required': False, 'types': (str, type(None)), 'allowed_values': _VALID_EMPHASIS, 'default': None},
-    'font_size':       {'required': False, 'types': (int, type(None)), 'default': None},
-    'values':          {'required': True,  'types': (dict,)},
-    'inputs':          {'required': False, 'types': (dict, type(None)), 'default': None},
-}
-
+TAB_
 TAB_COLUMNS: Dict[str, Any] = {
     'players': {
         'description': 'PlayerName',

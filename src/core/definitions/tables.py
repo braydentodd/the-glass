@@ -51,67 +51,23 @@ VALID_MANAGED_BY = frozenset({'db', 'execution_context', 'source'})
 # DB_COLUMNS SCHEMA  (validation contract for src.core.definitions.columns.DB_COLUMNS)
 # ============================================================================
 
-DB_COLUMNS_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'type':                 {'required': True,  'types': (str,)},
-    'scope':                {'required': True,  'types': (str, list)},
-    'nullable':             {'required': True,  'types': (bool,)},
-    'default':              {'required': True,  'types': (str, int, type(None))},
-    'entity_types':         {'required': True,  'types': (list, type(None))},
-    'update_frequency':     {'required': True,  'types': (str, type(None)), 'allowed_values': VALID_UPDATE_FREQUENCIES},
-    'managed_by':           {'required': False, 'types': (str,), 'allowed_values': VALID_MANAGED_BY},
-    'domain':               {'required': True,  'types': (str, type(None))},
-    'comment':              {'required': True,  'types': (str, type(None))},
-    'dataset_mapping':       {'required': True, 'types': (dict, type(None))},
-    'unique':               {'required': False, 'types': (bool,)},
-    'removed_refresh_mode': {'required': False, 'types': (str,), 'allowed_values': VALID_REFRESH_MODES}
-}
 
+from typing import TypedDict, Dict, List, Any, Union
 
-# ============================================================================
-# KIND-SPECIFIC VALIDATION SCHEMAS
-# ============================================================================
+class TableDef(TypedDict):
+    kind: str
+    used_by: List[str]
+    entity: Union[str, None]
+    schema: Union[str, None]
+    unique_columns: Union[List[str], None]
+    primary_key: Union[List[str], None]
+    has_opponent_columns: Union[bool, None]
+    foreign_keys: Union[List[Dict[str, Any]], None]
+    scope: Union[str, None]
+    unique_key: Union[List[str], None]
 
-PROFILE_TABLES_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'kind':      {'required': True,  'types': (str,), 'allowed_values': {'profile'}},
-    'used_by':   {'required': False, 'types': (list,)},
-    'entity':    {'required': True,  'types': (str,), 'allowed_values': {'league', 'team', 'player'}},
-    'schema':    {'required': True,  'types': (str,), 'allowed_values': {'core'}},
-    'unique_columns': {'required': False, 'types': (list,)},
-}
+TABLES: Dict[str, TableDef] = {
 
-STATS_TABLES_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'kind':               {'required': True,  'types': (str,), 'allowed_values': {'stats'}},
-    'used_by':            {'required': False, 'types': (list,)},
-    'entity':             {'required': True,  'types': (str,), 'allowed_values': {'team', 'player'}},
-    'schema':             {'required': True,  'types': (str,), 'allowed_values': {'league'}},
-    'primary_key':        {'required': True,  'types': (list,)},
-    'has_opponent_columns': {'required': True,  'types': (bool,)},
-    'foreign_keys':       {'required': True,  'types': (list,)},
-}
-
-ROSTER_TABLES_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'kind':        {'required': True,  'types': (str,), 'allowed_values': {'roster'}},
-    'used_by':     {'required': False, 'types': (list,)},
-    'entity':      {'required': True,  'types': (str,), 'allowed_values': {'team', 'player'}},
-    'schema':      {'required': True,  'types': (str,), 'allowed_values': {'core'}},
-    'primary_key': {'required': True,  'types': (list,)},
-    'foreign_keys': {'required': True,  'types': (list,)},
-}
-
-OPERATIONAL_TABLES_SCHEMA: Dict[str, Dict[str, Any]] = {
-    'kind':       {'required': True, 'types': (str,), 'allowed_values': {'operational'}},
-    'used_by':    {'required': False, 'types': (list,)},
-    'schema':     {'required': True, 'types': (str,), 'allowed_values': {'league'}},
-    'scope':      {'required': False, 'types': (str,), 'allowed_values': {'runs', 'tasks', 'backfill'}},
-    'unique_key': {'required': False, 'types': (list,)},
-    'foreign_keys': {'required': False, 'types': (list,)},
-}
-
-# ============================================================================
-# UNIFIED TABLE REGISTRY
-# ============================================================================
-
-TABLES: Dict[str, Dict[str, Any]] = {
     # ------------------------------------------------------------------
     # PROFILE TABLES (core schema)
     # ------------------------------------------------------------------

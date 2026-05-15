@@ -19,7 +19,7 @@ The legacy ``is_opponent`` row flag has been removed.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 from psycopg2.extras import RealDictCursor
 
@@ -66,7 +66,7 @@ def _build_entity_fields(
 
 
 def _build_season_filter(
-    historical_config: Optional[dict],
+    historical_config: Union[dict, None],
     current_season_year: int,
     season_col: str,
     season_format_fn,
@@ -136,7 +136,7 @@ def fetch_players_for_team(
     conn,
     team_abbr: str,
     section: str,
-    historical_config: Optional[dict],
+    historical_config: Union[dict, None],
     ctx,
     current_season: str,
     current_season_year: int,
@@ -220,7 +220,7 @@ def fetch_players_for_team(
 def fetch_all_players(
     conn,
     section: str,
-    historical_config: Optional[dict],
+    historical_config: Union[dict, None],
     ctx,
     current_season: str,
     current_season_year: int,
@@ -288,7 +288,7 @@ def fetch_team_stats(
     conn,
     team_abbr: str,
     section: str,
-    historical_config: Optional[dict],
+    historical_config: Union[dict, None],
     ctx,
     current_season: str,
     current_season_year: int,
@@ -355,7 +355,7 @@ def fetch_team_stats(
 def fetch_all_teams(
     conn,
     section: str,
-    historical_config: Optional[dict],
+    historical_config: Union[dict, None],
     ctx,
     current_season: str,
     current_season_year: int,

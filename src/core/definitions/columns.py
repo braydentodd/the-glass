@@ -1,4 +1,5 @@
 """
+
 The Glass - Column Registry
 
 Single source of truth for database column definitions and provider source
@@ -15,10 +16,27 @@ columns (e.g. ``nba_api_id``) are emitted directly by the DDL generator
 (see src/core/lib/ddl.py); they are intentionally not represented here.
 """
 
-from typing import Any, Dict
+from typing import Dict, List, TypedDict, Union
 
 
-DB_COLUMNS: Dict[str, Dict[str, Any]] = {
+class DatasetMapping(TypedDict):
+    dataset: str
+    column: str
+    transform: Union[str, None]
+
+class ColumnDef(TypedDict):
+    type: str
+    scope: Union[str, List[str]]
+    nullable: bool
+    default: Union[str, int, None]
+    entity_types: Union[List[str], None]
+    update_frequency: Union[str, None]
+    managed_by: str
+    domain: Union[str, None]
+    comment: Union[str, None]
+    dataset_mapping: Union[Dict[str, Dict[str, Dict[str, DatasetMapping]]], None]
+
+DB_COLUMNS: Dict[str, ColumnDef] = {
 
     # ------------------------------------------------------------------
     # SYSTEM COLUMNS  (managed by DB / ETL engine, no provider sources)

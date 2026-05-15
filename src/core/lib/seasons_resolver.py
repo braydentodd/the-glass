@@ -11,7 +11,7 @@ Two-digit year parsing uses a 1980 pivot: ``00..79`` resolves to ``2000..2079``,
 if a source emits two-digit labels for seasons before 1980.
 """
 
-from typing import Optional, Tuple
+from typing import Tuple, Union
 
 from src.core.definitions.leagues import VALID_LEAGUE_SEASON_FORMATS
 from src.etl.definitions.sources import VALID_SHAPES, VALID_ANCHORS
@@ -33,7 +33,7 @@ _TWO_DIGIT_PIVOT = 80
 # Shape parsing
 # ---------------------------------------------------------------------------
 
-def _separator(shape: str) -> Optional[str]:
+def _separator(shape: str) -> Union[str, None]:
     if '-' in shape:
         return '-'
     if '/' in shape:
@@ -73,7 +73,7 @@ def _format_year(year: int, digits: int) -> str:
 def render_season_in_shape(
     end_year: int,
     shape: str,
-    anchor: Optional[str] = None,
+    anchor: Union[str, None] = None,
 ) -> str:
     """Render an integer ``end_year`` (e.g. ``2026``) into a season label.
 
@@ -108,7 +108,7 @@ def render_season_in_shape(
 def parse_season_in_shape(
     label: str,
     shape: str,
-    anchor: Optional[str] = None,
+    anchor: Union[str, None] = None,
 ) -> int:
     """Inverse of :func:`render_season_in_shape`; returns the end_year integer."""
     _validate_shape(shape)

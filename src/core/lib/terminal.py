@@ -24,7 +24,7 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Iterable, Iterator, Mapping, Optional, Tuple
+from typing import Iterable, Iterator, Mapping, Tuple, Union
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -58,7 +58,7 @@ class HelpFormatter(argparse.RawDescriptionHelpFormatter,
 def make_base_parser(
     prog: str,
     description: str,
-    epilog: Optional[str] = None,
+    epilog: Union[str, None] = None,
 ) -> argparse.ArgumentParser:
     """Return an ArgumentParser pre-loaded with the codebase's universal flags.
 
@@ -131,7 +131,7 @@ _BAR = '=' * 78
 _RULE = '-' * 78
 
 
-def print_banner(title: str, subtitle: Optional[str] = None) -> None:
+def print_banner(title: str, subtitle: Union[str, None] = None) -> None:
     """Print a top-of-run banner with timestamp."""
     ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(_BAR)
@@ -142,7 +142,7 @@ def print_banner(title: str, subtitle: Optional[str] = None) -> None:
     print(_BAR)
 
 
-def print_phase_separator(name: str, detail: Optional[str] = None) -> None:
+def print_phase_separator(name: str, detail: Union[str, None] = None) -> None:
     """Print a phase-boundary line that matches logging's phase_marker style."""
     label = f"PHASE :: {style.bold(name)}"
     if detail:

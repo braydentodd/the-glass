@@ -24,7 +24,6 @@ ExecutionContext) lives here.
 
 from __future__ import annotations
 
-import importlib
 import logging
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
@@ -37,6 +36,7 @@ from src.etl.lib.sources_resolver import (
     get_role_config,
     get_source_id_column,
 )
+from src.etl.sources.registry import get_source_modules
 from src.core.definitions.leagues import LEAGUES
 from src.core.definitions.tables import CORE_SCHEMA, THE_GLASS_ID_COLUMN
 from src.etl.definitions.pipeline import (
@@ -85,9 +85,7 @@ def _load_source(source_key: str):
         raise ValueError(
             f"Unknown source {source_key!r}. Registered: {sorted(SOURCES)}"
         )
-    config_mod = importlib.import_module(f'src.etl.sources.{source_key}.config')
-    client_mod = importlib.import_module(f'src.etl.sources.{source_key}.client')
-    return config_mod, client_mod
+    return get_source_modules(source_key)
 
 
 # ============================================================================

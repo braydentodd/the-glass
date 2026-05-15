@@ -42,7 +42,6 @@ _VALID_LEAGUES = {'nba', 'ncaa'}
 _VALID_ALIGNS = {'left', 'center'}
 _VALID_EMPHASIS = {'bold', None}
 
-TAB_
 TAB_COLUMNS: Dict[str, Any] = {
     'players': {
         'description': 'PlayerName',

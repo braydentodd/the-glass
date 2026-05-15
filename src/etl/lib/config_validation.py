@@ -303,6 +303,14 @@ def _validate_legacy_pipeline_fields(leagues: Dict[str, Dict]) -> List[str]:
     return errors
 
 
+def _validate_domain_primaries() -> List[str]:
+    from src.core.definitions.stats import STAT_DOMAINS
+    errors = []
+    primaries = [k for k, v in STAT_DOMAINS.items() if v.get("primary")]
+    if len(primaries) != 1:
+        errors.append(f"STAT_DOMAINS: expected exactly one entry with primary=True, got {primaries!r}")
+    return errors
+
 def _validate_domain_coverage(db_columns: Dict[str, Dict]) -> List[str]:
     """Every non-primary domain in STAT_DOMAINS must be referenced by at
     least one DB_COLUMNS entry (otherwise the domain is dead config)."""
@@ -532,6 +540,7 @@ def validate_config() -> List[str]:
     errors.extend(_validate_legacy_source_fields(LEAGUES))
     errors.extend(_validate_legacy_pipeline_fields(LEAGUES))
     errors.extend(_validate_domain_coverage(DB_COLUMNS))
+    errors.extend(_validate_domain_primaries())
     errors.extend(_validate_fk_targets(STATS_TABLES, ROSTER_TABLES, PROFILE_TABLES))
     
     errors.extend(_validate_league_stage_definitions())

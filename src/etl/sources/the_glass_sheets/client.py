@@ -27,10 +27,10 @@ from src.core.definitions.tables import THE_GLASS_ID_COLUMN
 from src.core.lib.postgres import db_connection, quote_col
 from src.core.lib.tables_resolver import get_table_name
 from src.publish.definitions.columns import TAB_COLUMNS
-from src.publish.definitions.sheets import SHEET_FORMATTING
+from src.publish.destinations.sheets.config import SHEETS_FORMATTING
 from src.publish.destinations.sheets.client import get_sheets_client
 from src.publish.destinations.sheets.config import GOOGLE_SHEETS_CONFIG
-from src.publish.lib.layout import build_tab_columns, get_column_index
+from src.publish.lib.column_structure import build_tab_columns, get_column_index
 
 logger = logging.getLogger(__name__)
 
@@ -264,7 +264,7 @@ def sync_edits(league_key: str, dry_run: bool = False) -> Dict[str, int]:
             f"layout to emit it before syncing edits."
         )
 
-    header_rows = SHEET_FORMATTING.get('header_row_count', 4)
+    header_rows = SHEETS_FORMATTING.get('header_rows', 4)
 
     sheets_client = get_sheets_client(google_config)
     spreadsheet = sheets_client.open_by_key(google_config['spreadsheet_id'])

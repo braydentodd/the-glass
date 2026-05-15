@@ -108,8 +108,15 @@ def _validate_stat_rates_default_unique(stat_rates: dict) -> List[str]:
 
 
 def validate_config(league_key: str = None) -> List[str]:
-    # Cross-reference validations (which operate on actual config objects) should be hooked up here.
-    return []
+    from src.publish.definitions.columns import TAB_COLUMNS
+    from src.publish.definitions.stats import STAT_RATES
+    errors: List[str] = []
+    errors.extend(_validate_section_subsection(TAB_COLUMNS))
+    errors.extend(_validate_width_classes(TAB_COLUMNS))
+    errors.extend(_validate_column_section_refs(TAB_COLUMNS))
+    errors.extend(_validate_subsection_section_refs())
+    errors.extend(_validate_stat_rates_default_unique(STAT_RATES))
+    return errors
 
 
 

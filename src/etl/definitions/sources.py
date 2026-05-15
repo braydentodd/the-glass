@@ -16,13 +16,13 @@ Helpers that resolve source assignments per league/entity live in
 :mod:`src.core.lib.sources`.
 """
 
-from typing import Any, Dict
+from typing import TypedDict, Dict, List, Union
+
 
 
 # ============================================================================
 # VALIDATION CONSTANTS
 # ============================================================================
-
 
 VALID_SHAPES = frozenset({
     'YYYY', 'YY',
@@ -31,10 +31,6 @@ VALID_SHAPES = frozenset({
 })
 VALID_ANCHORS = frozenset({'start', 'end', None})
 
-
-
-
-from typing import TypedDict, Dict, List, Union, Any
 
 class SeasonFormatDef(TypedDict):
     shape: str

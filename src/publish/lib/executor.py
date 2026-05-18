@@ -498,7 +498,7 @@ def sync_teams_tab(ctx, client, spreadsheet, mode='per_possession',
             if dedup_key in seen_opp:
                 continue
             seen_opp.add(dedup_key)
-            formula = col_def.get('values', {}).get('team')
+            formula = col_def.get('values', {}).get('team', {}, {}).get('fn').get('fn')
             if not formula:
                 continue
             data_list = _data_by_base.get(base_section)

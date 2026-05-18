@@ -281,7 +281,7 @@ def sync_edits(league_key: str, dry_run: bool = False) -> Dict[str, int]:
             logger.info('Read %d rows from %s', len(data_rows), ws.title)
             updates = _extract_rows(data_rows, pid_idx, player_field_map)
             results['players_updated'] = _apply_updates(
-                get_table_name('player', 'entity'), updates, dry_run,
+                get_table_name('player', 'profiles'), updates, dry_run,
             )
 
     if team_field_map:
@@ -293,7 +293,7 @@ def sync_edits(league_key: str, dry_run: bool = False) -> Dict[str, int]:
             logger.info('Read %d rows from %s', len(data_rows), ws.title)
             updates = _extract_rows(data_rows, tid_idx, team_field_map)
             results['teams_updated'] = _apply_updates(
-                get_table_name('team', 'entity'), updates, dry_run,
+                get_table_name('team', 'profiles'), updates, dry_run,
             )
 
     return results

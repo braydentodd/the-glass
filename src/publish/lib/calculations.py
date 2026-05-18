@@ -150,7 +150,7 @@ def evaluate_formula(col_key: str, entity_data: dict,
     if not col_def:
         return None
 
-    expr = col_def.get('values', {}).get(entity_type)
+    expr = col_def.get('values', {}).get(entity_type, {}).get('fn')
     if expr is None:
         return None
 
@@ -445,20 +445,9 @@ def derive_db_fields(league: str = None, stats_sections: frozenset = None,
                      computed_fields: set = None) -> Dict[str, set]:
     """Derive the DB column sets needed by publish queries from TAB_COLUMNS.
 
-    Dependency resolution requires an explicit ``inputs`` declaration on the
-    column definition. The shape is::
-
-        'inputs': {
-            '<values_key>': {
-                'fields': ('col_a', 'col_b', ...),
-                'source': 'players',  # optional override; see below
-            },
-            ...
-        }
-
-    ``source: 'players'`` signals that a team-row formula aggregates from
-    its constituent players (e.g. ``team_average``), so the fields go to
-    ``stat_fields`` / ``player_entity_fields`` instead of the team buckets.
+    Dependency resolution looks at the ``fields`` tuple in each ``values`` declaration.
+    Fields are explicitly prefixed with SQL aliases ('p.', 't.', 's.', 'tr.') to route
+    them to the appropriate query bucket.
 
     Returns a dict with keys:
         player_entity_fields, team_entity_fields, stat_fields, team_stat_fields
@@ -475,31 +464,38 @@ def derive_db_fields(league: str = None, stats_sections: frozenset = None,
         if league and league not in col_def.get('leagues', []):
             continue
 
-        sections = set(col_def.get('sections', []))
-        is_stats = bool(sections & stats_sections)
-
-        inputs = col_def.get('inputs')
+        inputs = col_def.get('values')
         if inputs is not None:
             for values_key, spec in inputs.items():
-                entity_type = VALUES_KEY_ENTITY.get(values_key)
-                if entity_type is None:
+                default_entity_type = VALUES_KEY_ENTITY.get(values_key)
+                if default_entity_type is None:
                     continue
                 fields = set(spec.get('fields', ()))
-                if not fields:
-                    continue
-                if spec.get('source') == 'players':
-                    entity_type = 'player'
-                if is_stats:
-                    if entity_type == 'player':
-                        player_stats |= fields
+                
+                for raw_field in fields:
+                    if '.' not in raw_field:
+                        # Fallback for any unprefixed fields (should be none)
+                        prefix, field = None, raw_field
                     else:
-                        team_stats |= fields
-                else:
-                    if entity_type == 'player':
-                        player_entity |= fields
+                        prefix, field = raw_field.split('.', 1)
+                        
+                    if prefix == 'p':
+                        player_entity.add(field)
+                    elif prefix == 't':
+                        team_entity.add(field)
+                    elif prefix == 'tr':
+                        player_entity.add(field)
+                    elif prefix == 's':
+                        if default_entity_type == 'player':
+                            player_stats.add(field)
+                        else:
+                            team_stats.add(field)
                     else:
-                        team_entity |= fields
-            continue
+                        # Fallback for untagged fields
+                        if default_entity_type == 'player':
+                            player_entity.add(field)
+                        else:
+                            team_entity.add(field)
 
     return {
         'player_entity_fields': player_entity - computed_fields,
@@ -507,6 +503,7 @@ def derive_db_fields(league: str = None, stats_sections: frozenset = None,
         'stat_fields': player_stats,
         'team_stat_fields': team_stats,
     }
+
 
 
 # ============================================================================

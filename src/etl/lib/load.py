@@ -148,7 +148,7 @@ def _load_glass_id_map(
 
     If ``source_ids`` is provided, only rows for those IDs are fetched.
     """
-    profile_table = get_table_name(entity, 'entity')
+    profile_table = get_table_name(entity, 'profiles')
     src_col = get_source_id_column(source_key)
 
     sql_base = (
@@ -198,7 +198,7 @@ def _resolve_fk_value_columns(
         return rows, 0
 
     # Build {column -> ref_entity}
-    profile_to_entity = {name: m['entity'] for name, m in PROFILE_TABLES.items()}
+    profile_to_entity = {name: m['profiles'] for name, m in PROFILE_TABLES.items()}
 
     # Batch: collect all raw values per FK column, then one query per FK column.
     fk_maps: Dict[str, Dict[str, int]] = {}
@@ -248,7 +248,7 @@ def write_entity_rows(
 
     Args:
         entity:       ``'league'``, ``'team'`` or ``'player'``.
-        scope:        ``'entity'`` or ``'stats'``.
+        scope:        ``'profiles'`` or ``'stats'``.
         rows:         ``{source_entity_id: {col_name: value, ...}, ...}``.
         season:       Season label (``'2024-25'``).
         season_type:  Season type code (``'rs'``, ``'po'``, ``'pi'``, ...).
@@ -264,7 +264,7 @@ def write_entity_rows(
     if source_key is None:
         source_key = get_default_external_source(league_key)
 
-    if scope == 'entity':
+    if scope == 'profiles':
         approved_rows = approve_entities(
             entity,
             rows,
@@ -293,7 +293,7 @@ def _write_profile_rows(
     Conflict key: ``{source_key}_id`` (UNIQUE).  ``the_glass_id`` is allocated
     automatically by the core sequence.
     """
-    table = get_table_name(entity, 'entity')
+    table = get_table_name(entity, 'profiles')
     src_col = get_source_id_column(source_key)
 
     data_cols: Set[str] = set()

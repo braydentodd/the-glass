@@ -735,7 +735,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     # ------------------------------------------------------------------
     # SHOT TRACKING: CONTESTED / OPEN  x  RIM / ALL
     # ------------------------------------------------------------------
-    'cont_rim_fgm': {
+    'cont_close_fgm': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -781,7 +781,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'cont_rim_fga': {
+    'cont_close_fga': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -827,7 +827,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'open_rim_fgm': {
+    'open_close_fgm': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -873,7 +873,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'open_rim_fga': {
+    'open_close_fga': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -1982,7 +1982,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     # ------------------------------------------------------------------
     # DEFENSIVE SHOT TRACKING  (leaguedashptdefend / leaguedashptteamdefend)
     # ------------------------------------------------------------------
-    'd_rim_fgm': {
+    'd_close_fgm': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -2008,7 +2008,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'd_rim_fga': {
+    'd_close_fga': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -2242,121 +2242,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'field': 'DEF_RATING',
                         'scale': 10,
                         'aggregation': 'minute_weighted',
-                    },
-                },
-            },
-        },
-    },
-    # ------------------------------------------------------------------
-    # DEFENSIVE REAL FG% DIFFERENTIALS
-    # ------------------------------------------------------------------
-    'real_d_fg_pct_x1000': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashptdefend',
-                        'field': 'PCT_PLUSMINUS',
-                        'scale': 1000,
-                        'params': {'defense_category': 'Overall'},
-                    },
-                    'team': {
-                        'dataset': 'leaguedashptteamdefend',
-                        'field': 'PCT_PLUSMINUS',
-                        'scale': 1000,
-                        'params': {'defense_category': 'Overall'},
-                    },
-                },
-            },
-        },
-    },
-    'real_d_rim_fg_pct_x1000': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashptdefend',
-                        'field': 'PLUSMINUS',
-                        'scale': 1000,
-                        'params': {'defense_category': 'Less Than 10Ft'},
-                    },
-                    'team': {
-                        'dataset': 'leaguedashptteamdefend',
-                        'field': 'PLUSMINUS',
-                        'scale': 1000,
-                        'params': {'defense_category': 'Less Than 10Ft'},
-                    },
-                },
-            },
-        },
-    },
-    'real_d_fg2_pct_x1000': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashptdefend',
-                        'field': 'PLUSMINUS',
-                        'scale': 1000,
-                        'params': {'defense_category': '2 Pointers'},
-                    },
-                    'team': {
-                        'dataset': 'leaguedashptteamdefend',
-                        'field': 'PLUSMINUS',
-                        'scale': 1000,
-                        'params': {'defense_category': '2 Pointers'},
-                    },
-                },
-            },
-        },
-    },
-    'real_d_fg3_pct_x1000': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashptdefend',
-                        'field': 'PLUSMINUS',
-                        'scale': 1000,
-                        'params': {'defense_category': '3 Pointers'},
-                    },
-                    'team': {
-                        'dataset': 'leaguedashptteamdefend',
-                        'field': 'PLUSMINUS',
-                        'scale': 1000,
-                        'params': {'defense_category': '3 Pointers'},
                     },
                 },
             },

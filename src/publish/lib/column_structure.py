@@ -238,11 +238,11 @@ def get_columns_for_section_and_entity(section: str, entity: str,
     if tab_type in ['all_teams', 'teams'] and is_stats_section:
         opp_columns = {}
         for col_key, col_def in columns.items():
-            opp_expr = col_def.get('values', {}).get('opponents')
+            opp_expr = col_def.get('values', {}).get('opponents', {}, {}).get('fn').get('fn')
             if opp_expr:
                 opp_def = dict(col_def)
                 opp_def['display_name'] = f"{col_key}"
-                opp_def['values'] = {'team': opp_expr}
+                opp_def['values'] = {'team': {'fn': opp_expr}}
                 opp_def['is_opponent_col'] = True
                 opp_def['percentile'] = 'standard'
                 opp_def['subsection'] = 'opponent'

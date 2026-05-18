@@ -242,7 +242,7 @@ def _execute_per_entity(
     per entity (passing the entity's source_id), and extracts simple columns.
     """
     source_id_col = get_source_id_column(ctx.source_key)
-    entity_table = get_table_name(ctx.entity, 'entity')
+    entity_table = get_table_name(ctx.entity, 'profiles')
 
     with db_connection() as conn:
         with conn.cursor() as cur:

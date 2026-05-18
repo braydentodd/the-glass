@@ -19,10 +19,10 @@ _STATS_BY_ENTITY = {meta['entity']: name for name, meta in STATS_TABLES.items()}
 def get_table_name(entity: str, scope: str, league_key: str = None) -> str:
     """Resolve the schema-qualified table name for an entity / scope.
 
-    ``scope == 'entity'`` -> ``core.{entity}_profiles`` (league_key ignored).
+    ``scope == 'profiles'`` -> ``core.{entity}_profiles`` (league_key ignored).
     ``scope == 'stats'``  -> ``{league_key}.{entity}_season_stats`` (league_key required).
     """
-    if scope == 'entity':
+    if scope == 'profiles':
         if entity not in _PROFILE_BY_ENTITY:
             raise ValueError(f"No profile table for entity {entity!r}")
         return f'{CORE_SCHEMA}.{_PROFILE_BY_ENTITY[entity]}'

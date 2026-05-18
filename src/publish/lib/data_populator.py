@@ -142,7 +142,7 @@ def build_entity_row(entity_data: dict, columns_list: List[Tuple],
 
         # Dynamically-generated opponent column (Teams sheet) — eval directly
         if col_def.get('is_opponent_col'):
-            opp_expr = col_def.get('values', {}).get('team')
+            opp_expr = col_def.get('values', {}).get('team', {}, {}).get('fn').get('fn')
             value = evaluate_expression(opp_expr, sec_entity)
             _col_mode = col_ctx.rate if isinstance(col_ctx, ColumnContext) and col_ctx.rate else mode
             override = col_def.get('mode_overrides', {}).get(_col_mode)
@@ -285,7 +285,7 @@ def build_merged_entity_row(player_id, columns_list: List[Tuple],
                             base_col_def = e2[1]
                             break
                     if base_col_def:
-                        opp_expr = base_col_def.get('values', {}).get('team')
+                        opp_expr = base_col_def.get('values', {}).get('team', {}, {}).get('fn').get('fn')
                         value = evaluate_expression(opp_expr, sec_entity)
                         if value is not None:
                             reverse = base_col_def.get('percentile') == 'reverse'

@@ -129,9 +129,8 @@ def apply_transform(value: Any, transform_name: str, scale: int = 1) -> Any:
 #   multi_league_extract – make multiple API calls and merge results
 #   filter             – keep only rows matching filter criteria
 #   aggregate          – reduce per-entity lists to single values (sum, avg, etc.)
-#   scale              – multiply all values by a constant
 #   multiply           – multiply two extracted fields per entity
-#   db_copy            – copy a value from another column in the DB
+#   math               – perform arithmetic on extracted fields
 
 def execute_pipeline(
     pipeline_config: Dict[str, Any],
@@ -140,6 +139,7 @@ def execute_pipeline(
     season: str,
     season_type_name: str,
     entity_id_field: str,
+    default_entity_id: Any = None,
 ) -> Dict[int, Any]:
     """Execute a transformation pipeline and return ``{entity_id: value}``.
 
@@ -162,7 +162,7 @@ def execute_pipeline(
     dataset_params = pipeline_config.get('params', {})
 
     # Determine if any operation needs API data
-    needs_api = any(op.get('type') not in ('db_copy',) for op in operations)
+    needs_api = operations[0].get('type') == 'extract'
 
     api_result = None
     if needs_api:
@@ -172,19 +172,15 @@ def execute_pipeline(
     for op in operations:
         op_type = op['type']
         if op_type == 'extract':
-            data = _op_extract(api_result, op, entity_id_field)
+            data = _op_extract(api_result, op, entity_id_field, default_entity_id)
         elif op_type == 'multi_league_extract':
             data = _op_multi_league_extract(op, api_fetcher, dataset, entity_id_field, season, season_type_name)
         elif op_type == 'filter':
             data = _op_filter(data, op)
         elif op_type == 'aggregate':
             data = _op_aggregate(data, op)
-        elif op_type == 'scale':
-            data = _op_scale(data, op)
-        elif op_type == 'multiply':
-            data = _op_multiply(data, op)
-        elif op_type == 'db_copy':
-            data = _op_db_copy(op)
+        elif op_type == 'math':
+            data = _op_math(data, op)
         else:
             raise ValueError(f"Unknown pipeline operation: {op_type}")
 
@@ -199,6 +195,7 @@ def _op_extract(
     api_result: Dict[str, Any],
     op: Dict[str, Any],
     entity_id_field: str,
+    default_entity_id: Any = None,
 ) -> Dict[int, Any]:
     """Extract a field from a specific result set, keyed by entity ID.
 
@@ -213,10 +210,10 @@ def _op_extract(
             continue
 
         headers = rs['headers']
-        if id_field not in headers:
+        id_idx = headers.index(id_field) if id_field in headers else None
+        
+        if id_idx is None and default_entity_id is None:
             continue
-
-        id_idx = headers.index(id_field)
         rows = rs['rowSet']
 
         # Optional row-level filter
@@ -231,7 +228,7 @@ def _op_extract(
                 if filter_field and filter_values:
                     if filter_field in headers and row[headers.index(filter_field)] not in filter_values:
                         continue
-                eid = row[id_idx]
+                eid = row[id_idx] if id_idx is not None else default_entity_id
                 entry = result.setdefault(eid, {alias: [] for alias in field_map})
                 for alias, api_field in field_map.items():
                     if api_field in headers:
@@ -249,7 +246,7 @@ def _op_extract(
             if filter_field and filter_values:
                 if filter_field in headers and row[headers.index(filter_field)] not in filter_values:
                     continue
-            eid = row[id_idx]
+            eid = row[id_idx] if id_idx is not None else default_entity_id
             val = row[field_idx]
             if eid in result:
                 # Multiple matching rows — accumulate in a list for later aggregation
@@ -292,7 +289,7 @@ def _op_multi_league_extract(
             id_idx = headers.index(id_field)
             field_idx = headers.index(field)
             for row in rs['rowSet']:
-                eid = row[id_idx]
+                eid = row[id_idx] if id_idx is not None else default_entity_id
                 val = safe_int(row[field_idx])
                 if val is not None:
                     totals[eid] = totals.get(eid, 0) + val
@@ -325,41 +322,41 @@ def _op_aggregate(data: Dict[int, Any], op: Dict[str, Any]) -> Dict[int, Any]:
     return result
 
 
-def _op_scale(data: Dict[int, Any], op: Dict[str, Any]) -> Dict[int, Any]:
-    """Multiply all values by a constant factor."""
-    factor = op['factor']
-    return {
-        eid: round(float(v) * factor) if v is not None else None
-        for eid, v in data.items()
-    }
 
 
-def _op_multiply(data: Dict[int, Any], op: Dict[str, Any]) -> Dict[int, Any]:
-    """Multiply two extracted fields per entity. Expects data from multi-field extract."""
-    fields = op['fields']
+
+
+def _op_math(data: Dict[int, Any], op: Dict[str, Any]) -> Dict[int, Any]:
+    """Perform arithmetic on extracted fields. Uses eval() with limited variables."""
+    expression = op['expression']
     should_round = op.get('round', True)
     result = {}
+    
     for eid, field_data in data.items():
         if not isinstance(field_data, dict):
             continue
-        vals = []
-        for f in fields:
-            raw = field_data.get(f)
-            if isinstance(raw, list):
-                raw = raw[0] if raw else None
-            vals.append(raw)
-        if all(v is not None for v in vals):
-            product = float(vals[0]) * float(vals[1])
-            result[eid] = round(product) if should_round else product
-        else:
+            
+        # Extract first element from lists
+        locals_dict = {}
+        valid = True
+        for k, v in field_data.items():
+            val = v[0] if isinstance(v, list) and v else v
+            if val is None:
+                valid = False
+                break
+            locals_dict[k] = float(val)
+            
+        if not valid:
             result[eid] = None
+            continue
+            
+        try:
+            val = eval(expression, {"__builtins__": {}}, locals_dict)
+            result[eid] = round(val) if should_round else val
+        except Exception:
+            result[eid] = None
+            
     return result
-
-
-def _op_db_copy(op: Dict[str, Any]) -> Dict[int, Any]:
-    """Copy values from another DB column. Caller must populate during load phase."""
-    # Returns an empty dict — the load module resolves db_copy at write time
-    return {}
 
 
 # ============================================================================

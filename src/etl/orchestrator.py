@@ -140,8 +140,6 @@ def _run_groups(
     api_field_names: dict,
     api_config: dict,
     make_fetcher: Callable,
-    include_columns: Union[Set[str], None] = None,
-    exclude_columns: Union[Set[str], None] = None,
     groups_override: Union[Dict[Tuple[str, str], List[Dict[str, Any]]], None] = None,
     on_entity_finished: Union[
         Callable[[str, str, List[Dict[str, Any]], int, bool], None]
@@ -158,8 +156,6 @@ def _run_groups(
                 groups = build_call_groups(
                     ent, season, source_key, datasets, scope=scope,
                     league_key=league_key,
-                    include_columns=include_columns,
-                    exclude_columns=exclude_columns,
                 )
             if not groups:
                 continue
@@ -207,7 +203,7 @@ def _run_groups(
                                 entity_rows += rows
                                 mark_group_completed(conn, league_key, progress_id, rows)
                             except Exception as exc:
-                                logger.error(
+                                logger.exception(
                                     'Group %s failed: %s', group['dataset'], exc,
                                 )
                                 mark_group_failed(conn, league_key, progress_id, str(exc))
@@ -238,28 +234,6 @@ def _run_groups(
 # ETL PHASES
 # ============================================================================
 
-def _discover_entities(
-    entities: List[str],
-    seasons: List[str],
-    season_type: str,
-    season_type_name: str,
-    team_ids: Dict[str, int],
-    failed: List[Dict[str, Any]],
-    include_columns: Union[Set[str], None] = None,
-    exclude_columns: Union[Set[str], None] = None,
-    **source_kw,
-) -> int:
-    """Phase: populate core.{entity}_profiles from configured discovery seasons."""
-    logger.info(phase_marker('discover', f'{len(seasons)} season(s)'))
-    return _run_groups(
-        'entity', entities, seasons,
-        season_type, season_type_name, team_ids, failed,
-        include_columns=include_columns,
-        exclude_columns=exclude_columns,
-        **source_kw,
-    )
-
-
 def _populate_profiles(
     entities: List[str],
     seasons: List[str],
@@ -267,17 +241,13 @@ def _populate_profiles(
     season_type_name: str,
     team_ids: Dict[str, int],
     failed: List[Dict[str, Any]],
-    include_columns: Union[Set[str], None] = None,
-    exclude_columns: Union[Set[str], None] = None,
     **source_kw,
 ) -> int:
-    """Phase: enrich core.{entity}_profiles with non-identity attributes."""
+    """Phase: extract and upsert core.{entity}_profiles rows."""
     logger.info(phase_marker('populate_profiles', f'{len(seasons)} season(s)'))
     return _run_groups(
-        'entity', entities, seasons,
+        'profiles', entities, seasons,
         season_type, season_type_name, team_ids, failed,
-        include_columns=include_columns,
-        exclude_columns=exclude_columns,
         **source_kw,
     )
 
@@ -311,7 +281,7 @@ def _sync_rosters_phase(
     try:
         roster_pairs = fetcher(league_key, season, season_type_name, roster_snapshot)
     except Exception as exc:
-        logger.error(
+        logger.exception(
             'Roster snapshot for %s/%s failed: %s', league_key, source_key, exc,
         )
         failed.append({
@@ -636,31 +606,11 @@ def run_etl(
                     api_config=stage_bundle['api_config'],
                     make_fetcher=stage_bundle['client_mod'].make_fetcher,
                 )
-                
-                stage_include_columns: Union[Set[str], None] = None
-                stage_exclude_columns: Union[Set[str], None] = None
-                if handler == 'discover_entities':
-                    stage_include_columns = {THE_GLASS_ID_COLUMN, get_source_id_column(stage_source_key)}
-                elif handler == 'populate_profiles':
-                    stage_exclude_columns = {THE_GLASS_ID_COLUMN, get_source_id_column(stage_source_key)}
 
                 stage_team_ids = _get_team_ids_for_source(stage_source_key)
-
                 logger.info(phase_marker(stage_name, f'source={stage_source_key}'))
 
-                if handler == 'discover_entities':
-                    total_rows += _discover_entities(
-                        stage_entities,
-                        stage_seasons,
-                        stage_st,
-                        stage_st_name,
-                        stage_team_ids,
-                        failed,
-                        include_columns=stage_include_columns,
-                        exclude_columns=stage_exclude_columns,
-                        **stage_source_kw,
-                    )
-                elif handler == 'populate_profiles':
+                if handler == 'populate_profiles':
                     total_rows += _populate_profiles(
                         stage_entities,
                         stage_seasons,
@@ -668,8 +618,6 @@ def run_etl(
                         stage_st_name,
                         stage_team_ids,
                         failed,
-                        include_columns=stage_include_columns,
-                        exclude_columns=stage_exclude_columns,
                         **stage_source_kw,
                     )
                 elif handler == 'backfill_stats':

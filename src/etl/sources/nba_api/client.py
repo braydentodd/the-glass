@@ -18,6 +18,7 @@ from src.core.lib.rate_limiter import get_rate_limiter
 from src.etl.sources.nba_api.config import (
     API_CONFIG,
     DATASETS,
+    REQUEST_HEADERS,
 )
 
 warnings.filterwarnings(
@@ -27,34 +28,6 @@ warnings.filterwarnings(
 )
 
 logger = logging.getLogger(__name__)
-
-
-# ============================================================================
-# BROWSER HEADERS  (required by stats.nba.com)
-# ============================================================================
-
-_NBA_STATS_HEADERS = {
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Cache-Control": "no-cache",
-    "Connection": "keep-alive",
-    "Host": "stats.nba.com",
-    "Origin": "https://www.nba.com",
-    "Pragma": "no-cache",
-    "Referer": "https://www.nba.com/",
-    "Sec-Ch-Ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"Windows"',
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "same-site",
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    ),
-}
 
 
 # ============================================================================
@@ -73,8 +46,8 @@ def _patch_nba_api_headers() -> None:
         from nba_api.stats.library import http as _stats_http
         from nba_api.library import http as _base_http
 
-        _stats_http.STATS_HEADERS = _NBA_STATS_HEADERS
-        _stats_http.NBAStatsHTTP.headers = _NBA_STATS_HEADERS
+        _stats_http.STATS_HEADERS = REQUEST_HEADERS
+        _stats_http.NBAStatsHTTP.headers = REQUEST_HEADERS
         _stats_http.NBAStatsHTTP._session = None
         _base_http.NBAHTTP._session = None
         _session_patched = True
@@ -303,7 +276,7 @@ def fetch_roster_memberships(
     if not roster_snapshot:
         raise ValueError('roster_snapshot config is required for roster_maintainer role')
 
-    from src.core.definitions.columns import get_rosters_fields
+    from src.etl.lib.sources_resolver import get_rosters_fields
 
     dataset = roster_snapshot['dataset']
     team_id_field = roster_snapshot['team_id_field']

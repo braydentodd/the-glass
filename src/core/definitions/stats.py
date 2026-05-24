@@ -21,15 +21,15 @@ STAT_DOMAINS: Dict[str, Dict[str, Any]] = {
         'primary':     True
     },
     'tracking': {
-        'minutes_col': 'tracking_minutes_x10',
+        'minutes_col': 'tracking_mins_x10',
         'primary':     False
     },
     'hustle': {
-        'minutes_col': 'hustle_minutes_x10',
+        'minutes_col': 'hustle_mins_x10',
         'primary':     False
     },
     'onoff': {
-        'minutes_col': 'off_minutes_x10',
+        'minutes_col': 'off_mins_x10',
         'primary':     False
     }
 }

@@ -36,24 +36,20 @@ class DatasetDef(TypedDict):
 
 class SeasonTypeDef(TypedDict):
     name: str
-    param: str
     min_season: Union[str, None]
 
 SEASON_TYPES: Dict[str, SeasonTypeDef] = {
 
     'rs': {
         'name':       'Regular Season',
-        'param':      'Regular Season',
         'min_season': None,
     },
     'po': {
         'name':       'Playoffs',
-        'param':      'Playoffs',
         'min_season': None,
     },
     'pi': {
         'name':       'PlayIn',
-        'param':      'PlayIn',
         'min_season': '2020-21',
     },
 }
@@ -63,7 +59,32 @@ SEASON_TYPES: Dict[str, SeasonTypeDef] = {
 # API OPERATIONAL SETTINGS
 # ============================================================================
 
-# NBA-specific API parameters (not rate limiting)
+REQUEST_HEADERS: Dict[str, str] = {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "Host": "stats.nba.com",
+    "Origin": "https://www.nba.com",
+    "Pragma": "no-cache",
+    "Referer": "https://stats.nba.com/",
+    "Sec-Ch-Ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
+    "x-nba-stats-origin": "stats",
+    "x-nba-stats-token": "true",
+}
+
+# NBA-specific API parameters
 API_CONFIG: ApiConfigDef = {
     'league_id': '00',
     'per_mode_simple': 'Totals',
@@ -86,7 +107,7 @@ DATASETS: Dict[str, DatasetDef] = {
 
     'leaguedashplayerstats': {
         'min_season': '2003-04',
-        'execution_tier': 'per_team',
+        'execution_tier': 'team',
         'default_result_set': 'LeagueDashPlayerStats',
         'season_type_param': 'season_type_all_star',
         'per_mode_param': 'per_mode_detailed',
@@ -94,7 +115,7 @@ DATASETS: Dict[str, DatasetDef] = {
     },
     'leaguedashteamstats': {
         'min_season': '2003-04',
-        'execution_tier': 'per_league',
+        'execution_tier': 'league',
         'default_result_set': 'LeagueDashTeamStats',
         'season_type_param': 'season_type_all_star',
         'per_mode_param': 'per_mode_detailed',
@@ -105,7 +126,7 @@ DATASETS: Dict[str, DatasetDef] = {
 
     'leaguedashptstats': {
         'min_season': '2013-14',
-        'execution_tier': 'per_league',
+        'execution_tier': 'league',
         'default_result_set': 'LeagueDashPtStats',
         'season_type_param': 'season_type_all_star',
         'per_mode_param': 'per_mode_simple',
@@ -117,7 +138,7 @@ DATASETS: Dict[str, DatasetDef] = {
 
     'leaguehustlestatsplayer': {
         'min_season': '2015-16',
-        'execution_tier': 'per_team',
+        'execution_tier': 'team',
         'default_result_set': 'HustleStatsPlayer',
         'season_type_param': 'season_type_all_star',
         'per_mode_param': 'per_mode_time',
@@ -125,7 +146,7 @@ DATASETS: Dict[str, DatasetDef] = {
     },
     'leaguehustlestatsteam': {
         'min_season': '2015-16',
-        'execution_tier': 'per_league',
+        'execution_tier': 'league',
         'default_result_set': 'HustleStatsTeam',
         'season_type_param': 'season_type_all_star',
         'per_mode_param': 'per_mode_time',
@@ -136,7 +157,7 @@ DATASETS: Dict[str, DatasetDef] = {
 
     'leaguedashptdefend': {
         'min_season': '2013-14',
-        'execution_tier': 'per_team',
+        'execution_tier': 'team',
         'default_result_set': 'LeagueDashPtDefend',
         'season_type_param': 'season_type_all_star',
         'per_mode_param': 'per_mode_simple',
@@ -145,86 +166,28 @@ DATASETS: Dict[str, DatasetDef] = {
     },
     'leaguedashptteamdefend': {
         'min_season': '2013-14',
-        'execution_tier': 'per_league',
+        'execution_tier': 'league',
         'default_result_set': 'LeagueDashPtTeamDefend',
         'season_type_param': 'season_type_all_star',
         'per_mode_param': 'per_mode_simple',
         'requires_params': ['defense_category'],
         'entity_types': ['team'],
     },
-
-    # --- Shot tracking league-wide (since 2013-14) ---
-
-    'leaguedashplayerptshot': {
-        'min_season': '2013-14',
-        'execution_tier': 'per_team',
-        'default_result_set': 'LeagueDashPTShots',
+    
+    'shotchartdetail': {
+        'min_season': '1996-97',
+        'execution_tier': 'team_call',
+        'default_result_set': 'Shot_Chart_Detail',
         'season_type_param': 'season_type_all_star',
-        'per_mode_param': 'per_mode_simple',
         'entity_types': ['player'],
-    },
-    'leaguedashteamptshot': {
-        'min_season': '2013-14',
-        'execution_tier': 'per_league',
-        'default_result_set': 'LeagueDashPTShots',
-        'season_type_param': 'season_type_all_star',
-        'per_mode_param': 'per_mode_simple',
-        'entity_types': ['team'],
-    },
-
-    # --- Rebound tracking (since 2013-14) ---
-
-    'playerdashptreb': {
-        'min_season': '2013-14',
-        'execution_tier': 'per_player',
-        'default_result_set': 'OverallRebounding',
-        'season_type_param': 'season_type_all_star',
-        'per_mode_param': 'per_mode_simple',
-        'entity_types': ['player'],
-    },
-    'teamdashptreb': {
-        'min_season': '2013-14',
-        'execution_tier': 'per_team',
-        'default_result_set': 'OverallRebounding',
-        'season_type_param': 'season_type_all_star',
-        'per_mode_param': 'per_mode_simple',
-        'entity_types': ['team'],
-    },
-
-    # --- Shooting splits (since 2012-13) ---
-
-    'playerdashboardbyshootingsplits': {
-        'min_season': '2012-13',
-        'execution_tier': 'per_player',
-        'default_result_set': 'ShotTypePlayerDashboard',
-        'season_type_param': 'season_type_playoffs',
-        'per_mode_param': 'per_mode_detailed',
-        'entity_types': ['player'],
-    },
-    'teamdashboardbyshootingsplits': {
-        'min_season': '2012-13',
-        'execution_tier': 'per_league',
-        'default_result_set': 'ShotTypeTeamDashboard',
-        'season_type_param': 'season_type_all_star',
-        'per_mode_param': 'per_mode_detailed',
-        'entity_types': ['team'],
     },
 
     # --- Player info (all time) ---
 
     'commonallplayers': {
         'min_season': None,
-        'execution_tier': 'per_league',
+        'execution_tier': 'league',
         'default_result_set': 'CommonAllPlayers',
-        'season_type_param': None,
-        'per_mode_param': None,
-        'entity_types': ['player'],
-    },
-
-    'commonplayerinfo': {
-        'min_season': None,
-        'execution_tier': 'per_player',
-        'default_result_set': 'CommonPlayerInfo',
         'season_type_param': None,
         'per_mode_param': None,
         'entity_types': ['player'],
@@ -234,7 +197,7 @@ DATASETS: Dict[str, DatasetDef] = {
 
     'draftcombineplayeranthro': {
         'min_season': '2000-01',
-        'execution_tier': 'per_league',
+        'execution_tier': 'league',
         'default_result_set': 'DraftCombinePlayerAnthro',
         'season_param': 'season_year',
         'season_type_param': None,
@@ -246,8 +209,16 @@ DATASETS: Dict[str, DatasetDef] = {
 
     'teamplayeronoffsummary': {
         'min_season': '2007-08',
-        'execution_tier': 'per_league',
+        'execution_tier': 'league',
         'default_result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
+        'season_type_param': 'season_type_all_star',
+        'per_mode_param': 'per_mode_detailed',
+        'entity_types': ['player'],
+    },
+    'teamplayeronoffdetails': {
+        'min_season': '2007-08',
+        'execution_tier': 'league',
+        'default_result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
         'season_type_param': 'season_type_all_star',
         'per_mode_param': 'per_mode_detailed',
         'entity_types': ['player'],
@@ -259,7 +230,7 @@ DATASETS: Dict[str, DatasetDef] = {
 
     'team_metadata': {
         'min_season': None,
-        'execution_tier': 'per_league',
+        'execution_tier': 'league',
         'default_result_set': 'TeamMetadata',
         'season_type_param': None,
         'per_mode_param': None,
@@ -280,9 +251,19 @@ API_FIELD_NAMES: Dict[str, Dict[str, Any]] = {
     'id_aliases':  {'PLAYER_ID': ['PERSON_ID']},
 }
 
-
-# ============================================================================
-# VALIDATION SCHEMAS  (co-located with the config they describe)
-# ============================================================================
-
-
+DATASETS['playerdashboardbyshootingsplits'] = {
+    'min_season': '1996-97',
+    'execution_tier': 'player',
+    'default_result_set': 'AssistedShotDashboard',
+    'season_type_param': 'season_type_playoffs',
+    'per_mode_param': 'per_mode_detailed',
+    'entity_types': ['player'],
+}
+DATASETS['teamdashboardbyshootingsplits'] = {
+    'min_season': '1996-97',
+    'execution_tier': 'team',
+    'default_result_set': 'AssistedShotDashboard',
+    'season_type_param': 'season_type_playoffs',
+    'per_mode_param': 'per_mode_detailed',
+    'entity_types': ['team'],
+}

@@ -198,7 +198,7 @@ def _resolve_fk_value_columns(
         return rows, 0
 
     # Build {column -> ref_entity}
-    profile_to_entity = {name: m['profiles'] for name, m in PROFILE_TABLES.items()}
+    profile_to_entity = {name: m['entity'] for name, m in PROFILE_TABLES.items()}
 
     # Batch: collect all raw values per FK column, then one query per FK column.
     fk_maps: Dict[str, Dict[str, int]] = {}

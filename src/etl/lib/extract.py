@@ -55,26 +55,45 @@ def extract_derived_field(
     row: List[Any],
     headers: List[str],
     source: Dict[str, Any],
-) -> Union[int, None]:
-    """Extract a derived field (e.g. FGM - FG3M for 2-point FGM).
-
-    If the source has a ``derived.subtract_field`` key, the base field
-    value is reduced by the subtraction field value.
-    """
-    base_value = extract_field(row, headers, source)
+) -> Any:
+    """Extract a derived field via algebraic expression interpolation."""
     derived = source.get('derived')
-    if not derived or base_value is None:
-        return base_value
+    if not derived:
+        return extract_field(row, headers, source)
+        
+    math_expr = derived.get('math')
+    if not math_expr:
+        return extract_field(row, headers, source)
+        
+    fields = derived.get('fields', [])
+    locals_dict = {}
+    valid = True
+    
+    for field_name in fields:
+        if field_name not in headers:
+            valid = False
+            break
+        raw = row[headers.index(field_name)]
+        if raw is None:
+            valid = False
+            break
+        try:
+            locals_dict[field_name] = float(raw)
+        except (ValueError, TypeError):
+            valid = False
+            break
+            
+    if not valid:
+        return None
+        
+    try:
+        value = eval(math_expr, {"__builtins__": {}}, locals_dict)
+    except Exception:
+        return None
 
-    subtract_field = derived.get('subtract')
-    if subtract_field and subtract_field in headers:
-        subtract_raw = row[headers.index(subtract_field)]
-        if subtract_raw is not None:
-            try:
-                return base_value - round(float(subtract_raw))
-            except (ValueError, TypeError):
-                pass
-    return base_value
+    transform_name = source.get('transform', 'safe_int')
+    scale = source.get('scale', 1)
+    return apply_transform(value, transform_name, scale)
 
 
 # ============================================================================
@@ -131,7 +150,7 @@ def extract_columns_from_result(
             existing = all_entities.setdefault(entity_id, {})
             for col_name, source in columns.items():
                 # Skip columns with pipeline or multi_call sources
-                if 'pipeline' in source or 'multi_call' in source:
+                if 'pipeline' in source:
                     continue
 
                 if source.get('derived'):
@@ -153,10 +172,10 @@ def extract_columns_from_result(
 def get_simple_columns(
     columns: Dict[str, Dict[str, Any]],
 ) -> Dict[str, Dict[str, Any]]:
-    """Filter to columns with direct field extraction (no pipeline or multi_call)."""
+    """Filter to columns with direct field extraction."""
     return {
         name: src for name, src in columns.items()
-        if 'pipeline' not in src and 'multi_call' not in src
+        if 'pipeline' not in src
     }
 
 
@@ -168,51 +187,6 @@ def get_pipeline_columns(
         name: src for name, src in columns.items()
         if 'pipeline' in src
     }
-
-
-def get_multi_call_columns(
-    columns: Dict[str, Dict[str, Any]],
-) -> Dict[str, Dict[str, Any]]:
-    """Filter to columns that aggregate across multiple API calls."""
-    return {
-        name: src for name, src in columns.items()
-        if 'multi_call' in src
-    }
-
-
-# ============================================================================
-# SINGLE-FIELD & RAW EXTRACTION  (for multi-call and team-call patterns)
-# ============================================================================
-
-def extract_single_field(
-    api_result: Dict[str, Any],
-    field: str,
-    entity_id_field: str,
-    result_set_name: Union[str, None] = None,
-) -> Dict[int, Union[int, None]]:
-    """Extract a single field from an API result, keyed by entity ID.
-
-    Returns ``{entity_id: safe_int(value)}`` for each entity in the result.
-    Used by multi-call columns that accumulate a field across API calls.
-    """
-    extracted: Dict[int, Union[int, None]] = {}
-
-    for rs in api_result.get('resultSets', []):
-        if result_set_name and rs['name'] != result_set_name:
-            continue
-        headers = rs['headers']
-        if entity_id_field not in headers or field not in headers:
-            continue
-        id_idx = headers.index(entity_id_field)
-        field_idx = headers.index(field)
-        for row in rs['rowSet']:
-            eid = row[id_idx]
-            val = safe_int(row[field_idx])
-            if val is not None:
-                extracted[eid] = val
-        break
-
-    return extracted
 
 
 def extract_raw_rows(

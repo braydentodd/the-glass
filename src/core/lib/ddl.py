@@ -605,7 +605,7 @@ def ensure_league_profile(league_key: str, conn) -> int:
             col_name: league[col_name]
             for col_name, col_meta in DB_COLUMNS.items()
             if 'league' in (col_meta.get('entity_types') or [])
-            and 'entities' in (col_meta.get('scope') or [])
+            and 'profiles' in (col_meta.get('scope') or [])
             and col_name in league
         }
 

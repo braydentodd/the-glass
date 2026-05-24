@@ -22,8 +22,6 @@ from src.core.lib.tables_resolver import get_table_name
 from src.etl.lib.extract import (
     extract_columns_from_result,
     extract_raw_rows,
-    extract_single_field,
-    get_multi_call_columns,
     get_pipeline_columns,
     get_simple_columns,
 )
@@ -93,47 +91,81 @@ def _execute_league_wide(
     )
 
 
-def _execute_multi_call_column(
+def _execute_pipeline_per_entity(
     col_name: str,
     source: Dict[str, Any],
     ctx: ExecutionContext,
     failed: List[Dict[str, Any]],
 ) -> int:
-    """Make multiple API calls and sum the field per entity."""
-    dataset = source['dataset']
-    api_field = source['field']
-    multi_call_params = source['multi_call']
-    result_set = source.get('result_set')
-
-    totals: Dict[int, int] = {}
-
-    for extra_params in multi_call_params:
-        try:
-            result = ctx.api_fetcher(dataset, extra_params)
-        except Exception as exc:
-            logger.warning(
-                'Multi-call %s %s failed for params %s: %s',
-                dataset, col_name, extra_params, exc,
-            )
-            continue
-
-        if result is None:
-            continue
-
-        field_vals = extract_single_field(
-            result, api_field, ctx.entity_id_field, result_set,
-        )
-        for eid, val in field_vals.items():
-            totals[eid] = totals.get(eid, 0) + val
-
-    if not totals:
+    pipeline_config = source['extraction_config']
+    dataset = pipeline_config['dataset']
+    params = pipeline_config.get('params', {})
+    
+    source_id_col = get_source_id_column(ctx.source_key)
+    entity_table = get_table_name(ctx.entity, 'profiles')
+    
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            target_table = get_table_name(ctx.entity, ctx.scope, ctx.db_schema)
+            if entity_table == target_table:
+                cur.execute(
+                    f"SELECT {quote_col(source_id_col)} FROM {entity_table} "
+                    f"WHERE {quote_col(col_name)} IS NULL"
+                )
+            else:
+                from src.core.definitions.tables import THE_GLASS_ID_COLUMN
+                tg_id = quote_col(THE_GLASS_ID_COLUMN)
+                cur.execute(
+                    f"SELECT e.{quote_col(source_id_col)} FROM {entity_table} e "
+                    f"LEFT JOIN {target_table} t "
+                    f"ON e.{tg_id} = t.{tg_id} AND t.season = %s AND t.season_type = %s "
+                    f"WHERE t.{tg_id} IS NULL OR t.{quote_col(col_name)} IS NULL",
+                    (ctx.season, ctx.season_type)
+                )
+            source_ids = [row[0] for row in cur.fetchall()]
+            
+    if not source_ids:
         return 0
-    rows = {eid: {col_name: val} for eid, val in totals.items()}
+
+    all_rows: Dict[int, Dict[str, Any]] = {}
+    consecutive_failures = 0
+    id_param = f'{ctx.entity}_id'
+    
+    for sid in source_ids:
+        def single_entity_fetcher(ds, extra_params, tier):
+            # inject the current entity id
+            call_params = {**extra_params, id_param: sid}
+            try:
+                return ctx.api_fetcher(ds, call_params)
+            except Exception:
+                return {'resultSets': []}
+                
+        try:
+            result = execute_pipeline(
+                pipeline_config, single_entity_fetcher, ctx.entity,
+                ctx.season, ctx.season_type_name,
+                entity_id_field=ctx.entity_id_field,
+                default_entity_id=sid
+            )
+            consecutive_failures = 0
+            if result:
+                for eid, val in result.items():
+                    all_rows[eid] = {col_name: val}
+        except Exception as exc:
+            consecutive_failures += 1
+            if consecutive_failures >= ctx.max_consecutive_failures:
+                logger.error('Aborting %s per-entity after %d consecutive failures', dataset, consecutive_failures)
+                failed.append({'column': col_name, 'error': str(exc)})
+                break
+            continue
+
+    if not all_rows:
+        return 0
+        
     return write_entity_rows(
-        ctx.entity, ctx.scope, rows, ctx.season, ctx.season_type,
+        ctx.entity, ctx.scope, all_rows, ctx.season, ctx.season_type,
         ctx.db_schema, ctx.source_key,
     )
-
 
 def _execute_pipeline_column(
     col_name: str,
@@ -143,8 +175,12 @@ def _execute_pipeline_column(
 ) -> int:
     """Execute a transformation pipeline for a single column."""
     pipeline_config = source['extraction_config']
+    tier = pipeline_config.get('tier', 'per_league')
+    
+    if tier in ('player', 'team'):
+        return _execute_pipeline_per_entity(col_name, source, ctx, failed)
 
-    def pipeline_fetcher(ds, extra_params, tier):
+    def pipeline_fetcher(ds, extra_params, tr):
         try:
             return ctx.api_fetcher(ds, extra_params)
         except Exception:
@@ -155,6 +191,7 @@ def _execute_pipeline_column(
             pipeline_config, pipeline_fetcher, ctx.entity,
             ctx.season, ctx.season_type_name,
             entity_id_field=ctx.entity_id_field,
+            default_entity_id=None
         )
     except Exception as exc:
         logger.error('Pipeline %s failed: %s', col_name, exc)
@@ -172,6 +209,7 @@ def _execute_pipeline_column(
 
 def _execute_team_call(
     dataset: str,
+    params: Dict[str, Any],
     columns: Dict[str, Dict[str, Any]],
     ctx: ExecutionContext,
     failed: List[Dict[str, Any]],
@@ -199,7 +237,8 @@ def _execute_team_call(
 
     for idx, team_id in enumerate(team_ids):
         try:
-            result = ctx.api_fetcher(dataset, {'team_id': team_id})
+            call_params = {**params, 'team_id': team_id}
+            result = ctx.api_fetcher(dataset, call_params)
             consecutive_failures = 0
         except Exception as exc:
             consecutive_failures += 1
@@ -252,13 +291,29 @@ def _execute_per_entity(
                 )
             else:
                 # Only fetch entities still missing data for any of the target columns
-                null_checks = ' OR '.join(
-                    f'{quote_col(col)} IS NULL' for col in columns
-                )
-                cur.execute(
-                    f"SELECT {quote_col(source_id_col)} FROM {entity_table}"
-                    f" WHERE {null_checks}"
-                )
+                target_table = get_table_name(ctx.entity, ctx.scope, ctx.db_schema)
+                if entity_table == target_table:
+                    null_checks = ' OR '.join(
+                        f'{quote_col(col)} IS NULL' for col in columns
+                    )
+                    cur.execute(
+                        f"SELECT {quote_col(source_id_col)} FROM {entity_table}"
+                        f" WHERE {null_checks}"
+                    )
+                else:
+                    null_checks = ' OR '.join(
+                        f't.{quote_col(col)} IS NULL' for col in columns
+                    )
+                    from src.core.definitions.tables import THE_GLASS_ID_COLUMN
+                    tg_id = quote_col(THE_GLASS_ID_COLUMN)
+                    cur.execute(
+                        f"SELECT e.{quote_col(source_id_col)} FROM {entity_table} e "
+                        f"LEFT JOIN {target_table} t "
+                        f"ON e.{tg_id} = t.{tg_id} "
+                        f"AND t.season = %s AND t.season_type = %s "
+                        f"WHERE t.{tg_id} IS NULL OR {null_checks}",
+                        (ctx.season, ctx.season_type)
+                    )
             source_ids = [row[0] for row in cur.fetchall()]
 
     if not source_ids:
@@ -266,7 +321,7 @@ def _execute_per_entity(
 
     all_rows: Dict[int, Dict[str, Any]] = {}
     consecutive_failures = 0
-    id_param = ctx.entity_id_field.lower()
+    id_param = f'{ctx.entity}_id'  # e.g., 'player_id' or 'team_id'
 
     for idx, sid in enumerate(source_ids):
         try:
@@ -328,7 +383,6 @@ def execute_group(
     columns = group['columns']
 
     simple = get_simple_columns(columns)
-    multi_call = get_multi_call_columns(columns)
     pipelines = get_pipeline_columns(columns)
 
     param_label = ' '.join(f'{k}={v}' for k, v in sorted(params.items()))
@@ -340,7 +394,7 @@ def execute_group(
     written = 0
 
     if tier == 'team_call':
-        written += _execute_team_call(dataset, columns, ctx, failed)
+        written += _execute_team_call(dataset, params, columns, ctx, failed)
     elif tier in ('team', 'player'):
         if simple:
             written += _execute_per_entity(
@@ -349,13 +403,9 @@ def execute_group(
             )
         for col_name, source in pipelines.items():
             written += _execute_pipeline_column(col_name, source, ctx, failed)
-        for col_name, source in multi_call.items():
-            written += _execute_multi_call_column(col_name, source, ctx, failed)
     else:
         if simple:
             written += _execute_league_wide(dataset, params, simple, ctx, failed)
-        for col_name, source in multi_call.items():
-            written += _execute_multi_call_column(col_name, source, ctx, failed)
         for col_name, source in pipelines.items():
             written += _execute_pipeline_column(col_name, source, ctx, failed)
 

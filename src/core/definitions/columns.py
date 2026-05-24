@@ -80,7 +80,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'season': {
         'type': 'VARCHAR(7)',
-        'scope': ['profiles', 'stats', 'runs', 'rosters', 'backfill'],
+        'scope': ['profiles', 'stats', 'runs', 'tasks', 'rosters', 'backfill'],
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
@@ -92,7 +92,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'season_type': {
         'type': 'VARCHAR(3)',
-        'scope': ['profiles', 'stats', 'backfill'],
+        'scope': ['profiles', 'stats', 'runs', 'tasks', 'backfill'],
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
@@ -456,6 +456,30 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
+    'off_mins_x10': {
+        'type': 'INTEGER',
+        'scope': ['stats'],
+        'nullable': False,
+        'default': 0,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffsummary',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'MIN',
+                        'scale': 10
+                    },
+                },
+            },
+        },
+    },
     'hustle_mins_x10': {
         'type': 'INTEGER',
         'scope': ['stats'],
@@ -491,13 +515,11 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {
                         'dataset': 'leaguedashplayerstats',
-                        'field': 'FGM',
-                        'derived': {'subtract': 'FG3M'},
+                        'derived': {'math': 'FGM - FG3M', 'fields': ['FGM', 'FG3M']},
                     },
                     'team': {
                         'dataset': 'leaguedashteamstats',
-                        'field': 'FGM',
-                        'derived': {'subtract': 'FG3M'},
+                        'derived': {'math': 'FGM - FG3M', 'fields': ['FGM', 'FG3M']},
                     },
                     'opponent': {
                         'dataset': 'leaguedashteamstats',
@@ -523,13 +545,11 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {
                         'dataset': 'leaguedashplayerstats',
-                        'field': 'FGA',
-                        'derived': {'subtract': 'FG3A'},
+                        'derived': {'math': 'FGA - FG3A', 'fields': ['FGA', 'FG3A']},
                     },
                     'team': {
                         'dataset': 'leaguedashteamstats',
-                        'field': 'FGA',
-                        'derived': {'subtract': 'FG3A'},
+                        'derived': {'math': 'FGA - FG3A', 'fields': ['FGA', 'FG3A']},
                     },
                     'opponent': {
                         'dataset': 'leaguedashteamstats',
@@ -655,33 +675,76 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             'nba': {
                 'nba_api': {
                     'player': {
-                        'dataset': 'playerdashboardbyshootingsplits',
-                        'tier': 'player',
-                        'params': {'measure_type_detailed': 'Base', 'per_mode_detailed': 'Totals'},
+                        'dataset': 'shotchartdetail',
+                        'tier': 'team_call',
+                        'params': {'context_measure_simple': 'FGA'},
                         'operations': [
                             {
                                 'type': 'extract',
-                                'result_set': 'ShotTypePlayerDashboard',
-                                'field': 'FGM',
-                                'filter_field': 'GROUP_VALUE',
+                                'result_set': 'Shot_Chart_Detail',
+                                'field': 'SHOT_MADE_FLAG',
+                                'filter_field': 'ACTION_TYPE',
                                 'filter_values': ['Putback Dunk Shot', 'Putback Layup Shot', 'Tip Dunk Shot', 'Tip Layup Shot'],
                             },
                             {'type': 'aggregate', 'method': 'sum'},
                         ],
                     },
                     'team': {
-                        'dataset': 'teamdashboardbyshootingsplits',
-                        'tier': 'team',
-                        'params': {
-                            'measure_type_detailed_defense': 'Base',
-                            'per_mode_detailed': 'Totals',
-                        },
+                        'dataset': 'shotchartdetail',
+                        'tier': 'team_call',
+                        'params': {'context_measure_simple': 'FGA'},
                         'operations': [
                             {
                                 'type': 'extract',
-                                'result_set': 'ShotTypeTeamDashboard',
-                                'field': 'FGM',
-                                'filter_field': 'GROUP_VALUE',
+                                'result_set': 'Shot_Chart_Detail',
+                                'field': 'SHOT_MADE_FLAG',
+                                'filter_field': 'ACTION_TYPE',
+                                'filter_values': ['Putback Dunk Shot', 'Putback Layup Shot', 'Tip Dunk Shot', 'Tip Layup Shot'],
+                            },
+                            {'type': 'aggregate', 'method': 'sum'},
+                        ],
+                    },
+                },
+            },
+        },
+    },
+    'putbacks_fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'per_execution',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'shotchartdetail',
+                        'tier': 'team_call',
+                        'params': {'context_measure_simple': 'FGA'},
+                        'operations': [
+                            {
+                                'type': 'extract',
+                                'result_set': 'Shot_Chart_Detail',
+                                'field': 'SHOT_ATTEMPTED_FLAG',
+                                'filter_field': 'ACTION_TYPE',
+                                'filter_values': ['Putback Dunk Shot', 'Putback Layup Shot', 'Tip Dunk Shot', 'Tip Layup Shot'],
+                            },
+                            {'type': 'aggregate', 'method': 'sum'},
+                        ],
+                    },
+                    'team': {
+                        'dataset': 'shotchartdetail',
+                        'tier': 'team_call',
+                        'params': {'context_measure_simple': 'FGA'},
+                        'operations': [
+                            {
+                                'type': 'extract',
+                                'result_set': 'Shot_Chart_Detail',
+                                'field': 'SHOT_ATTEMPTED_FLAG',
+                                'filter_field': 'ACTION_TYPE',
                                 'filter_values': ['Putback Dunk Shot', 'Putback Layup Shot', 'Tip Dunk Shot', 'Tip Layup Shot'],
                             },
                             {'type': 'aggregate', 'method': 'sum'},
@@ -699,7 +762,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player'],
+        'entity_types': ['player', 'team'],
         'update_frequency': 'per_execution',
         'domain': None,
         'comment': None,
@@ -713,12 +776,31 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'operations': [
                             {
                                 'type': 'extract',
-                                'result_set': 'AssistTracking',
-                                'field': 'FGM',
-                                'filter_field': 'SHOT_TYPE',
-                                'filter_values': ['AtRim'],
+                                'result_set': 'ShotAreaPlayerDashboard',
+                                'fields': {'FGM': 'FGM', 'rate': 'PCT_UAST_FGM'},
+                                'filter_field': 'GROUP_VALUE',
+                                'filter_values': ['Restricted Area'],
                             },
-                        ],
+                            {'type': 'math', 'expression': 'FGM * rate'}
+                        ]
+                    },
+                    'team': {
+                        'dataset': 'teamdashboardbyshootingsplits',
+                        'tier': 'team',
+                        'params': {
+                            'measure_type_detailed_defense': 'Base',
+                            'per_mode_detailed': 'Totals',
+                        },
+                        'operations': [
+                            {
+                                'type': 'extract',
+                                'result_set': 'ShotAreaTeamDashboard',
+                                'fields': {'FGM': 'FGM', 'rate': 'PCT_UAST_FGM'},
+                                'filter_field': 'GROUP_VALUE',
+                                'filter_values': ['Restricted Area'],
+                            },
+                            {'type': 'math', 'expression': 'FGM * rate'}
+                        ]
                     },
                 },
             },
@@ -729,7 +811,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player'],
+        'entity_types': ['player', 'team'],
         'update_frequency': 'per_execution',
         'domain': None,
         'comment': None,
@@ -743,23 +825,38 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'operations': [
                             {
                                 'type': 'extract',
-                                'result_set': 'AssistTracking',
-                                'field': 'FGM',
-                                'filter_field': 'SHOT_TYPE',
-                                'filter_values': ['2PT'],
+                                'result_set': 'OverallPlayerDashboard',
+                                'fields': {'FGM': 'FGM', 'FG3M': 'FG3M', 'rate': 'PCT_UAST_2PM'}
                             },
-                        ],
+                            {'type': 'math', 'expression': '(FGM - FG3M) * rate'}
+                        ]
                     },
-                },
-            },
-        },
+                    'team': {
+                        'dataset': 'teamdashboardbyshootingsplits',
+                        'tier': 'team',
+                        'params': {
+                            'measure_type_detailed_defense': 'Base',
+                            'per_mode_detailed': 'Totals',
+                        },
+                        'operations': [
+                            {
+                                'type': 'extract',
+                                'result_set': 'OverallTeamDashboard',
+                                'fields': {'FGM': 'FGM', 'FG3M': 'FG3M', 'rate': 'PCT_UAST_2PM'}
+                            },
+                            {'type': 'math', 'expression': '(FGM - FG3M) * rate'}
+                        ]
+                    }
+                }
+            }
+        }
     },
     'unassisted_fg3m': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player'],
+        'entity_types': ['player', 'team'],
         'update_frequency': 'per_execution',
         'domain': None,
         'comment': None,
@@ -773,16 +870,31 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'operations': [
                             {
                                 'type': 'extract',
-                                'result_set': 'AssistTracking',
-                                'field': 'FGM',
-                                'filter_field': 'SHOT_TYPE',
-                                'filter_values': ['3PT'],
+                                'result_set': 'OverallPlayerDashboard',
+                                'fields': {'FG3M': 'FG3M', 'rate': 'PCT_UAST_3PM'}
                             },
-                        ],
+                            {'type': 'math', 'expression': 'FG3M * rate'}
+                        ]
                     },
-                },
-            },
-        },
+                    'team': {
+                        'dataset': 'teamdashboardbyshootingsplits',
+                        'tier': 'team',
+                        'params': {
+                            'measure_type_detailed_defense': 'Base',
+                            'per_mode_detailed': 'Totals',
+                        },
+                        'operations': [
+                            {
+                                'type': 'extract',
+                                'result_set': 'OverallTeamDashboard',
+                                'fields': {'FG3M': 'FG3M', 'rate': 'PCT_UAST_3PM'}
+                            },
+                            {'type': 'math', 'expression': 'FG3M * rate'}
+                        ]
+                    }
+                }
+            }
+        }
     },
     # ------------------------------------------------------------------
     # REBOUNDS
@@ -884,84 +996,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'field': 'DREB_PCT',
                         'scale': 1000,
                         'params': {'measure_type_detailed_defense': 'Advanced'},
-                    },
-                },
-            },
-        },
-    },
-    'cont_o_rebs': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'playerdashptreb',
-                        'tier': 'player',
-                        'params': {'team_id': 0},
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'OverallRebounding',
-                                'field': 'C_OREB',
-                            },
-                        ],
-                    },
-                    'team': {
-                        'dataset': 'teamdashptreb',
-                        'tier': 'team',
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'OverallRebounding',
-                                'field': 'C_OREB',
-                            },
-                        ],
-                    },
-                },
-            },
-        },
-    },
-    'cont_d_rebs': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'playerdashptreb',
-                        'tier': 'player',
-                        'params': {'team_id': 0},
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'OverallRebounding',
-                                'field': 'C_DREB',
-                            },
-                        ],
-                    },
-                    'team': {
-                        'dataset': 'teamdashptreb',
-                        'tier': 'team',
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'OverallRebounding',
-                                'field': 'C_DREB',
-                            },
-                        ],
                     },
                 },
             },
@@ -1121,32 +1155,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'dataset': 'leaguedashptstats',
                         'field': 'TIME_OF_POSS',
                         'params': {'pt_measure_type': 'Possessions', 'player_or_team': 'Team'},
-                    },
-                },
-            },
-        },
-    },
-    'possessions': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashplayerstats',
-                        'field': 'POSS',
-                        'params': {'measure_type_detailed_defense': 'Advanced'},
-                    },
-                    'team': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'POSS',
-                        'params': {'measure_type_detailed_defense': 'Advanced'},
                     },
                 },
             },
@@ -1623,6 +1631,1313 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 },
             },
         },
+    },
+    # ------------------------------------------------------------------
+    # ON/OFF COUNTING STATS (TEAMPLAYERONOFFDETAILS)
+    # ------------------------------------------------------------------
+    'on_2fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'derived': {'math': 'FGM - FG3M', 'fields': ['FGM', 'FG3M']},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_2fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'derived': {'math': 'FGA - FG3A', 'fields': ['FGA', 'FG3A']},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_3fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'FG3M',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_3fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'FG3A',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_fta': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'FTA',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_ftm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'FTM',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_tovs': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'TOV',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_blocks': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'BLK',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_2fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'derived': {'math': 'FGM - FG3M', 'fields': ['FGM', 'FG3M']},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_2fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'derived': {'math': 'FGA - FG3A', 'fields': ['FGA', 'FG3A']},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_3fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'FG3M',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_3fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'FG3A',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_fta': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'FTA',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_ftm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'FTM',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_tovs': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'TOV',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_blocks': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'BLK',
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_opp_2fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'derived': {'math': 'OPP_FGM - OPP_FG3M', 'fields': ['OPP_FGM', 'OPP_FG3M']},
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_opp_2fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'derived': {'math': 'OPP_FGA - OPP_FG3A', 'fields': ['OPP_FGA', 'OPP_FG3A']},
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_opp_3fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_FG3M',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_opp_3fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_FG3A',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_opp_fta': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_FTA',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_opp_ftm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_FTM',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_opp_pts': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_PTS',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'on_opp_tovs': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_TOV',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_opp_2fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'derived': {'math': 'OPP_FGM - OPP_FG3M', 'fields': ['OPP_FGM', 'OPP_FG3M']},
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_opp_2fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'derived': {'math': 'OPP_FGA - OPP_FG3A', 'fields': ['OPP_FGA', 'OPP_FG3A']},
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_opp_3fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_FG3M',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_opp_3fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_FG3A',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_opp_fta': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_FTA',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_opp_ftm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_FTM',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_opp_pts': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_PTS',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'off_opp_tovs': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OPP_TOV',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    'ft_assists': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'per_execution',
+        'domain': 'tracking',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'FT_AST',
+                        'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Player'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashptstats',
+                        'field': 'FT_AST',
+                        'params': {'pt_measure_type': 'Passing', 'player_or_team': 'Team'},
+                    },
+                },
+            },
+        },
+    },
+    # ------------------------------------------------------------------
+    # PBP STATS (INITIAL INTEGRATION)
+    # ------------------------------------------------------------------
+    'heaves': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'per_execution',
+        'domain': 'tracking',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'field': 'HeaveAttempts',
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'field': 'HeaveAttempts',
+                    },
+                },
+            },
+        },
+    },
+    'poss': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'per_execution',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'field': 'OffPoss',
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'field': 'OffPoss',
+                    },
+                },
+            },
+        },
+    },
+    'o_rtg': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'per_execution',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'derived': {'math': '(Points / OffPoss) * 100', 'fields': ['Points', 'OffPoss']},
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'derived': {'math': '(Points / OffPoss) * 100', 'fields': ['Points', 'OffPoss']},
+                    },
+                },
+            },
+        },
+    },
+    'd_rtg': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'per_execution',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'derived': {'math': '(OpponentPoints / DefPoss) * 100', 'fields': ['OpponentPoints', 'DefPoss']},
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'derived': {'math': '(OpponentPoints / DefPoss) * 100', 'fields': ['OpponentPoints', 'DefPoss']},
+                    },
+                },
+            },
+        },
+    },
+    'o_reb_pct': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'per_execution',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'field': 'OffFGReboundPct',
+                        'scale': 1000,
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'field': 'OffFGReboundPct',
+                        'scale': 1000,
+                    },
+                },
+            },
+        },
+    },
+    'd_reb_pct': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'per_execution',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'field': 'DefFGReboundPct',
+                        'scale': 1000,
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'field': 'DefFGReboundPct',
+                        'scale': 1000,
+                    },
+                },
+            },
+        },
+    },
+    'blocks_recovered': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'per_execution',
+        'domain': 'hustle',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'field': 'RecoveredBlocks',
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'field': 'RecoveredBlocks',
+                    },
+                },
+            },
+        },
+    },
+    'o_fouls_drawn': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'per_execution',
+        'domain': 'hustle',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'field': 'Offensive Fouls Drawn',
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'field': 'Offensive Fouls Drawn',
+                    },
+                },
+            },
+        },
+    },
+    'assist_points': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'per_execution',
+        'domain': 'tracking',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'field': 'AssistPoints',
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'field': 'AssistPoints',
+                    },
+                },
+            },
+        },
+    },
+    'true_ft_trips': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'per_execution',
+        'domain': 'tracking',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'derived': {
+                            'math': 'TwoPtShootingFoulsDrawn + ThreePtShootingFoulsDrawn + NonShootingFoulsDrawn',
+                            'fields': ['TwoPtShootingFoulsDrawn', 'ThreePtShootingFoulsDrawn', 'NonShootingFoulsDrawn']
+                        },
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'derived': {
+                            'math': 'TwoPtShootingFoulsDrawn + ThreePtShootingFoulsDrawn + NonShootingFoulsDrawn',
+                            'fields': ['TwoPtShootingFoulsDrawn', 'ThreePtShootingFoulsDrawn', 'NonShootingFoulsDrawn']
+                        },
+                    },
+                },
+            },
+        },
+    },
+    'zbounds': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'per_execution',
+        'domain': 'tracking',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'o_pace': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'per_execution',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'field': 'SecondsPerPossOff',
+                        'scale': 10,
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'field': 'SecondsPerPossOff',
+                        'scale': 10,
+                    },
+                },
+            },
+        },
+    },
+    'd_pace': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'per_execution',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'pbp_stats': {
+                    'team': {
+                        'dataset': 'pbp_team_totals',
+                        'field': 'SecondsPerPossDef',
+                        'scale': 10,
+                    },
+                    'player': {
+                        'dataset': 'pbp_player_totals',
+                        'result_set': 'PbpTotals',
+                        'player_id_field': 'EntityId',
+                        'field': 'SecondsPerPossDef',
+                        'scale': 10,
+                    },
+                },
+            },
+        },
+    },
+    'on_d_reb_pct': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'on_o_reb_pct': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'on_blocks_recovered': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'on_rim_fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'on_rim_fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'on_d_rim_fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'on_d_rim_fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'off_d_reb_pct': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'off_o_reb_pct': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'off_blocks_recovered': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'off_rim_fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'off_rim_fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'off_d_rim_fga': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'off_d_rim_fgm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'domain': 'onoff',
+        'comment': None,
+        'dataset_mapping': None,
     },
 
     # ------------------------------------------------------------------

@@ -11,7 +11,6 @@ from typing import Any, Dict, List
 
 VALID_ETL_PHASES = frozenset({'full', 'discover', 'rosters', 'backfill', 'update', 'prune'})
 VALID_ETL_STEP_HANDLERS = frozenset({
-    'discover_entities',
     'populate_profiles',
     'sync_rosters',
     'backfill_stats',
@@ -37,13 +36,13 @@ ENTITY_MATCHER_POLICY: Dict[str, Any] = {
 
 
 PIPELINE_STEPS: Dict[str, Dict[str, Any]] = {
-    'discover_entities_current': {
-        'handler': 'discover_entities',
+    'populate_profiles_discover_retained': {
+        'handler': 'populate_profiles',
         'season_window': 'current',
         'season_type_mode': 'regular',
     },
-    'discover_entities_retained': {
-        'handler': 'discover_entities',
+    'populate_profiles_retained': {
+        'handler': 'populate_profiles',
         'season_window': 'retained',
         'season_type_mode': 'regular',
     },
@@ -98,8 +97,6 @@ PIPELINE_STEPS: Dict[str, Dict[str, Any]] = {
 # Phases are ordered execution macros over shared step keys.
 PIPELINE_PHASES: Dict[str, List[str]] = {
     'full': [
-        'discover_entities_current',
-        'discover_entities_retained',
         'sync_rosters_current',
         'sync_rosters_retained',
         'populate_profiles_discover',
@@ -108,13 +105,12 @@ PIPELINE_PHASES: Dict[str, List[str]] = {
         'normalize_stats_domains_backfill',
     ],
     'discover': [
-        'discover_entities_current',
         'sync_rosters_current',
         'populate_profiles_discover',
     ],
     'rosters': ['sync_rosters_current', 'sync_rosters_retained'],
     'backfill': [
-        'discover_entities_retained',
+        'populate_profiles_retained',
         'sync_rosters_retained',
         'backfill_stats',
         'normalize_stats_domains_backfill',

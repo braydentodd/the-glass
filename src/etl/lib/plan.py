@@ -38,7 +38,7 @@ _TYPE_TRANSFORMS: Dict[str, str] = {
 def _enrich_source(source: Dict[str, Any], col_meta: Dict[str, Any]) -> Dict[str, Any]:
     """Add a default transform to a source based on column type if not already set."""
     enriched = {**source}
-    if 'transform' not in enriched and 'pipeline' not in enriched and 'multi_call' not in enriched:
+    if 'transform' not in enriched and 'pipeline' not in enriched:
         base_type = col_meta.get('type', '').split('(')[0]
         enriched['transform'] = _TYPE_TRANSFORMS.get(base_type, 'safe_int')
     if 'removed_refresh_mode' not in enriched:
@@ -213,8 +213,7 @@ def build_call_groups(
     datasets: Dict[str, Dict[str, Any]],
     scope: Union[str, None] = None,
     league_key: Union[str, None] = None,
-    include_columns: Union[Set[str], None] = None,
-    exclude_columns: Union[Set[str], None] = None,
+
 ) -> List[Dict[str, Any]]:
     """Group all columns for ``entity`` into API call batches.
 
@@ -225,8 +224,7 @@ def build_call_groups(
     Args:
         scope: If set, only include columns whose ``scope`` matches this
                value or is ``'both'``.
-        include_columns: Optional allow-list of DB column names.
-        exclude_columns: Optional deny-list of DB column names.
+
 
     Returns a list of dicts, each with:
         dataset, params, tier, columns ({col_name: enriched_source})
@@ -235,20 +233,12 @@ def build_call_groups(
     special: List[Dict[str, Any]] = []
 
     for col_name, col_meta in DB_COLUMNS.items():
-        if include_columns is not None and col_name not in include_columns:
-            continue
-        if exclude_columns is not None and col_name in exclude_columns:
-            continue
-
 
         if scope:
             col_scopes = col_meta.get('scope', [])
             if isinstance(col_scopes, str):
                 col_scopes = [col_scopes]
-            # Historical compatibility: orchestrator passes 'entity' while
-            # DB_COLUMNS uses 'profiles'.
-            normalized_scope = 'profiles' if scope == 'entity' else scope
-            if normalized_scope not in col_scopes and 'both' not in col_scopes:
+            if scope not in col_scopes and 'both' not in col_scopes:
                 continue
 
         source = _get_source_definition(
@@ -267,18 +257,18 @@ def build_call_groups(
         if not is_dataset_available(ds, season, datasets):
             continue
 
-        if 'multi_call' in enriched or 'pipeline' in enriched:
+        if 'pipeline' in enriched:
             special.append({
                 'dataset': ds,
                 'params': enriched.get('params', {}),
                 'tier': tier_for_source(enriched, ds, datasets),
                 'columns': {col_name: enriched},
             })
-        elif enriched.get('tier') == 'per_team':
+        elif enriched.get('tier') in ('per_team', 'team_call'):
             special.append({
                 'dataset': ds,
-                'params': {},
-                'tier': 'per_team',
+                'params': enriched.get('params', {}),
+                'tier': enriched.get('tier'),
                 'columns': {col_name: enriched},
             })
         else:
@@ -300,19 +290,29 @@ def build_call_groups(
             'removed_refresh_mode': removed_refresh_mode,
         })
 
-    # Merge team_call columns that share the same dataset into one group
-    team_call_merged: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    # Merge team_call columns that share dataset + params into one group.
+    team_call_merged: Dict[tuple, Dict[str, Any]] = {}
     for item in special:
         if item['tier'] == 'team_call':
-            team_call_merged.setdefault(item['dataset'], {}).update(item['columns'])
+            params = item.get('params', {})
+            key = (item['dataset'], frozenset(sorted(params.items())))
+            bucket = team_call_merged.setdefault(
+                key,
+                {
+                    'dataset': item['dataset'],
+                    'params': params,
+                    'columns': {},
+                },
+            )
+            bucket['columns'].update(item['columns'])
         else:
             groups.append(item)
-    for ds, cols in team_call_merged.items():
+    for bucket in team_call_merged.values():
         groups.append({
-            'dataset': ds,
-            'params': {},
-            'tier': 'per_team',
-            'columns': cols,
+            'dataset': bucket['dataset'],
+            'params': bucket['params'],
+            'tier': 'team_call',
+            'columns': bucket['columns'],
             'removed_refresh_mode': 'null_only',
         })
 

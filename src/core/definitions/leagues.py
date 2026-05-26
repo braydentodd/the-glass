@@ -16,14 +16,15 @@ from typing import Dict, List, TypedDict
 
 VALID_LEAGUE_SEASON_FORMATS = frozenset({'same_year', 'split_year'})
 VALID_LEAGUE_GENDERS = frozenset({'M', 'W'})
-VALID_SOURCE_ROLE_KEYS = frozenset({'roster_maintainer', 'retained_discoverer'})
+VALID_SOURCE_ROLE_KEYS = frozenset({'roster_maintainer', 'season_detector'})
 
 # ============================================================================
 # SCHEMA
 # ============================================================================
 
-class SourceRoleParams(TypedDict):
+class SourceRoleParams(TypedDict, total=False):
     is_only_current_season: str
+    activity_window_days: int
 
 class SourceRoleDef(TypedDict):
     dataset: str
@@ -31,9 +32,9 @@ class SourceRoleDef(TypedDict):
     player_id_field: str
     params: SourceRoleParams
 
-class LeagueRoles(TypedDict):
+class LeagueRoles(TypedDict, total=False):
     roster_maintainer: Dict[str, SourceRoleDef]
-    retained_discoverer: Dict[str, SourceRoleDef]
+    season_detector: Dict[str, SourceRoleDef]
 
 class LeagueDef(TypedDict):
     name: str
@@ -66,14 +67,14 @@ LEAGUES: Dict[str, LeagueDef] = {
                     'params': {'is_only_current_season': '1'},
                 },
             },
-            'retained_discoverer': {
+            'season_detector': {
                 'nba_api': {
-                    'dataset': 'commonallplayers',
-                    'params': {'is_only_current_season': '0'},
+                    'dataset': 'leaguegamefinder',
                     'team_id_field': 'TEAM_ID',
-                    'player_id_field': 'PERSON_ID',
+                    'player_id_field': 'PLAYER_ID',
+                    'params': {'activity_window_days': 8},
                 }
-            },
+            }
         },
     }
 }

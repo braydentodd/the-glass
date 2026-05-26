@@ -389,3 +389,27 @@ def _fetch_team_metadata(season: str) -> Dict:
             'rowSet': row_set,
         }]
     }
+
+def check_activity(dataset: str, window_days: int) -> bool:
+    """Implement logic locally here so core logic remains ignorant of nba_api dependencies."""
+    import logging
+    from datetime import datetime, timedelta, timezone
+    logger = logging.getLogger(__name__)
+    
+    try:
+        from nba_api.stats.endpoints import leaguegamefinder
+        # Get all games for all teams
+        finder = leaguegamefinder.LeagueGameFinder(player_or_team_abbreviation='T', timeout=15)
+        df = finder.get_data_frames()[0]
+        if df.empty: return False
+        
+        # 'GAME_DATE' is column, format 'YYYY-MM-DD'
+        latest_date_str = df['GAME_DATE'].max()
+        if not latest_date_str: return True
+        
+        latest_date = datetime.strptime(latest_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=window_days)
+        return latest_date >= cutoff_date
+    except Exception as e:
+        logger.error(f"Failed to check nba_api activity monitor: {e}")
+        return True

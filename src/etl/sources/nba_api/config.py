@@ -261,10 +261,3 @@ API_FIELD_NAMES: Dict[str, Dict[str, Any]] = {
     'special_ids': {'person': 'PERSON_ID'},
     'id_aliases':  {'PLAYER_ID': ['PERSON_ID']},
 }
-
-
-# ============================================================================
-# VALIDATION SCHEMAS  (co-located with the config they describe)
-# ============================================================================
-
-

@@ -18,7 +18,7 @@ VALID_ETL_STEP_HANDLERS = frozenset({
     'normalize_stats_domains',
     'prune_stats_retention',
 })
-VALID_SEASON_WINDOWS = frozenset({'none', 'current', 'retained'})
+VALID_SEASON_WINDOWS = frozenset({'none', 'current', 'retained', 'historical'})
 VALID_SEASON_TYPE_MODES = frozenset({'none', 'regular', 'requested'})
 VALID_ENTITY_MATCHER_MODES = frozenset({
     'approve_all',
@@ -51,11 +51,6 @@ PIPELINE_STEPS: Dict[str, Dict[str, Any]] = {
         'season_window': 'current',
         'season_type_mode': 'regular',
     },
-    'sync_rosters_retained': {
-        'handler': 'sync_rosters',
-        'season_window': 'retained',
-        'season_type_mode': 'regular',
-    },
     'populate_profiles_discover': {
         'handler': 'populate_profiles',
         'season_window': 'current',
@@ -68,7 +63,7 @@ PIPELINE_STEPS: Dict[str, Dict[str, Any]] = {
     },
     'backfill_stats': {
         'handler': 'backfill_stats',
-        'season_window': 'retained',
+        'season_window': 'historical',
         'season_type_mode': 'requested',
     },
     'update_current_stats': {
@@ -78,7 +73,7 @@ PIPELINE_STEPS: Dict[str, Dict[str, Any]] = {
     },
     'normalize_stats_domains_backfill': {
         'handler': 'normalize_stats_domains',
-        'season_window': 'retained',
+        'season_window': 'historical',
         'season_type_mode': 'requested',
     },
     'normalize_stats_domains_update': {
@@ -98,7 +93,6 @@ PIPELINE_STEPS: Dict[str, Dict[str, Any]] = {
 PIPELINE_PHASES: Dict[str, List[str]] = {
     'full': [
         'sync_rosters_current',
-        'sync_rosters_retained',
         'populate_profiles_discover',
         'backfill_stats',
         'update_current_stats',
@@ -108,10 +102,9 @@ PIPELINE_PHASES: Dict[str, List[str]] = {
         'sync_rosters_current',
         'populate_profiles_discover',
     ],
-    'rosters': ['sync_rosters_current', 'sync_rosters_retained'],
+    'rosters': ['sync_rosters_current'],
     'backfill': [
         'populate_profiles_retained',
-        'sync_rosters_retained',
         'backfill_stats',
         'normalize_stats_domains_backfill',
     ],

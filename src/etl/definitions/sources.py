@@ -54,7 +54,7 @@ SOURCES: Dict[str, SourceDef] = {
         'leagues':        ['nba'],
         'external':       True,
         'entity_id_type': 'BIGINT',
-        'id_column':      'nba_api_id',
+        'id_column':      'nba_id',
         'applies_to':     ['team', 'player', 'league'],
         'season_format':  {'shape': 'YYYY-YY', 'anchor': None},
         'rate_limits': {
@@ -65,19 +65,18 @@ SOURCES: Dict[str, SourceDef] = {
             'timeout_bulk': 120,
         },
     },
-        'pbp_stats': {
-            'leagues':        ['nba'],
-            'external':       True,
-            # pbpstats uses NBA entity IDs, so we resolve through existing nba_api_id.
-            'entity_id_type': None,
-            'id_column':      'nba_api_id',
-            'applies_to':     ['team', 'player'],
-            'season_format':  {'shape': 'YYYY-YY', 'anchor': None},
-            'rate_limits': {
-                'requests_per_second': 0.5,
-                'max_retries': 3,
-                'backoff_base': 30,
-                'timeout_default': 30,
+    'pbp_stats': {
+        'leagues':        ['nba'],
+        'external':       True,
+        'entity_id_type': 'BIGINT',
+        'id_column':      'nba_id',
+        'applies_to':     ['team', 'player'],
+        'season_format':  {'shape': 'YYYY-YY', 'anchor': None},
+        'rate_limits': {
+            'requests_per_second': 0.5,
+            'max_retries': 3,
+            'backoff_base': 30,
+            'timeout_default': 30,
                 'timeout_bulk': 120,
                 'max_consecutive_failures': 5,
             },
@@ -85,8 +84,8 @@ SOURCES: Dict[str, SourceDef] = {
     'the_glass_sheets': {
         'leagues':        ['nba'],
         'external':       False,
-        'entity_id_type': None,
-        'id_column':      None,
+        'entity_id_type': 'BIGINT',
+        'id_column':      'the_glass_id',
         'applies_to':     ['team', 'player'],
         'season_format':  None,
         'rate_limits': {

@@ -45,7 +45,7 @@ from src.etl.definitions.pipeline import (
     VALID_ETL_PHASES,
 )
 from src.etl.definitions.sources import SOURCES
-from src.core.lib.leagues_resolver import get_current_season, get_retained_seasons
+from src.core.lib.leagues_resolver import get_current_season, get_retained_seasons, get_historical_seasons
 from src.etl.lib.cleanup import (
     normalize_stats_domains,
     prune_orphan_profiles,
@@ -108,7 +108,7 @@ def _get_active_team_source_ids(league_key: str, source_key: str) -> Dict[str, i
             ON lr.team_id = t.{quote_col(THE_GLASS_ID_COLUMN)}
           JOIN {CORE_SCHEMA}.league_profiles lp
             ON lp.{quote_col(THE_GLASS_ID_COLUMN)} = lr.league_id
-         WHERE lp.abbr = %s AND lr.is_active = TRUE
+         WHERE lp.abbr = %s
          ORDER BY t.abbr
     """
     with db_connection() as conn:
@@ -411,13 +411,23 @@ def _resolve_stage_seasons(
     stage: Dict[str, Any],
     season: str,
     season_range: List[str],
+    historical_range: List[str],
 ) -> List[str]:
-    """Resolve stage season scope from declarative stage config."""
+    """Resolve stage season scope from declarative stage config.
+
+    Windows:
+        'current'    -- [season] only
+        'retained'   -- full retention window including current season
+        'historical' -- retention window excluding current season (for backfill)
+        'none'       -- empty list (stage is skipped)
+    """
     window = stage['season_window']
     if window == 'current':
         return [season]
     if window == 'retained':
         return season_range
+    if window == 'historical':
+        return historical_range
     return []
 
 
@@ -503,10 +513,6 @@ def run_etl(
     roster_role_cfg = get_role_config(league_key, 'roster_maintainer')
     roster_source_key = list(roster_role_cfg.keys())[0]
     roster_source_config = roster_role_cfg[roster_source_key]
-    
-    retained_discoverer_cfg = get_role_config(league_key, 'retained_discoverer')
-    retained_discoverer_source_key = list(retained_discoverer_cfg.keys())[0]
-    retained_discoverer_config = retained_discoverer_cfg[retained_discoverer_source_key]
 
     season = season or get_current_season(league_key)
 
@@ -563,25 +569,12 @@ def run_etl(
         handler = stage['handler']
         stage_entities = requested_entities
 
-
-        
         stage_seasons = _resolve_stage_seasons(stage, season, season_range)
         if not stage_seasons:
             logger.info('Skipping stage %s: no seasons resolved', stage_name)
             continue
-        if handler in {
-            'discover_entities',
-            'populate_profiles',
-            'backfill_stats',
-            'update_current_stats',
-        }:
-            if handler == 'discover_entities':
-                if stage['season_window'] == 'current':
-                    stage_source_keys = [roster_source_key]
-                else:
-                    stage_source_keys = [retained_discoverer_source_key]
-            else:
-                stage_source_keys = execution_source_keys
+        if handler in {'populate_profiles', 'backfill_stats', 'update_current_stats'}:
+            stage_source_keys = execution_source_keys
 
             for stage_source_key in stage_source_keys:
                 stage_bundle = _get_source_bundle(stage_source_key)
@@ -641,13 +634,10 @@ def run_etl(
                         **stage_source_kw,
                     )
         elif handler == 'sync_rosters':
-            if stage['season_window'] == 'current':
-                stage_source_key = roster_source_key
-                stage_source_config = roster_source_config
-            else:
-                stage_source_key = retained_discoverer_source_key
-                stage_source_config = retained_discoverer_config
-                
+            # Roster tables are current-only and always use the current roster maintainer config
+            stage_source_key = roster_source_key
+            stage_source_config = roster_source_config
+
             stage_bundle = _get_source_bundle(stage_source_key)
             regular_st_name, requested_st_name = _resolve_source_season_type_names(
                 stage_bundle,

@@ -38,9 +38,8 @@ VALID_PG_TYPES = {
     'SERIAL', 'SMALLINT', 'INTEGER', 'BIGINT', 'VARCHAR', 'TEXT', 'CHAR',
     'BOOLEAN', 'TIMESTAMP', 'DATE', 'NUMERIC', 'REAL', 'DOUBLE PRECISION',
 }
-VALID_ENTITY_TYPES = {'league', 'player', 'team', 'opponent'}
-VALID_SCOPES = {'stats', 'both', 'runs', 'tasks', 'profiles', 'rosters', 'backfill'}
-VALID_UPDATE_FREQUENCIES = {'daily', 'annual', None, 'per_execution'}
+VALID_ENTITY_TYPES = {'league', 'player', 'team'}
+VALID_SCOPES = {'profile', 'stats', 'roster', 'runs', 'tasks', 'backfill'}
 VALID_REFRESH_MODES = {'null_only', 'always'}
 VALID_SCHEMA_KINDS = {'core', 'league'}
 VALID_FK_ACTIONS = {'CASCADE', 'RESTRICT', 'SET NULL', 'NO ACTION'}
@@ -52,16 +51,13 @@ VALID_MANAGED_BY = frozenset({'db', 'execution_context', 'source'})
 # ============================================================================
 
 class TableDef(TypedDict):
-    kind: str
     used_by: List[str]
     entity: Union[str, None]
     schema: Union[str, None]
-    unique_columns: Union[List[str], None]
     primary_key: Union[List[str], None]
-    has_opponent_columns: Union[bool, None]
     foreign_keys: Union[List[Dict[str, Any]], None]
     scope: Union[str, None]
-    unique_key: Union[List[str], None]
+    unique_constraints: Union[List[List[str]], None]
 
 TABLES: Dict[str, TableDef] = {
 
@@ -69,37 +65,43 @@ TABLES: Dict[str, TableDef] = {
     # PROFILE TABLES (core schema)
     # ------------------------------------------------------------------
     'league_profiles': {
-        'kind': 'profile',
         'used_by': ['etl', 'publish'],
         'entity': 'league',
         'schema': 'core',
-        'unique_columns': ['abbr', 'name'],
+        'primary_key': ['the_glass_id'],
+        'foreign_keys': [],
+        'indexes': [],
+        'scope': 'profile',
     },
     'team_profiles': {
-        'kind': 'profile',
         'used_by': ['etl', 'publish'],
         'entity': 'team',
         'schema': 'core',
+        'primary_key': ['the_glass_id'],
+        'foreign_keys': [],
+        'indexes': [],
+        'scope': 'profile',
     },
     'player_profiles': {
-        'kind': 'profile',
         'used_by': ['etl', 'publish'],
         'entity': 'player',
         'schema': 'core',
+        'primary_key': ['the_glass_id'],
+        'foreign_keys': [],
+        'indexes': [],
+        'scope': 'profile',
     },
     # ------------------------------------------------------------------
     # STATS TABLES (per-league schema)
     # ------------------------------------------------------------------
     'player_season_stats': {
-        'kind': 'stats',
         'used_by': ['etl', 'publish'],
         'entity': 'player',
         'schema': 'league',
-        'primary_key': ['the_glass_id', 'team_id', 'season', 'season_type'],
-        'has_opponent_columns': False,
+        'primary_key': ['player_id', 'team_id', 'season', 'season_type'],
         'foreign_keys': [
             {
-                'column':     'the_glass_id',
+                'column':     'player_id',
                 'ref_schema': 'core',
                 'ref_table':  'player_profiles',
                 'ref_column': 'the_glass_id',
@@ -115,17 +117,17 @@ TABLES: Dict[str, TableDef] = {
                 'on_delete':  'CASCADE',
             },
         ],
+        'indexes': [],
+        'scope': 'stats',
     },
     'team_season_stats': {
-        'kind': 'stats',
         'used_by': ['etl', 'publish'],
         'entity': 'team',
         'schema': 'league',
-        'primary_key': ['the_glass_id', 'season', 'season_type'],
-        'has_opponent_columns': True,
+        'primary_key': ['team_id', 'season', 'season_type'],
         'foreign_keys': [
             {
-                'column':     'the_glass_id',
+                'column':     'team_id',
                 'ref_schema': 'core',
                 'ref_table':  'team_profiles',
                 'ref_column': 'the_glass_id',
@@ -133,16 +135,17 @@ TABLES: Dict[str, TableDef] = {
                 'on_delete':  'CASCADE',
             },
         ],
+        'indexes': [],
+        'scope': 'stats',
     },
     # ------------------------------------------------------------------
     # ROSTER TABLES (core schema)
     # ------------------------------------------------------------------
     'league_rosters': {
-        'kind': 'roster',
         'used_by': ['etl', 'publish'],
         'entity': 'team',
         'schema': 'core',
-        'primary_key': ['league_id', 'team_id', 'season'],
+        'primary_key': ['league_id', 'team_id'],
         'foreign_keys': [
             {
                 'column':     'league_id',
@@ -165,13 +168,13 @@ TABLES: Dict[str, TableDef] = {
             {'name': 'league_id', 'columns': ['league_id']},
             {'name': 'team_id', 'columns': ['team_id']},
         ],
+        'scope': 'roster',
     },
     'team_rosters': {
-        'kind': 'roster',
         'used_by': ['etl', 'publish'],
         'entity': 'player',
         'schema': 'core',
-        'primary_key': ['team_id', 'player_id', 'season'],
+        'primary_key': ['team_id', 'player_id'],
         'foreign_keys': [
             {
                 'column':     'team_id',
@@ -194,6 +197,7 @@ TABLES: Dict[str, TableDef] = {
             {'name': 'team_id', 'columns': ['team_id']},
             {'name': 'player_id', 'columns': ['player_id']},
         ],
+        'scope': 'roster',
     },
     # ------------------------------------------------------------------
     # OPERATIONAL TABLES (per-league schema)
@@ -214,24 +218,28 @@ TABLES: Dict[str, TableDef] = {
     # the column registry.
     # ------------------------------------------------------------------
     'runs': {
-        'kind': 'operational',
         'used_by': ['etl', 'publish'],
+        'entity': None,
         'schema': 'league',
+        'primary_key': ['run_id'],
+        'foreign_keys': [],
         'indexes': [
             {'name': 'pipeline_status', 'columns': ['pipeline', 'status']},
         ],
+        'scope': 'runs',
     },
     'tasks': {
-        'kind': 'operational',
         'used_by': ['etl', 'publish'],
+        'entity': None,
         'schema': 'league',
-        'unique_key': ['run_id', 'pipeline', 'item_key'],
+        'primary_key': ['task_id'],
+        'unique_constraints': [['run_id', 'pipeline', 'item_key']],
         'foreign_keys': [
             {
                 'column': 'run_id',
                 'ref_schema': None,  # Same schema (league)
                 'ref_table': 'runs',
-                'ref_column': 'id',
+                'ref_column': 'run_id',
                 'on_update': 'CASCADE',
                 'on_delete': 'CASCADE',
             },
@@ -239,16 +247,18 @@ TABLES: Dict[str, TableDef] = {
         'indexes': [
             {'name': 'run_id_status', 'columns': ['run_id', 'status']},
         ],
+        'scope': 'tasks',
     },
     'backfill_tracker': {
-        'kind': 'operational',
         'used_by': ['etl'],
+        'entity': None,
         'schema': 'league',
-        'scope': 'backfill',
-        'unique_key': ['entity_type', 'season', 'season_type', 'source_key'],
+        'primary_key': ['entity_type', 'season', 'season_type', 'source_key'],
+        'foreign_keys': [],
         'indexes': [
             {'name': 'entity_season', 'columns': ['entity_type', 'season', 'season_type']},
         ],
+        'scope': 'backfill',
     },
 }
 
@@ -257,7 +267,7 @@ TABLES: Dict[str, TableDef] = {
 # FILTERED VIEWS
 # ============================================================================
 
-PROFILE_TABLES = {k: v for k, v in TABLES.items() if v['kind'] == 'profile'}
-STATS_TABLES = {k: v for k, v in TABLES.items() if v['kind'] == 'stats'}
-ROSTER_TABLES = {k: v for k, v in TABLES.items() if v['kind'] == 'roster'}
-OPERATIONAL_TABLES = {k: v for k, v in TABLES.items() if v['kind'] == 'operational'}
+PROFILE_TABLES = {k: v for k, v in TABLES.items() if v['scope'] == 'profile'}
+STATS_TABLES = {k: v for k, v in TABLES.items() if v['scope'] == 'stats'}
+ROSTER_TABLES = {k: v for k, v in TABLES.items() if v['scope'] == 'roster'}
+OPERATIONAL_TABLES = {k: v for k, v in TABLES.items() if v['scope'] in ('runs', 'tasks', 'backfill')}

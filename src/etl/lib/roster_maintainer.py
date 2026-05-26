@@ -122,7 +122,7 @@ def _stamp_gender(conn: Any, league_glass_id: int) -> Tuple[int, int]:
             SET gender = %s, updated_at = NOW()
             WHERE {quote_col(THE_GLASS_ID_COLUMN)} IN (
                 SELECT team_id FROM {CORE_SCHEMA}.league_rosters
-                WHERE league_id = %s AND is_active = TRUE
+                WHERE league_id = %s
             )
             """,
             (gender, league_glass_id),
@@ -138,8 +138,6 @@ def _stamp_gender(conn: Any, league_glass_id: int) -> Tuple[int, int]:
                 FROM {CORE_SCHEMA}.team_rosters tr
                 JOIN {CORE_SCHEMA}.league_rosters lr ON lr.team_id = tr.team_id
                 WHERE lr.league_id = %s
-                  AND lr.is_active = TRUE
-                  AND tr.is_active = TRUE
             )
             """,
             (gender, league_glass_id),
@@ -153,28 +151,25 @@ def _stamp_gender(conn: Any, league_glass_id: int) -> Tuple[int, int]:
 # Roster upsert primitives
 # ---------------------------------------------------------------------------
 
-def _upsert_active(
+def _upsert_roster_pairs(
     conn: Any,
     table: str,
     pk_columns: Tuple[str, str],
     rows: Iterable[Tuple[int, int]],
-    season: str,
 ) -> int:
-    """Insert each (a, b, season) triple as is_active=TRUE; on conflict re-activate."""
+    """Insert each (a, b) pair into current rosters; on conflict do nothing."""
     rows = list(rows)
     if not rows:
         return 0
     a_col, b_col = pk_columns
-    row_triples = [(a, b, season) for a, b in rows]
     with conn.cursor() as cur:
         cur.executemany(
             f"""
-            INSERT INTO {table} ({quote_col(a_col)}, {quote_col(b_col)}, season, is_active)
-            VALUES (%s, %s, %s, TRUE)
-            ON CONFLICT ({quote_col(a_col)}, {quote_col(b_col)}, season) DO UPDATE
-            SET is_active = TRUE, updated_at = NOW()
+            INSERT INTO {table} ({quote_col(a_col)}, {quote_col(b_col)})
+            VALUES (%s, %s)
+            ON CONFLICT ({quote_col(a_col)}, {quote_col(b_col)}) DO NOTHING
             """,
-            row_triples,
+            rows,
         )
     return len(rows)
 
@@ -183,7 +178,6 @@ def _upsert_active_team_rosters(
     conn: Any,
     table: str,
     rows: Iterable[Tuple[int, int, Any]],
-    season: str,
 ) -> int:
     """Upsert active team-player memberships with optional jersey number."""
     rows = list(rows)
@@ -192,20 +186,19 @@ def _upsert_active_team_rosters(
     with conn.cursor() as cur:
         cur.executemany(
             f"""
-            INSERT INTO {table} (team_id, player_id, season, is_active, jersey_num)
-            VALUES (%s, %s, %s, TRUE, %s)
-            ON CONFLICT (team_id, player_id, season) DO UPDATE
-            SET is_active = TRUE,
-                jersey_num = COALESCE(EXCLUDED.jersey_num, {table}.jersey_num),
+            INSERT INTO {table} (team_id, player_id, jersey_num)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (team_id, player_id) DO UPDATE
+            SET jersey_num = COALESCE(EXCLUDED.jersey_num, {table}.jersey_num),
                 updated_at = NOW()
             """,
-            [(team_id, player_id, season, jersey_num) for team_id, player_id, jersey_num in rows],
+            [(team_id, player_id, jersey_num) for team_id, player_id, jersey_num in rows],
         )
     return len(rows)
 
 
 def _normalize_roster_snapshot(
-    roster_pairs: Iterable[Tuple[Any, Any]],
+    roster_pairs: Iterable[Tuple[Any, ...]],
 ) -> List[Tuple[Any, Any, Any]]:
     """Normalize roster snapshots to ``(team_source_id, player_source_id, jersey_num)``.
 
@@ -225,19 +218,16 @@ def _normalize_roster_snapshot(
     return normalized
 
 
-def _deactivate_missing(
+def _delete_missing(
     conn: Any,
     table: str,
     pk_columns: Tuple[str, str],
     scope_filter_col: str,
     scope_filter_value: int,
     keep_pairs: Set[Tuple[int, int]],
-    season: str,
 ) -> int:
-    """Mark every active row in ``table`` whose pair is NOT in ``keep_pairs``
-    as ``is_active = FALSE``.  Scoped to ``scope_filter_col = scope_filter_value``
-    and ``season`` so only the current season's rows are evaluated, preserving
-    historical season records.
+    """Delete every row in ``table`` whose pair is NOT in ``keep_pairs``.
+    Scoped to ``scope_filter_col = scope_filter_value``.
     """
     a_col, b_col = pk_columns
     with conn.cursor() as cur:
@@ -246,23 +236,21 @@ def _deactivate_missing(
             SELECT {quote_col(a_col)}, {quote_col(b_col)}
             FROM {table}
             WHERE {quote_col(scope_filter_col)} = %s
-              AND season = %s
-              AND is_active = TRUE
             """,
-            (scope_filter_value, season),
+            (scope_filter_value,),
         )
         existing = {(int(r[0]), int(r[1])) for r in cur.fetchall()}
-        to_deactivate = existing - keep_pairs
-        if not to_deactivate:
+        to_delete = existing - keep_pairs
+        if not to_delete:
             return 0
         cur.executemany(
             f"""
-            UPDATE {table} SET is_active = FALSE, updated_at = NOW()
-            WHERE {quote_col(a_col)} = %s AND {quote_col(b_col)} = %s AND season = %s
+            DELETE FROM {table}
+            WHERE {quote_col(a_col)} = %s AND {quote_col(b_col)} = %s
             """,
-            [(a, b, season) for a, b in to_deactivate],
+            to_delete,
         )
-    return len(to_deactivate)
+    return len(to_delete)
 
 
 # ---------------------------------------------------------------------------
@@ -273,7 +261,7 @@ def sync_rosters(
     league_key: str,
     source_key: str,
     roster_pairs: Iterable[Tuple[Any, ...]],
-    season: str,
+    season: str = None,
 ) -> Dict[str, int]:
     """Apply a roster snapshot to ``core.league_rosters`` and ``core.team_rosters``.
 
@@ -283,6 +271,7 @@ def sync_rosters(
         roster_pairs:  Iterable of ``(team_source_id, player_source_id)`` or
                        ``(team_source_id, player_source_id, jersey_num)`` tuples
                        representing every active roster slot in the league.
+        season:        Optional season label (ignored).
 
     Returns:
         Dict with the per-roster counters
@@ -342,15 +331,14 @@ def sync_rosters(
             for t in team_source_ids
             if str(t) in team_map
         }
-        teams_active = _upsert_active(
-            conn, league_rosters, ('league_id', 'team_id'), league_team_pairs, season,
+        teams_active = _upsert_roster_pairs(
+            conn, league_rosters, ('league_id', 'team_id'), league_team_pairs,
         )
-        teams_deactivated = _deactivate_missing(
+        teams_deactivated = _delete_missing(
             conn, league_rosters, ('league_id', 'team_id'),
             scope_filter_col='league_id',
             scope_filter_value=league_glass_id,
             keep_pairs=league_team_pairs,
-            season=season,
         )
 
         # ---- team_rosters: (team_glass_id, player_glass_id) -------------------
@@ -371,7 +359,6 @@ def sync_rosters(
                 (team_id, player_id, team_player_jersey.get((team_id, player_id)))
                 for team_id, player_id in sorted(team_player_pairs)
             ],
-            season,
         )
 
         # Per-team deactivation: each team's slate is independent.
@@ -379,12 +366,11 @@ def sync_rosters(
         players_deactivated = 0
         for team_glass_id in teams_in_snapshot:
             keep = {pair for pair in team_player_pairs if pair[0] == team_glass_id}
-            players_deactivated += _deactivate_missing(
+            players_deactivated += _delete_missing(
                 conn, team_rosters, ('team_id', 'player_id'),
                 scope_filter_col='team_id',
                 scope_filter_value=team_glass_id,
                 keep_pairs=keep,
-                season=season,
             )
 
         # Propagate league gender to all active teams and players.

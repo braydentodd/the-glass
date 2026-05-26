@@ -95,7 +95,7 @@ def _validate_source_structure(
                             f"{prefix}: sources['{league}']['{provider}']['{entity_name}'] must be dict"
                         )
                         continue
-                    if entity_name not in applies_to and entity_name != 'opponent':
+                    if entity_name not in applies_to:
                         errors.append(
                             f"{prefix}: sources['{league}']['{provider}']['{entity_name}'] - "
                             f"source '{provider}' does not declare applies_to {entity_name!r}"
@@ -143,23 +143,113 @@ def _validate_dataset_refs(
     return errors
 
 
-def _validate_stats_primary_keys(
-    stats_tables: Dict[str, Dict],
+def _validate_table_definitions(
+    tables: Dict[str, Dict],
     db_columns: Dict[str, Dict],
 ) -> List[str]:
-    """Validate that every PK column on a stats table is either the synthetic
-    ``the_glass_id`` or a column declared in DB_COLUMNS."""
-    from src.core.definitions.tables import THE_GLASS_ID_COLUMN
+    """Robustly validate all table definitions in TABLES registry.
+
+    Checks primary keys, indexes, foreign keys, unique constraints, and scopes.
+    """
+    from src.core.definitions.tables import (
+        VALID_SCOPES,
+        VALID_FK_ACTIONS,
+        THE_GLASS_ID_COLUMN,
+    )
     errors = []
-    for table_name, meta in stats_tables.items():
-        for col in meta.get('primary_key', []):
-            if col == THE_GLASS_ID_COLUMN:
-                continue
-            if col not in db_columns:
-                errors.append(
-                    f"STATS_TABLES['{table_name}']: primary_key references "
-                    f"unknown column '{col}'"
-                )
+
+    for table_name, meta in tables.items():
+        prefix = f"TABLES['{table_name}']"
+        
+        # 1. Basic properties
+        scope = meta.get('scope')
+        if scope not in VALID_SCOPES:
+            errors.append(f"{prefix}: unknown scope {scope!r}")
+            
+        schema = meta.get('schema')
+        if schema not in ('core', 'league'):
+            errors.append(f"{prefix}: unknown schema {schema!r}")
+
+        # Collect columns declared on this table (both database columns and FK columns)
+        fk_columns = {fk.get('column') for fk in meta.get('foreign_keys', []) if fk.get('column')}
+        surrogate_pks = {'run_id', 'task_id', 'id'}
+        
+        # 2. Primary Key validation
+        pk_cols = meta.get('primary_key', [])
+        if not isinstance(pk_cols, list):
+            errors.append(f"{prefix}: primary_key must be a list")
+        else:
+            for col in pk_cols:
+                if col == THE_GLASS_ID_COLUMN:
+                    continue
+                if col in surrogate_pks:
+                    continue
+                if col not in db_columns and col not in fk_columns:
+                    errors.append(
+                        f"{prefix}: primary_key references unknown column '{col}'"
+                    )
+
+        # 3. Foreign Key validation
+        fks = meta.get('foreign_keys', [])
+        if not isinstance(fks, list):
+            errors.append(f"{prefix}: foreign_keys must be a list")
+        else:
+            for idx, fk in enumerate(fks):
+                fk_prefix = f"{prefix}.foreign_keys[{idx}]"
+                col = fk.get('column')
+                ref_table = fk.get('ref_table')
+                ref_col = fk.get('ref_column')
+                
+                if not col:
+                    errors.append(f"{fk_prefix}: missing 'column'")
+                if not ref_table:
+                    errors.append(f"{fk_prefix}: missing 'ref_table'")
+                elif ref_table not in tables:
+                    errors.append(f"{fk_prefix}: ref_table '{ref_table}' not in TABLES")
+                
+                if not ref_col:
+                    errors.append(f"{fk_prefix}: missing 'ref_column'")
+                
+                for action in ('on_update', 'on_delete'):
+                    act = fk.get(action)
+                    if act and act not in VALID_FK_ACTIONS:
+                        errors.append(
+                            f"{fk_prefix}: {action} '{act}' not in {sorted(VALID_FK_ACTIONS)}"
+                        )
+
+        # 4. Unique Constraints validation
+        ucs = meta.get('unique_constraints')
+        if ucs is not None:
+            if not isinstance(ucs, list):
+                errors.append(f"{prefix}: unique_constraints must be a list of lists or None")
+            else:
+                for uc_idx, uc in enumerate(ucs):
+                    if not isinstance(uc, list):
+                        errors.append(f"{prefix}.unique_constraints[{uc_idx}]: must be a list of column names")
+                    else:
+                        for col in uc:
+                            if col not in db_columns and col not in fk_columns and col not in surrogate_pks:
+                                errors.append(
+                                    f"{prefix}.unique_constraints[{uc_idx}]: references unknown column '{col}'"
+                                )
+
+        # 5. Indexes validation
+        idxs = meta.get('indexes', [])
+        if not isinstance(idxs, list):
+            errors.append(f"{prefix}: indexes must be a list")
+        else:
+            for idx_idx, index in enumerate(idxs):
+                idx_prefix = f"{prefix}.indexes[{idx_idx}]"
+                cols = index.get('columns', [])
+                if not isinstance(cols, list) or not cols:
+                    errors.append(f"{idx_prefix}: missing or empty 'columns'")
+                else:
+                    for col in cols:
+                        if col not in db_columns and col not in fk_columns and col not in surrogate_pks:
+                            errors.append(
+                                f"{idx_prefix}: index column '{col}' is unknown"
+                            )
+
     return errors
 
 
@@ -525,14 +615,14 @@ def _validate_pipeline_structure() -> List[str]:
 def validate_config() -> List[str]:
     from src.core.definitions.columns import DB_COLUMNS
     from src.core.definitions.leagues import LEAGUES
-    from src.core.definitions.tables import STATS_TABLES, ROSTER_TABLES, PROFILE_TABLES
+    from src.core.definitions.tables import TABLES, STATS_TABLES, ROSTER_TABLES, PROFILE_TABLES
     from src.etl.definitions.sources import SOURCES
 
     errors: List[str] = []
     
     errors.extend(_validate_pg_types(DB_COLUMNS))
     errors.extend(_validate_source_structure(DB_COLUMNS, SOURCES))
-    errors.extend(_validate_stats_primary_keys(STATS_TABLES, DB_COLUMNS))
+    errors.extend(_validate_table_definitions(TABLES, DB_COLUMNS))
     errors.extend(_validate_league_source_roles(LEAGUES, SOURCES))
     errors.extend(_validate_legacy_source_fields(LEAGUES))
     errors.extend(_validate_legacy_pipeline_fields(LEAGUES))

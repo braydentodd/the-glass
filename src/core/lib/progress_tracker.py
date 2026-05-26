@@ -54,7 +54,7 @@ def create_run(
     query = (
         f"INSERT INTO {db_schema}.runs "
         f"({', '.join(cols)}) "
-        f"VALUES ({', '.join(placeholders)}) RETURNING id"
+        f"VALUES ({', '.join(placeholders)}) RETURNING run_id"
     )
     
     vals = [pipeline, entity_type, total_items] + metadata_vals
@@ -94,7 +94,7 @@ def complete_run(
     query = (
         f"UPDATE {db_schema}.runs "
         f"SET {', '.join(updates)} "
-        f"WHERE id = %s AND pipeline = %s"
+        f"WHERE run_id = %s AND pipeline = %s"
     )
     
     vals = metadata_vals + [run_id, pipeline]
@@ -124,7 +124,7 @@ def fail_run(
         cur.execute(
             f"UPDATE {db_schema}.runs "
             f"SET status = 'failed', completed_at = NOW(), error_message = %s "
-            f"WHERE id = %s AND pipeline = %s",
+            f"WHERE run_id = %s AND pipeline = %s",
             (error_message, run_id, pipeline),
         )
     conn.commit()
@@ -168,7 +168,7 @@ def register_tasks(
     query = (
         f"INSERT INTO {db_schema}.tasks "
         f"({', '.join(cols)}) "
-        f"VALUES ({', '.join(placeholders)}) RETURNING id"
+        f"VALUES ({', '.join(placeholders)}) RETURNING task_id"
     )
     
     with conn.cursor() as cur:
@@ -192,7 +192,7 @@ def mark_task_started(conn: Any, db_schema: str, task_id: int) -> None:
         cur.execute(
             f"UPDATE {db_schema}.tasks "
             f"SET status = 'running', started_at = NOW() "
-            f"WHERE id = %s",
+            f"WHERE task_id = %s",
             (task_id,),
         )
     conn.commit()
@@ -223,7 +223,7 @@ def mark_task_completed(
     query = (
         f"UPDATE {db_schema}.tasks "
         f"SET {', '.join(updates)} "
-        f"WHERE id = %s"
+        f"WHERE task_id = %s"
     )
     
     vals = metadata_vals + [task_id]
@@ -252,7 +252,7 @@ def mark_task_failed(
             f"UPDATE {db_schema}.tasks "
             f"SET status = 'failed', completed_at = NOW(), "
             f"error_message = %s, retry_count = retry_count + 1 "
-            f"WHERE id = %s",
+            f"WHERE task_id = %s",
             (error_message, task_id),
         )
     conn.commit()
@@ -285,7 +285,7 @@ def find_resumable_run(
     
     where_clauses = ["pipeline = %s", "status = 'running'"] + [f"{col} = %s" for col in filter_cols]
     query = (
-        f"SELECT id FROM {db_schema}.runs "
+        f"SELECT run_id FROM {db_schema}.runs "
         f"WHERE {' AND '.join(where_clauses)} "
         f"ORDER BY started_at DESC LIMIT 1"
     )
@@ -317,9 +317,9 @@ def get_pending_task_ids(
     """
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT id, item_key FROM {db_schema}.tasks "
+            f"SELECT task_id, item_key FROM {db_schema}.tasks "
             f"WHERE run_id = %s AND pipeline = %s AND status IN ('pending', 'running') "
-            f"ORDER BY id",
+            f"ORDER BY task_id",
             (run_id, pipeline),
         )
         return cur.fetchall()
@@ -344,7 +344,7 @@ def update_run_completed_items(
             f"UPDATE {db_schema}.runs SET completed_items = ("
             f"  SELECT COUNT(*) FROM {db_schema}.tasks "
             f"  WHERE run_id = %s AND pipeline = %s AND status = 'completed'"
-            f") WHERE id = %s AND pipeline = %s",
+            f") WHERE run_id = %s AND pipeline = %s",
             (run_id, pipeline, run_id, pipeline),
         )
     conn.commit()

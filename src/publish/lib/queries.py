@@ -116,8 +116,8 @@ def get_teams_from_db(league_key: str) -> Dict[int, Tuple[str, str]]:
             ON lr.team_id = t.{_quote_col(THE_GLASS_ID_COLUMN)}
           JOIN {CORE_SCHEMA}.league_profiles lp
             ON lp.{_quote_col(THE_GLASS_ID_COLUMN)} = lr.league_id
-                 WHERE lp.abbr = %s AND lr.is_active = TRUE
-         ORDER BY t.abbr
+                 WHERE lp.abbr = %s
+          ORDER BY t.abbr
     """
     conn = get_db_connection()
     try:
@@ -170,8 +170,6 @@ def fetch_players_for_team(
               FROM {players_tbl} p
               JOIN {CORE_SCHEMA}.team_rosters tr
                                 ON tr.player_id = p.{glass_id}
-                             AND tr.is_active = TRUE
-                             AND tr.season = %s
               JOIN {teams_tbl} t
                 ON t.{glass_id} = tr.team_id
               LEFT JOIN {stats_tbl} s
@@ -185,7 +183,7 @@ def fetch_players_for_team(
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 query,
-                (current_season, current_season, season_type_val, team_abbr),
+                (current_season, season_type_val, team_abbr),
             )
             return [dict(r) for r in cur.fetchall()]
 
@@ -249,8 +247,6 @@ def fetch_all_players(
                             LEFT JOIN {CORE_SCHEMA}.team_rosters tr
                                 ON tr.player_id = s.{glass_id}
                              AND tr.team_id = s.team_id
-                             AND tr.season = s.{season_col_name}
-                             AND tr.is_active = TRUE
              WHERE s.{season_col_name} = %s AND s.season_type = %s
         """
         with conn.cursor(cursor_factory=RealDictCursor) as cur:

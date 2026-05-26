@@ -16,8 +16,10 @@ columns (e.g. ``nba_api_id``) are emitted directly by the DDL generator
 (see src/core/lib/ddl.py); they are intentionally not represented here.
 """
 
-from typing import Dict, List, TypedDict, Union
+from typing import Dict, List, TypedDict, Union, Literal
 
+
+UpdateFrequency = Literal['in_season', 'off_season', 'per_execution']
 
 class DatasetMapping(TypedDict):
     dataset: str
@@ -30,7 +32,7 @@ class ColumnDef(TypedDict):
     nullable: bool
     default: Union[str, int, None]
     entity_types: Union[List[str], None]
-    update_frequency: Union[str, None]
+    update_frequency: Union[UpdateFrequency, None]
     managed_by: str
     domain: Union[str, None]
     comment: Union[str, None]
@@ -80,7 +82,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'season': {
         'type': 'VARCHAR(7)',
-        'scope': ['profiles', 'stats', 'runs', 'tasks', 'rosters', 'backfill'],
+        'scope': ['profiles', 'stats', 'runs', 'tasks', 'backfill'],
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
@@ -108,7 +110,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': None,
+        'update_frequency': 'per_execution',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -123,45 +125,13 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     # ------------------------------------------------------------------
     # ENTITY INFORMATION  (league / team / player profile data)
     # ------------------------------------------------------------------
-    'team_id': {
-        'type': 'BIGINT',
-        'scope': ['stats'],
-        'nullable': False,
-        'default': None,
-        'entity_types': ['player'],
-        'update_frequency': 'per_execution',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashplayerstats',
-                        'field': 'TEAM_ID',
-                    },
-                },
-            },
-        },
-    },
-    'player_id': {
-        'type': 'BIGINT',
-        'scope': ['stats'],
-        'nullable': False,
-        'default': None,
-        'entity_types': ['player'],
-        'update_frequency': 'per_execution',
-        'managed_by': 'execution_context',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': None,
-    },
     'name': {
         'type': 'VARCHAR(100)',
         'scope': ['profiles'],
         'nullable': True,
         'default': None,
         'entity_types': ['league', 'player', 'team'],
-        'update_frequency': 'annual',
+        'update_frequency': 'off_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -187,17 +157,13 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'annual',
+        'update_frequency': 'off_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
             'nba': {
                 'nba_api': {
-                    'player': {
-                        'dataset': 'draftcombineplayeranthro',
-                        'field': 'HEIGHT_WO_SHOES',
-                        'transform': 'parse_height',
-                    },
+                    'player': {'dataset': 'commonallplayers', 'field': 'HEIGHT'},
                 },
             },
         },
@@ -208,23 +174,10 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'annual',
+        'update_frequency': 'off_season',
         'domain': None,
         'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'draftcombineplayeranthro',
-                        'field': 'HEIGHT_W_SHOES',
-                        'transform': 'parse_height',
-                    },
-                },
-                'the_glass_sheets': {
-                    'player': {'dataset': 'players', 'field': 'Height'},
-                },
-            },
-        },
+        'dataset_mapping': None,
     },
     'weight_lbs': {
         'type': 'SMALLINT',
@@ -232,16 +185,13 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'annual',
+        'update_frequency': 'off_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
             'nba': {
                 'nba_api': {
                     'player': {'dataset': 'commonallplayers', 'field': 'WEIGHT'},
-                },
-                'the_glass_sheets': {
-                    'player': {'dataset': 'players', 'field': 'Weight'},
                 },
             },
         },
@@ -252,7 +202,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'annual',
+        'update_frequency': 'off_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -276,7 +226,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'off_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -293,7 +243,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'annual',
+        'update_frequency': 'off_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -314,7 +264,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -331,7 +281,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['league', 'team'],
-        'update_frequency': 'annual',
+        'update_frequency': 'off_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -348,7 +298,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'update_frequency': 'annual',
+        'update_frequency': 'off_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -380,7 +330,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -398,7 +348,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -416,7 +366,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -434,7 +384,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -462,7 +412,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': False,
         'default': 0,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -486,7 +436,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': False,
         'default': 0,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -506,8 +456,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -520,12 +470,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                     'team': {
                         'dataset': 'leaguedashteamstats',
                         'derived': {'math': 'FGM - FG3M', 'fields': ['FGM', 'FG3M']},
-                    },
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_FGM',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                        'derived': {'subtract': 'OPP_FG3M'},
                     },
                 },
             },
@@ -536,8 +480,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -550,12 +494,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                     'team': {
                         'dataset': 'leaguedashteamstats',
                         'derived': {'math': 'FGA - FG3A', 'fields': ['FGA', 'FG3A']},
-                    },
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_FGA',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                        'derived': {'subtract': 'OPP_FG3A'},
                     },
                 },
             },
@@ -569,8 +507,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -578,11 +516,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {'dataset': 'leaguedashplayerstats', 'field': 'FG3M'},
                     'team': {'dataset': 'leaguedashteamstats', 'field': 'FG3M'},
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_FG3M',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                    },
                 },
             },
         },
@@ -592,8 +525,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -601,11 +534,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {'dataset': 'leaguedashplayerstats', 'field': 'FG3A'},
                     'team': {'dataset': 'leaguedashteamstats', 'field': 'FG3A'},
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_FG3A',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                    },
                 },
             },
         },
@@ -618,8 +546,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -627,11 +555,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {'dataset': 'leaguedashplayerstats', 'field': 'FTM'},
                     'team': {'dataset': 'leaguedashteamstats', 'field': 'FTM'},
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_FTM',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                    },
                 },
             },
         },
@@ -641,8 +564,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -650,11 +573,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {'dataset': 'leaguedashplayerstats', 'field': 'FTA'},
                     'team': {'dataset': 'leaguedashteamstats', 'field': 'FTA'},
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_FTA',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                    },
                 },
             },
         },
@@ -668,14 +586,14 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
             'nba': {
                 'nba_api': {
                     'player': {
-                        'dataset': 'shotchartdetail',
+                        'dataset': 'leaguedashplayerstats',
                         'tier': 'team_call',
                         'params': {'context_measure_simple': 'FGA'},
                         'operations': [
@@ -690,7 +608,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         ],
                     },
                     'team': {
-                        'dataset': 'shotchartdetail',
+                        'dataset': 'leaguedashplayerstats',
                         'tier': 'team_call',
                         'params': {'context_measure_simple': 'FGA'},
                         'operations': [
@@ -714,14 +632,14 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
             'nba': {
                 'nba_api': {
                     'player': {
-                        'dataset': 'shotchartdetail',
+                        'dataset': 'leaguedashplayerstats',
                         'tier': 'team_call',
                         'params': {'context_measure_simple': 'FGA'},
                         'operations': [
@@ -736,7 +654,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         ],
                     },
                     'team': {
-                        'dataset': 'shotchartdetail',
+                        'dataset': 'leaguedashplayerstats',
                         'tier': 'team_call',
                         'params': {'context_measure_simple': 'FGA'},
                         'operations': [
@@ -763,7 +681,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -812,7 +730,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -857,7 +775,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -904,8 +822,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -913,11 +831,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {'dataset': 'leaguedashplayerstats', 'field': 'OREB'},
                     'team': {'dataset': 'leaguedashteamstats', 'field': 'OREB'},
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_OREB',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                    },
                 },
             },
         },
@@ -927,8 +840,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -936,11 +849,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {'dataset': 'leaguedashplayerstats', 'field': 'DREB'},
                     'team': {'dataset': 'leaguedashteamstats', 'field': 'DREB'},
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_DREB',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                    },
                 },
             },
         },
@@ -951,7 +859,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -979,7 +887,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -1009,8 +917,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -1018,11 +926,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {'dataset': 'leaguedashplayerstats', 'field': 'AST'},
                     'team': {'dataset': 'leaguedashteamstats', 'field': 'AST'},
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_AST',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                    },
                 },
             },
         },
@@ -1033,7 +936,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1059,7 +962,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1085,7 +988,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1114,7 +1017,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1140,7 +1043,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1168,8 +1071,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -1177,11 +1080,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {'dataset': 'leaguedashplayerstats', 'field': 'TOV'},
                     'team': {'dataset': 'leaguedashteamstats', 'field': 'TOV'},
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_TOV',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                    },
                 },
             },
         },
@@ -1195,7 +1093,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1223,7 +1121,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1254,7 +1152,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -1272,7 +1170,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -1289,8 +1187,8 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'scope': ['stats'],
         'nullable': True,
         'default': None,
-        'entity_types': ['player', 'team', 'opponent'],
-        'update_frequency': 'per_execution',
+        'entity_types': ['player', 'team'],
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -1298,11 +1196,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                 'nba_api': {
                     'player': {'dataset': 'leaguedashplayerstats', 'field': 'PF'},
                     'team': {'dataset': 'leaguedashteamstats', 'field': 'PF'},
-                    'opponent': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_PF',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                    },
                 },
             },
         },
@@ -1316,7 +1209,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'hustle',
         'comment': None,
         'dataset_mapping': {
@@ -1334,7 +1227,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'hustle',
         'comment': None,
         'dataset_mapping': {
@@ -1352,7 +1245,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'hustle',
         'comment': None,
         'dataset_mapping': {
@@ -1373,7 +1266,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1399,7 +1292,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1425,7 +1318,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1451,7 +1344,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1477,7 +1370,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1503,7 +1396,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -1532,7 +1425,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -1560,7 +1453,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -1588,7 +1481,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1613,7 +1506,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1641,7 +1534,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1665,7 +1558,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1689,7 +1582,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1713,7 +1606,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1737,7 +1630,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1761,7 +1654,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1785,7 +1678,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1809,7 +1702,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1833,7 +1726,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1857,7 +1750,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1881,7 +1774,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1905,7 +1798,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1929,7 +1822,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1953,7 +1846,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -1977,7 +1870,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2001,7 +1894,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2025,7 +1918,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2050,7 +1943,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2075,7 +1968,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2100,7 +1993,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2125,7 +2018,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2150,7 +2043,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2175,7 +2068,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2200,7 +2093,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2225,7 +2118,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2250,7 +2143,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2275,7 +2168,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2300,7 +2193,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2325,7 +2218,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2350,7 +2243,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2375,7 +2268,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2400,7 +2293,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': {
@@ -2425,7 +2318,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -2454,7 +2347,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -2480,7 +2373,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -2506,7 +2399,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -2532,7 +2425,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -2558,7 +2451,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -2586,7 +2479,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -2614,7 +2507,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'hustle',
         'comment': None,
         'dataset_mapping': {
@@ -2640,7 +2533,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'hustle',
         'comment': None,
         'dataset_mapping': {
@@ -2666,7 +2559,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -2692,7 +2585,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': {
@@ -2724,7 +2617,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'tracking',
         'comment': None,
         'dataset_mapping': None,
@@ -2735,7 +2628,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -2763,7 +2656,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -2791,7 +2684,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2802,7 +2695,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2813,7 +2706,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2824,7 +2717,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2835,7 +2728,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2846,7 +2739,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2857,7 +2750,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2868,7 +2761,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2879,7 +2772,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2890,7 +2783,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2901,7 +2794,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2912,7 +2805,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2923,7 +2816,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -2934,7 +2827,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'update_frequency': 'per_execution',
+        'update_frequency': 'in_season',
         'domain': 'onoff',
         'comment': None,
         'dataset_mapping': None,
@@ -3108,18 +3001,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     # player_id) are derived directly from ROSTER_TABLES.foreign_keys by
     # the DDL generator, so they do not belong here.
     # ------------------------------------------------------------------
-    'is_active': {
-        'type': 'BOOLEAN',
-        'scope': ['rosters'],
-        'nullable': False,
-        'default': 'TRUE',
-        'entity_types': ['team', 'player'],
-        'update_frequency': 'per_execution',
-        'managed_by': 'execution_context',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': None,
-    },
     'jersey_num': {
         'type': 'VARCHAR(3)',
         'scope': ['rosters'],
@@ -3138,4 +3019,274 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
+
+    # ------------------------------------------------------------------
+    # OPPONENT STATS
+    # ------------------------------------------------------------------
+    'opp_fg2m': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FGM',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'derived': {'subtract': 'OPP_FG3M'}
+                        }
+                    }
+                }
+            }
+        },
+    'opp_fg2a': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FGA',
+                        'params': {'measure_type_detailed_defense': 'Opponent'},
+                        'derived': {'subtract': 'OPP_FG3A'}
+                        }
+                    }
+                }
+            }
+        },
+    'opp_fg3m': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FG3M',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                        }
+                    }
+                }
+            }
+        },
+    'opp_fg3a': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FG3A',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                    }
+                }
+            }
+        },
+    },
+    'opp_ftm': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FTM',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                    }
+                }
+            }
+        },
+    },
+    'opp_fta': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_FTA',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                    }
+                }
+            }
+        },
+    },
+    'opp_o_rebs': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_OREB',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}}}}}},
+    'opp_d_rebs': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_DREB',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                    }
+                }
+            }
+        },
+    },
+    'opp_assists': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_AST',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                    }
+                }
+            }
+        },
+    },
+    'opp_turnovers': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_TOV',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                    }
+                }
+            }
+        },
+    },
+    'opp_fouls': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_PF',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                    }
+                }
+            }
+        },
+    },
+    'opp_steals': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_STL',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                    }
+                }
+            }
+        },
+    },
+    'opp_blocks': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'update_frequency': 'in_season',
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'OPP_BLK',
+                        'params': {'measure_type_detailed_defense': 'Opponent'}
+                    }
+                }
+            }
+        }
+    }
 }

@@ -55,41 +55,6 @@ def _resolve_glass_ids(
         return {str(row[0]): int(row[1]) for row in cur.fetchall()}
 
 
-def _create_missing_profiles(
-    conn: Any,
-    profile_table: str,
-    source_id_col: str,
-    source_ids: Set[Any],
-) -> Dict[str, int]:
-    """Create minimal profile stubs for source IDs not yet in the profiles table.
-
-    Uses the source ID column (which carries a UNIQUE constraint) as the
-    conflict target.  The DO UPDATE is a no-op that ensures RETURNING always
-    yields the row's the_glass_id whether the row is new or pre-existing.
-
-    Returns ``{str(source_id): the_glass_id}`` for every processed ID.
-    """
-    if not source_ids:
-        return {}
-
-    created: Dict[str, int] = {}
-    with conn.cursor() as cur:
-        for source_id in source_ids:
-            cur.execute(
-                f"""
-                INSERT INTO {profile_table} ({quote_col(source_id_col)})
-                VALUES (%s)
-                ON CONFLICT ({quote_col(source_id_col)}) DO UPDATE
-                    SET {quote_col(source_id_col)} = EXCLUDED.{quote_col(source_id_col)}
-                RETURNING {quote_col(THE_GLASS_ID_COLUMN)}
-                """,
-                (source_id,),
-            )
-            result = cur.fetchone()
-            if result:
-                created[str(source_id)] = int(result[0])
-
-    return created
 
 
 # ---------------------------------------------------------------------------
@@ -311,19 +276,12 @@ def sync_rosters(
         teams_unresolved = {sid for sid in team_source_ids if str(sid) not in team_map}
         players_unresolved = {sid for sid in player_source_ids if str(sid) not in player_map}
 
-        # Create stubs for entities not yet in profiles
+        # Do NOT create profile stubs here. Instead, log unresolved ids and
+        # skip them. Entity creation should be a separate staged operation.
         if teams_unresolved:
-            logger.info('Creating %d new team profile stubs', len(teams_unresolved))
-            new_team_map = _create_missing_profiles(
-                conn, teams_table, src_col, teams_unresolved,
-            )
-            team_map.update(new_team_map)
+            logger.warning('Found %d unresolved team source_ids; skipping', len(teams_unresolved))
         if players_unresolved:
-            logger.info('Creating %d new player profile stubs', len(players_unresolved))
-            new_player_map = _create_missing_profiles(
-                conn, players_table, src_col, players_unresolved,
-            )
-            player_map.update(new_player_map)
+            logger.warning('Found %d unresolved player source_ids; skipping', len(players_unresolved))
 
         # ---- league_rosters: (league_glass_id, team_glass_id) -----------------
         league_team_pairs: Set[Tuple[int, int]] = {

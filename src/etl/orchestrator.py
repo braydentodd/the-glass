@@ -45,7 +45,7 @@ from src.etl.definitions.pipeline import (
     VALID_ETL_PHASES,
 )
 from src.etl.definitions.sources import SOURCES
-from src.core.lib.leagues_resolver import get_current_season, get_retained_seasons, get_historical_seasons
+from src.core.lib.leagues_resolver import get_current_season, get_retained_seasons
 from src.etl.lib.cleanup import (
     normalize_stats_domains,
     prune_orphan_profiles,
@@ -342,7 +342,7 @@ def _backfill(
                 signatures[key] = signature
 
     if not groups_to_run:
-        logger.info('Backfill skipped: all retained seasons are already complete')
+        logger.info('Backfill skipped: all previous seasons are already complete')
         return 0
 
     def _record_backfill(
@@ -411,23 +411,15 @@ def _resolve_stage_seasons(
     stage: Dict[str, Any],
     season: str,
     season_range: List[str],
-    historical_range: List[str],
 ) -> List[str]:
-    """Resolve stage season scope from declarative stage config.
-
-    Windows:
-        'current'    -- [season] only
-        'retained'   -- full retention window including current season
-        'historical' -- retention window excluding current season (for backfill)
-        'none'       -- empty list (stage is skipped)
-    """
+    """Resolve stage season scope from declarative stage config."""
     window = stage['season_window']
     if window == 'current':
         return [season]
-    if window == 'retained':
+    if window == 'previous':
+        return [s for s in season_range if s != season]
+    if window == 'all':
         return season_range
-    if window == 'historical':
-        return historical_range
     return []
 
 

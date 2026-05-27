@@ -59,15 +59,6 @@ def get_oldest_retained_season(league_key: str, current_season: str) -> str:
     return get_retained_seasons(league_key, current_season)[0]
 
 
-def get_historical_seasons(league_key: str, current_season: str) -> List[str]:
-    """Retained seasons excluding the current one (oldest -> newest).
-
-    Used by backfill to cover only completed past seasons, avoiding overlap
-    with the daily update_current_stats pass on the current season.
-    """
-    return [s for s in get_retained_seasons(league_key, current_season) if s != current_season]
-
-
 def get_season_types(league_key: str) -> List[str]:
     """Union of regular and post season type codes, in declaration order."""
     cfg = _league_or_raise(league_key)

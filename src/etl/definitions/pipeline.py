@@ -18,7 +18,7 @@ VALID_ETL_STEP_HANDLERS = frozenset({
     'normalize_stats_domains',
     'prune_stats_retention',
 })
-VALID_SEASON_WINDOWS = frozenset({'none', 'current', 'retained', 'historical'})
+VALID_SEASON_WINDOWS = frozenset({'none', 'current', 'previous', 'all'})
 VALID_SEASON_TYPE_MODES = frozenset({'none', 'regular', 'requested'})
 VALID_ENTITY_MATCHER_MODES = frozenset({
     'approve_all',
@@ -43,7 +43,7 @@ PIPELINE_STEPS: Dict[str, Dict[str, Any]] = {
     },
     'populate_profiles_retained': {
         'handler': 'populate_profiles',
-        'season_window': 'retained',
+        'season_window': 'previous',
         'season_type_mode': 'regular',
     },
     'sync_rosters_current': {
@@ -63,7 +63,7 @@ PIPELINE_STEPS: Dict[str, Dict[str, Any]] = {
     },
     'backfill_stats': {
         'handler': 'backfill_stats',
-        'season_window': 'historical',
+        'season_window': 'previous',
         'season_type_mode': 'requested',
     },
     'update_current_stats': {
@@ -73,7 +73,7 @@ PIPELINE_STEPS: Dict[str, Dict[str, Any]] = {
     },
     'normalize_stats_domains_backfill': {
         'handler': 'normalize_stats_domains',
-        'season_window': 'historical',
+        'season_window': 'previous',
         'season_type_mode': 'requested',
     },
     'normalize_stats_domains_update': {

@@ -22,7 +22,7 @@ def add_subparser(subparsers) -> None:
             "  full        full league run\n"
             "  discover    profile rows for the current season\n"
             "  rosters     league/team and team/player roster links\n"
-            "  backfill    stats for every retained season\n"
+            "  backfill    stats for every previous season\n"
             "  update      stats for the current season only\n"
             "  prune       per-league retention pruning\n"
             "  orphan      cross-league orphan profile sweep"

@@ -125,7 +125,9 @@ TABLES: Dict[str, TableDef] = {
             },
         ],
         'unique_constraints': None,
-        'indexes': [],
+        'indexes': [
+            {'name': 'season_type_season', 'columns': ['season_type', 'season']},
+        ],
         'scope': 'stats',
         'source_ids': False
     },
@@ -145,7 +147,9 @@ TABLES: Dict[str, TableDef] = {
             },
         ],
         'unique_constraints': None,
-        'indexes': [],
+        'indexes': [
+            {'name': 'season_type_season', 'columns': ['season_type', 'season']},
+        ],
         'scope': 'stats',
         'source_ids': False
     },
@@ -177,10 +181,7 @@ TABLES: Dict[str, TableDef] = {
             },
         ],
         'unique_constraints': None,
-        'indexes': [
-            {'name': 'league_id', 'columns': ['league_id']},
-            {'name': 'team_id', 'columns': ['team_id']},
-        ],
+        'indexes': [],
         'scope': 'rosters',
         'source_ids': False
     },
@@ -209,10 +210,7 @@ TABLES: Dict[str, TableDef] = {
             },
         ],
         'unique_constraints': None,
-        'indexes': [
-            {'name': 'team_id', 'columns': ['team_id']},
-            {'name': 'player_id', 'columns': ['player_id']},
-        ],
+        'indexes': [],
         'scope': 'rosters',
         'source_ids': False
     },
@@ -320,9 +318,7 @@ TABLES: Dict[str, TableDef] = {
             },
         ],
         'unique_constraints': None,
-        'indexes': [
-            {'name': 'entity_season', 'columns': ['entity_type', 'season', 'season_type']},
-        ],
+        'indexes': [],
         'scope': 'backfill',
         'source_ids': False
     }

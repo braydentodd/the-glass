@@ -104,7 +104,7 @@ def evaluate_expression(expr, entity_data: dict,
                 val = evaluate_expression(field, p, context)
             else:
                 val = p.get(field)
-            minutes = (p.get('minutes_x10', 0) or 0) / 10.0
+            minutes = (p.get('mins_x10', 0) or 0) / 10.0
             if val is not None and minutes > 0:
                 weighted_sum += float(val) * minutes
                 total_weight += minutes
@@ -252,8 +252,8 @@ def calculate_entity_stats(entity_data: dict, entity_type: str = 'player',
     results = {}
 
     # Base denominators -- always available on the fact row.
-    base_minutes_x10 = entity_data.get('minutes_x10')
-    base_minutes = (base_minutes_x10 or 0) / 10.0 if base_minutes_x10 is not None else None
+    base_mins_x10 = entity_data.get('mins_x10')
+    base_minutes = (base_mins_x10 or 0) / 10.0 if base_mins_x10 is not None else None
     base_possessions = entity_data.get('possessions')
 
     for col_key, col_def in TAB_COLUMNS.items():
@@ -359,7 +359,7 @@ def calculate_all_percentiles(all_entities: List[dict], entity_type: str,
                 continue
 
             if is_stats:
-                raw_minutes = (entity.get('minutes_x10', 0) or 0) / 10.0
+                raw_minutes = (entity.get('mins_x10', 0) or 0) / 10.0
                 if raw_minutes <= 0:
                     continue
                 entries.append((val, raw_minutes))

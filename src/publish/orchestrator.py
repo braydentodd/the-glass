@@ -354,7 +354,7 @@ def run_publish(
         stat_fields=db_fields['stat_fields'],
         team_stat_fields=db_fields['team_stat_fields'],
         primary_minutes_col=(
-            'minutes_x10' if 'minutes_x10' in db_fields['stat_fields'] else 'minutes'
+            'mins_x10' if 'mins_x10' in db_fields['stat_fields'] else 'minutes'
         ),
         season_format_fn=season_format_fn,
     )

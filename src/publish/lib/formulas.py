@@ -57,7 +57,7 @@ class PublishRow(TypedDict, total=False):
     hand: Any
     height_ins_with_shoes: Any
     jersey_num: Any
-    minutes_x10: Any
+    mins_x10: Any
     name: Any
     notes: Any
     o_dist_x10: Any
@@ -172,7 +172,7 @@ def team_average(value_fn: Callable[[PublishRow, Union[PublishContext, None]], A
             value = value_fn(player, ctx)
         except (TypeError, ZeroDivisionError, KeyError):
             continue
-        minutes = (player.get('minutes_x10', 0) or 0) / 10.0
+        minutes = (player.get('mins_x10', 0) or 0) / 10.0
         if value is not None and minutes > 0:
             weighted_sum += float(value) * minutes
             total_weight += minutes

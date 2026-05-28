@@ -17,7 +17,7 @@ from typing import Any, Dict
 
 STAT_DOMAINS: Dict[str, Dict[str, Any]] = {
     'base': {
-        'minutes_col': 'minutes_x10',
+        'minutes_col': 'mins_x10',
         'primary':     True
     },
     'tracking': {

@@ -71,7 +71,7 @@ class SyncContext:
     # League-specific settings
     team_abbr_col: str = 'abbr'
     team_abbr_field: str = 'team_abbr'
-    primary_minutes_col: str = 'minutes_x10'
+    primary_minutes_col: str = 'mins_x10'
     season_format_fn: Callable = str
     season_key: str = 'current_season'
     include_hist_post_players: bool = True
@@ -675,7 +675,7 @@ def sync_players_tab(ctx, client, spreadsheet, mode='per_possession',
         all_player_ids = []
         seen = set()
         for p in sorted(all_players_curr,
-                        key=lambda x: x.get('minutes_x10', 0) or 0,
+                        key=lambda x: x.get('mins_x10', 0) or 0,
                         reverse=True):
             pid = p.get('id')
             if pid and pid not in seen:

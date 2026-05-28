@@ -437,9 +437,9 @@ TAB_COLUMNS: Dict[str, TabColumnDef] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': {'fields': ('s.minutes_x10', 's.games'), 'fn': lambda row, ctx: (row['minutes_x10'] / 10) / row['games']},
-            'team': {'fields': ('s.minutes_x10', 's.games'), 'fn': lambda row, ctx: (row['minutes_x10'] / 10) / row['games']},
-            'all_teams': {'fields': ('s.minutes_x10', 's.games'), 'fn': lambda row, ctx: (row['minutes_x10'] / 10) / row['games']}
+            'player': {'fields': ('s.mins_x10', 's.games'), 'fn': lambda row, ctx: (row['mins_x10'] / 10) / row['games']},
+            'team': {'fields': ('s.mins_x10', 's.games'), 'fn': lambda row, ctx: (row['mins_x10'] / 10) / row['games']},
+            'all_teams': {'fields': ('s.mins_x10', 's.games'), 'fn': lambda row, ctx: (row['mins_x10'] / 10) / row['games']}
         }
     },
     'pace': {
@@ -462,9 +462,9 @@ TAB_COLUMNS: Dict[str, TabColumnDef] = {
         'emphasis': None,
         'font_size': 9,
         'values': {
-            'player': {'fields': ('s.possessions', 's.minutes_x10'), 'fn': lambda row, ctx: (row['possessions'] * 40) / (row['minutes_x10'] / 10)},
-            'team': {'fields': ('s.possessions', 's.minutes_x10'), 'fn': lambda row, ctx: (row['possessions'] * 40) / (row['minutes_x10'] / 10)},
-            'all_teams': {'fields': ('s.possessions', 's.minutes_x10'), 'fn': lambda row, ctx: (row['possessions'] * 40) / (row['minutes_x10'] / 10)}
+            'player': {'fields': ('s.possessions', 's.mins_x10'), 'fn': lambda row, ctx: (row['possessions'] * 40) / (row['mins_x10'] / 10)},
+            'team': {'fields': ('s.possessions', 's.mins_x10'), 'fn': lambda row, ctx: (row['possessions'] * 40) / (row['mins_x10'] / 10)},
+            'all_teams': {'fields': ('s.possessions', 's.mins_x10'), 'fn': lambda row, ctx: (row['possessions'] * 40) / (row['mins_x10'] / 10)}
         }
     },
     'pts': {

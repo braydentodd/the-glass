@@ -82,7 +82,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     'entity_type': {
         'type': 'TEXT',
         'scope': ['runs', 'tasks', 'backfill'],
-        'nullable': True,
+        'nullable': False,
         'default': None,
         'entity_types': None,
         'manager': 'execution_context',
@@ -104,7 +104,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     'created_at': {
         'type': 'TIMESTAMP',
         'scope': ['profiles', 'stats', 'rosters', 'staging', 'runs', 'tasks', 'backfill'],
-        'nullable': True,
+        'nullable': False,
         'default': 'NOW()',
         'entity_types': ['league', 'player', 'team'],
         'manager': 'db',
@@ -191,7 +191,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     'name': {
         'type': 'TEXT',
         'scope': ['profiles', 'staging'],
-        'nullable': True,
+        'nullable': False,
         'default': None,
         'entity_types': ['league', 'player', 'team'],
         'manager': 'perennial_source',
@@ -387,6 +387,39 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
+    'city': {
+        'type': 'TEXT',
+        'scope': ['profiles', 'staging'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'manager': 'perennial_source',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': None
+    },
+    'region': {
+        'type': 'TEXT',
+        'scope': ['profiles', 'staging'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'manager': 'perennial_source',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': None
+    },
+    'country': {
+        'type': 'TEXT',
+        'scope': ['profiles', 'staging'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team'],
+        'manager': 'perennial_source',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': None
+    },
     'gender': {
         'type': 'CHAR',
         'scope': ['profiles', 'staging'],
@@ -419,7 +452,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'minutes_x10': {
+    'mins_x10': {
         'type': 'INTEGER',
         'scope': ['stats'],
         'nullable': False,
@@ -2949,7 +2982,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     'total_items': {
         'type': 'INTEGER',
         'scope': ['runs'],
-        'nullable': True,
+        'nullable': False,
         'default': '0',
         'entity_types': None,
         'manager': 'execution_context',
@@ -2960,7 +2993,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     'completed_items': {
         'type': 'INTEGER',
         'scope': ['runs'],
-        'nullable': True,
+        'nullable': False,
         'default': '0',
         'entity_types': None,
         'manager': 'execution_context',
@@ -2971,7 +3004,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     'total_rows': {
         'type': 'INTEGER',
         'scope': ['runs'],
-        'nullable': True,
+        'nullable': False,
         'default': '0',
         'entity_types': None,
         'manager': 'execution_context',
@@ -3058,7 +3091,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     'rows_written': {
         'type': 'INTEGER',
         'scope': ['tasks'],
-        'nullable': True,
+        'nullable': False,
         'default': '0',
         'entity_types': None,
         'manager': 'execution_context',
@@ -3069,7 +3102,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     'retry_count': {
         'type': 'INTEGER',
         'scope': ['tasks'],
-        'nullable': True,
+        'nullable': False,
         'default': '0',
         'entity_types': None,
         'manager': 'execution_context',

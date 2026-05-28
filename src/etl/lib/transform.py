@@ -289,7 +289,7 @@ def _op_multi_league_extract(
             id_idx = headers.index(id_field)
             field_idx = headers.index(field)
             for row in rs['rowSet']:
-                eid = row[id_idx] if id_idx is not None else default_entity_id
+                eid = row[id_idx]
                 val = safe_int(row[field_idx])
                 if val is not None:
                     totals[eid] = totals.get(eid, 0) + val
@@ -357,6 +357,29 @@ def _op_math(data: Dict[int, Any], op: Dict[str, Any]) -> Dict[int, Any]:
             result[eid] = None
             
     return result
+
+
+# ============================================================================
+# MULTI-SEASON AGGREGATION
+# ============================================================================
+
+def aggregate_multi_season_most_recent_non_null(values_by_year: Dict[int, Any]) -> Any:
+    """Return most recent non-null value from year-ordered dict.
+    
+    Args:
+        values_by_year: Dict mapping year -> value
+        
+    Returns:
+        Most recent non-null value, or None if all values are null
+    """
+    if not values_by_year:
+        return None
+    
+    for year in reversed(sorted(values_by_year.keys())):
+        value = values_by_year[year]
+        if value is not None:
+            return value
+    return None
 
 
 # ============================================================================

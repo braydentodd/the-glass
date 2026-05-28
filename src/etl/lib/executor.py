@@ -102,6 +102,67 @@ def _fetch_null_entity_ids(ctx: ExecutionContext, columns: List[str]) -> List[An
     return source_ids
 
 
+def _execute_multi_season_league_wide(
+    dataset: str,
+    params: Dict[str, Any],
+    columns: Dict[str, Dict[str, Any]],
+    ctx: ExecutionContext,
+    failed: List[Dict[str, Any]],
+    multi_season_config: Dict[str, Any],
+) -> int:
+    """Fetch data across multiple years and aggregate using most_recent_non_null."""
+    from src.etl.lib.transform import aggregate_multi_season_most_recent_non_null
+    
+    start_year = multi_season_config['start_year']
+    current_year = int(ctx.season.split('-')[0])
+    
+    # Collect values by entity by year
+    entity_values_by_year: Dict[int, Dict[int, Any]] = {}
+    
+    logger.info(
+        'Multi-season fetch for %s: years %d-%d',
+        dataset, start_year, current_year
+    )
+    
+    for year in range(start_year, current_year + 1):
+        try:
+            year_params = {**params, 'season': f'{year}-{str(year + 1)[-2:]}'}
+            result = ctx.api_fetcher(dataset, year_params)
+            
+            if result:
+                rows = extract_columns_from_result(
+                    result, columns, ctx.entity, ctx.entity_id_field,
+                    id_aliases=ctx.id_aliases,
+                )
+                # Store values by entity by year
+                for entity_id, row_data in rows.items():
+                    if entity_id not in entity_values_by_year:
+                        entity_values_by_year[entity_id] = {}
+                    # Assuming single column per multi_season group
+                    col_name = next(iter(columns.keys()))
+                    entity_values_by_year[entity_id][year] = row_data.get(col_name)
+        except Exception as exc:
+            logger.warning('Multi-season %s year %d failed: %s', dataset, year, exc)
+            continue
+    
+    # Aggregate: most recent non-null per entity
+    final_rows: Dict[int, Dict[str, Any]] = {}
+    col_name = next(iter(columns.keys()))
+    
+    for entity_id, values_by_year in entity_values_by_year.items():
+        aggregated_value = aggregate_multi_season_most_recent_non_null(values_by_year)
+        if aggregated_value is not None:
+            final_rows[entity_id] = {col_name: aggregated_value}
+    
+    if not final_rows:
+        return 0
+    
+    return write_entity_rows(
+        ctx.entity, ctx.scope, final_rows, ctx.season, ctx.season_type,
+        ctx.db_schema, ctx.source_key,
+    )
+
+
 def _execute_league_wide(
     dataset: str,
     params: Dict[str, Any],
@@ -110,6 +171,18 @@ def _execute_league_wide(
     failed: List[Dict[str, Any]],
 ) -> int:
     """One API call returns all entities -- extract, transform, write."""
+    # Check if any column requires multi-season aggregation
+    multi_season_config = None
+    for col_meta in columns.values():
+        if 'multi_season' in col_meta:
+            multi_season_config = col_meta['multi_season']
+            break
+    
+    if multi_season_config:
+        return _execute_multi_season_league_wide(
+            dataset, params, columns, ctx, failed, multi_season_config
+        )
+    
     try:
         result = ctx.api_fetcher(dataset, params)
     except Exception as exc:

@@ -267,9 +267,9 @@ def build_call_groups(
     Args:
         scope: If set, only include columns whose ``scope`` matches this
                value or is ``'both'``.
-        in_season: If True, excludes off_season_source columns; if False,
-                   excludes in_season_source columns. Columns with manager
-                   'db', 'execution_context', or 'perennial_source' are always included.
+        in_season: If False, excludes in_season_source columns (no games = no stat changes).
+                   Columns with manager 'db', 'execution_context', or 'perennial_source'
+                   are always included regardless of season state.
 
     Returns a list of dicts, each with:
         dataset, params, tier, columns ({col_name: enriched_source})
@@ -283,10 +283,8 @@ def build_call_groups(
         matched_cols = _COLUMNS_BY_ENTITY.get(entity, [])
 
     for col_name, col_meta in matched_cols:
-        # Filter by manager type based on season state
+        # Filter in_season_source columns during off-season
         manager = col_meta.get('manager', 'perennial_source')
-        if in_season and manager == 'off_season_source':
-            continue
         if not in_season and manager == 'in_season_source':
             continue
 

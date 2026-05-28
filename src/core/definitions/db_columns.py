@@ -19,10 +19,15 @@ columns (e.g. ``nba_api_id``) are emitted directly by the DDL generator
 from typing import Dict, List, TypedDict, Union, Literal
 
 
-class DatasetMapping(TypedDict):
+class MultiSeasonConfig(TypedDict, total=False):
+    start_year: int
+    aggregation: str
+
+class DatasetMapping(TypedDict, total=False):
     dataset: str
     column: str
     transform: Union[str, None]
+    multi_season: MultiSeasonConfig
 
 class ColumnDef(TypedDict):
     type: str
@@ -30,7 +35,7 @@ class ColumnDef(TypedDict):
     nullable: bool
     default: Union[str, int, None]
     entity_types: Union[List[str], None]
-    manager: Literal['db', 'execution_context', 'in_season_source', 'off_season_source', 'perennial_source']
+    manager: Literal['db', 'execution_context', 'in_season_source', 'perennial_source']
     domain: Union[str, None]
     comment: Union[str, None]
     dataset_mapping: Union[Dict[str, Dict[str, Dict[str, DatasetMapping]]], None]
@@ -135,7 +140,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -189,7 +194,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['league', 'player', 'team'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -215,7 +220,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -232,7 +237,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': None,
@@ -243,7 +248,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -260,7 +265,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -270,6 +275,10 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'dataset': 'draftcombineplayeranthro',
                         'field': 'WINGSPAN',
                         'transform': 'parse_height',
+                        'multi_season': {
+                            'start_year': 2003,
+                            'aggregation': 'most_recent_non_null',
+                        },
                     },
                 },
                 'the_glass_sheets': {
@@ -284,7 +293,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -301,7 +310,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -350,7 +359,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['league', 'team'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': {
@@ -367,7 +376,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
-        'manager': 'off_season_source',
+        'manager': 'perennial_source',
         'domain': None,
         'comment': None,
         'dataset_mapping': {

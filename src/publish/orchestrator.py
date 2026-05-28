@@ -399,7 +399,7 @@ def run_publish(
     # Auto-resume: resolve pending work (may be subset if resuming)
     conn = get_db_connection()
     try:
-        run_id, pending_items = resolve_work(
+        run_process_id, pending_items = resolve_work(
             conn, db_schema, league, all_tabs, auto_resume=_AUTO_RESUME,
         )
     except Exception:
@@ -417,7 +417,7 @@ def run_publish(
     sync_kwargs['team_gids'] = team_gids
 
     failed_tabs = _sync_all_tabs(
-        ctx, client, spreadsheet, conn, run_id,
+        ctx, client, spreadsheet, conn, run_process_id,
         team_tabs=abbrs, aggregate_tabs=aggregate_order,
         pending_lookup=pending_lookup, team_names=team_names,
         precomputed=precomputed, delay=delay, sync_kwargs=sync_kwargs,
@@ -426,12 +426,12 @@ def run_publish(
     if failed_tabs:
         failed_list = ', '.join(failed_tabs)
         logger.error('Sync finished with failures: %s', failed_list)
-        fail_run(conn, db_schema, run_id, f'Sync failed for tab(s): {failed_list}')
+        fail_run(conn, db_schema, run_process_id, f'Sync failed for tab(s): {failed_list}')
         conn.close()
         raise RuntimeError(f'Sync failed for tab(s): {failed_list}')
 
     logger.info('Sync complete')
-    complete_run(conn, db_schema, run_id)
+    complete_run(conn, db_schema, run_process_id)
     conn.close()
 
     # Apps Script config export is driven by destination config

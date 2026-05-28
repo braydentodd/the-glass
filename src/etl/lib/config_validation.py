@@ -173,7 +173,7 @@ def _validate_table_definitions(
 
         # Collect columns declared on this table (both database columns and FK columns)
         fk_columns = {fk.get('column') for fk in meta.get('foreign_keys', []) if fk.get('column')}
-        surrogate_pks = {'run_id', 'task_id', 'id'}
+        surrogate_pks = {'process_id', 'id'}
         
         # 2. Primary Key validation
         pk_cols = meta.get('primary_key', [])

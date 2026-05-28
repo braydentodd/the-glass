@@ -28,7 +28,7 @@ import logging
 from typing import Any, Callable, Dict, List, Tuple, Union
 
 from src.core.lib.terminal import progress
-from src.core.lib.ddl import ensure_all, ensure_league_profile
+from src.core.lib.ddl import bootstrap_schema
 from src.core.lib.logging import phase_marker
 from src.core.lib.postgres import db_connection, quote_col
 from src.etl.lib.sources_resolver import (
@@ -180,7 +180,7 @@ def _run_groups(
             )
 
             with db_connection() as conn:
-                run_id, work_items = resolve_work(
+                run_process_id, work_items = resolve_work(
                     conn, league_key, ent, season, season_type, groups,
                     True,  # auto_resume
                 )
@@ -213,8 +213,8 @@ def _run_groups(
                             bar.update(1)
 
                     total_rows += entity_rows
-                    update_run_completed_groups(conn, league_key, run_id)
-                    complete_run(conn, league_key, run_id, entity_rows)
+                    update_run_completed_groups(conn, league_key, run_process_id)
+                    complete_run(conn, league_key, run_process_id, entity_rows)
                     if on_entity_finished is not None:
                         on_entity_finished(
                             ent,
@@ -224,7 +224,7 @@ def _run_groups(
                             len(failed) > failed_before,
                         )
                 except Exception as exc:
-                    fail_run(conn, league_key, run_id, str(exc))
+                    fail_run(conn, league_key, run_process_id, str(exc))
                     raise
 
     return total_rows
@@ -521,10 +521,8 @@ def run_etl(
         entity,
     )
 
-    # Schema bootstrap (idempotent).
-    ensure_all(league_key)
     with db_connection() as conn:
-        ensure_league_profile(league_key, conn)
+        bootstrap_schema(league_key, conn=conn)
 
     requested_entities = ['team', 'player'] if entity == 'all' else [entity]
     season_range = get_retained_seasons(league_key, season)

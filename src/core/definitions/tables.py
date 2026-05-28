@@ -60,6 +60,7 @@ class TableDef(TypedDict):
     indexes: Union[List[IndexDef], None]
     source_ids: Union[bool, None]
 
+
 TABLES: Dict[str, TableDef] = {
 
     # ------------------------------------------------------------------
@@ -70,7 +71,7 @@ TABLES: Dict[str, TableDef] = {
         'schema': 'core',
         'primary_key': ['the_glass_id'],
         'foreign_keys': [],
-        'unique_constraints': None,
+        'unique_constraints': [['abbr']],
         'indexes': [],
         'scope': 'profiles',
         'source_ids': False
@@ -220,7 +221,7 @@ TABLES: Dict[str, TableDef] = {
     'runs': {
         'entity': None,
         'schema': 'core',
-        'primary_key': ['run_id'],
+        'primary_key': ['process_id'],
         'foreign_keys': [
             {
                 'column':     'league_id',
@@ -242,13 +243,13 @@ TABLES: Dict[str, TableDef] = {
     'tasks': {
         'entity': None,
         'schema': 'core',
-        'primary_key': ['task_id'],
+        'primary_key': ['process_id'],
         'foreign_keys': [
             {
                 'column':     'run_id',
                 'ref_schema': 'core',
                 'ref_table':  'runs',
-                'ref_column': 'run_id',
+                'ref_column': 'process_id',
                 'strategy':   'direct',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',

@@ -118,7 +118,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'season': {
         'type': 'VARCHAR(7)',
-        'scope': ['profiles', 'stats', 'runs', 'tasks', 'backfill'],
+        'scope': ['stats', 'tasks', 'backfill'],
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
@@ -130,7 +130,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'season_type': {
         'type': 'VARCHAR(3)',
-        'scope': ['profiles', 'stats', 'runs', 'tasks', 'backfill'],
+        'scope': ['stats', 'tasks', 'backfill'],
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],

@@ -153,6 +153,7 @@ def _validate_table_definitions(
     """
     from src.core.definitions.tables import (
         VALID_SCOPES,
+        VALID_SCHEMA_KINDS,
         VALID_FK_ACTIONS,
         VALID_FK_STRATEGIES,
         THE_GLASS_ID_COLUMN,
@@ -168,8 +169,19 @@ def _validate_table_definitions(
             errors.append(f"{prefix}: unknown scope {scope!r}")
             
         schema = meta.get('schema')
-        if schema not in ('core', 'league'):
+        if schema not in VALID_SCHEMA_KINDS:
             errors.append(f"{prefix}: unknown schema {schema!r}")
+
+        source_scopes = meta.get('source_scopes')
+        if source_scopes is not None:
+            if not isinstance(source_scopes, list) or not source_scopes:
+                errors.append(f"{prefix}: source_scopes must be a non-empty list or None")
+            else:
+                for source_scope in source_scopes:
+                    if source_scope not in VALID_SCOPES:
+                        errors.append(
+                            f"{prefix}: source_scopes contains unknown scope {source_scope!r}"
+                        )
 
         # Collect columns declared on this table (both database columns and FK columns)
         fk_columns = {fk.get('column') for fk in meta.get('foreign_keys', []) if fk.get('column')}
@@ -457,7 +469,14 @@ def _validate_fk_targets(
 
 def _validate_league_stage_definitions() -> List[str]:
     """Validate global ETL steps and phase ordering declarations."""
-    from src.etl.definitions.pipeline import PIPELINE_PHASES, PIPELINE_STEPS,  VALID_ETL_PHASES
+    from src.etl.definitions.pipeline import (
+        PIPELINE_PHASES,
+        PIPELINE_STEPS,
+        VALID_ETL_PHASES,
+        VALID_ETL_STEP_HANDLERS,
+        VALID_SEASON_TYPE_MODES,
+        VALID_SEASON_WINDOWS,
+    )
     
     errors: List[str] = []
     expected_keys = {'handler', 'season_window', 'season_type_mode'}
@@ -482,6 +501,21 @@ def _validate_league_stage_definitions() -> List[str]:
             errors.append(
                 f"{prefix}: keys must exactly match {sorted(expected_keys)}; "
                 f"got {sorted(step_keys)}"
+            )
+        handler = step.get('handler')
+        if handler not in VALID_ETL_STEP_HANDLERS:
+            errors.append(
+                f"{prefix}.handler: expected one of {sorted(VALID_ETL_STEP_HANDLERS)}, got {handler!r}"
+            )
+        season_window = step.get('season_window')
+        if season_window not in VALID_SEASON_WINDOWS:
+            errors.append(
+                f"{prefix}.season_window: expected one of {sorted(VALID_SEASON_WINDOWS)}, got {season_window!r}"
+            )
+        season_type_mode = step.get('season_type_mode')
+        if season_type_mode not in VALID_SEASON_TYPE_MODES:
+            errors.append(
+                f"{prefix}.season_type_mode: expected one of {sorted(VALID_SEASON_TYPE_MODES)}, got {season_type_mode!r}"
             )
 
     if not isinstance(PIPELINE_PHASES, dict):
@@ -539,70 +573,11 @@ def _validate_league_stage_definitions() -> List[str]:
     return errors
 
 
-def _validate_entity_matcher_definitions() -> List[str]:
-    """Validate global entity matcher policy."""
-    from src.etl.definitions.pipeline import (
-        ENTITY_MATCHER_POLICY,
-        VALID_ENTITY_MATCHER_MODES,
-    )
-
-    errors: List[str] = []
-    valid_entities = {'team', 'player'}
-
-    prefix = 'ENTITY_MATCHER_POLICY'
-    matcher_cfg = ENTITY_MATCHER_POLICY
-    if not isinstance(matcher_cfg, dict):
-        errors.append(f"{prefix}: expected dict")
-        return errors
-
-    default_mode = matcher_cfg.get('default_mode')
-    if default_mode not in VALID_ENTITY_MATCHER_MODES:
-        errors.append(
-            f"{prefix}.default_mode: expected one of {sorted(VALID_ENTITY_MATCHER_MODES)}, got {default_mode!r}"
-        )
-
-    entity_rules = matcher_cfg.get('entity_rules')
-    if not isinstance(entity_rules, dict):
-        errors.append(f"{prefix}.entity_rules: expected dict")
-        return errors
-
-    for entity, rule in entity_rules.items():
-        rule_prefix = f"{prefix}.entity_rules['{entity}']"
-        if entity not in valid_entities:
-            errors.append(
-                f"{prefix}.entity_rules: unsupported entity {entity!r}; expected one of {sorted(valid_entities)}"
-            )
-            continue
-
-        if not isinstance(rule, dict):
-            errors.append(f"{rule_prefix}: expected dict")
-            continue
-
-        mode = rule.get('mode')
-        if mode not in VALID_ENTITY_MATCHER_MODES:
-            errors.append(
-                f"{rule_prefix}.mode: expected one of {sorted(VALID_ENTITY_MATCHER_MODES)}, got {mode!r}"
-            )
-
-        blocked_ids = rule.get('blocked_source_ids', [])
-        if not isinstance(blocked_ids, list):
-            errors.append(f"{rule_prefix}.blocked_source_ids: expected list")
-
-    return errors
-
 def _validate_pipeline_structure() -> List[str]:
     """Validate global pipeline policy top-level shape."""
-    from src.etl.definitions.pipeline import (
-        ENTITY_MATCHER_POLICY,
-        PIPELINE_PHASES,
-        PIPELINE_STEPS,
-    )
+    from src.etl.definitions.pipeline import PIPELINE_PHASES, PIPELINE_STEPS
 
     errors: List[str] = []
-    if not isinstance(ENTITY_MATCHER_POLICY, dict):
-        errors.append(
-            f"ENTITY_MATCHER_POLICY: expected dict, got {type(ENTITY_MATCHER_POLICY).__name__}"
-        )
     if not isinstance(PIPELINE_STEPS, dict):
         errors.append(
             f"PIPELINE_STEPS: expected dict, got {type(PIPELINE_STEPS).__name__}"
@@ -622,7 +597,7 @@ def _validate_pipeline_structure() -> List[str]:
 def validate_config() -> List[str]:
     from src.core.definitions.db_columns import DB_COLUMNS
     from src.core.definitions.leagues import LEAGUES
-    from src.core.definitions.tables import TABLES
+    from src.core.definitions.tables import PROFILE_TABLES, ROSTER_TABLES, STATS_TABLES, TABLES
     from src.etl.definitions.sources import SOURCES
 
     errors: List[str] = []
@@ -635,15 +610,12 @@ def validate_config() -> List[str]:
     errors.extend(_validate_legacy_pipeline_fields(LEAGUES))
     errors.extend(_validate_domain_coverage(DB_COLUMNS))
     errors.extend(_validate_domain_primaries())
-    # Build filtered views for compatibility checks (derived from TABLES)
-    stats_tables = {k: v for k, v in TABLES.items() if v.get('scope') == 'stats'}
-    roster_tables = {k: v for k, v in TABLES.items() if v.get('scope') == 'roster'}
-    profile_tables = {k: v for k, v in TABLES.items() if v.get('scope') == 'profile'}
+    stats_tables = STATS_TABLES
+    roster_tables = ROSTER_TABLES
+    profile_tables = PROFILE_TABLES
     errors.extend(_validate_fk_targets(stats_tables, roster_tables, profile_tables))
     
     errors.extend(_validate_league_stage_definitions())
-    errors.extend(_validate_entity_matcher_definitions())
-    errors.extend(_validate_pipeline_structure())
     
     return errors
 

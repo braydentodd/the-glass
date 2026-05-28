@@ -25,9 +25,9 @@ VALID_PG_TYPES = frozenset({
     'BOOLEAN', 'TIMESTAMP', 'DATE', 'NUMERIC', 'REAL', 'DOUBLE PRECISION',
 })
 VALID_ENTITY_TYPES = frozenset({'league', 'player', 'team'})
-VALID_SCOPES = frozenset({'profiles', 'stats', 'rosters', 'runs', 'tasks', 'backfill'})
+VALID_SCOPES = frozenset({'profiles', 'stats', 'rosters', 'staging', 'runs', 'tasks', 'backfill'})
 VALID_REFRESH_MODES = frozenset({'null_only', 'always'})
-VALID_SCHEMA_KINDS = frozenset({'core', 'league'})
+VALID_SCHEMA_KINDS = frozenset({'core', 'league', 'staging'})
 VALID_FK_ACTIONS = frozenset({'CASCADE', 'RESTRICT', 'SET NULL', 'NO ACTION'})
 VALID_MANAGERS = frozenset({'db', 'execution_context', 'source'})
 VALID_FK_STRATEGIES = frozenset({'direct', 'profile_lookup'})
@@ -56,6 +56,7 @@ class TableDef(TypedDict):
     primary_key: Union[List[str], None]
     foreign_keys: Union[List[FKDef], None]
     scope: Union[str, None]
+    source_scopes: Union[List[str], None]
     unique_constraints: Union[List[List[str]], None]
     indexes: Union[List[IndexDef], None]
     source_ids: Union[bool, None]
@@ -74,7 +75,7 @@ TABLES: Dict[str, TableDef] = {
         'unique_constraints': [['abbr']],
         'indexes': [],
         'scope': 'profiles',
-        'source_ids': False
+        'source_ids': True
     },
     'team_profiles': {
         'entity': 'team',
@@ -216,6 +217,38 @@ TABLES: Dict[str, TableDef] = {
         'source_ids': False
     },
     # ------------------------------------------------------------------
+    # STAGING TABLES (transient ingestion schema)
+    # ------------------------------------------------------------------
+    'teams': {
+        'entity': 'team',
+        'schema': 'staging',
+        'primary_key': ['league_id', 'source_id'],
+        'foreign_keys': [],
+        'unique_constraints': None,
+        'indexes': [
+            {'name': 'league_source', 'columns': ['league_key', 'source_key']},
+            {'name': 'matched_glass_id', 'columns': ['matched_glass_id']},
+        ],
+        'scope': 'staging',
+        'source_scopes': ['profiles', 'staging'],
+        'source_ids': False,
+    },
+    'players': {
+        'entity': 'player',
+        'schema': 'staging',
+        'primary_key': ['league_id', 'source_id'],
+        'foreign_keys': [],
+        'unique_constraints': None,
+        'indexes': [
+            {'name': 'league_source', 'columns': ['league_key', 'source_key']},
+            {'name': 'matched_glass_id', 'columns': ['matched_glass_id']},
+            {'name': 'team_source_id', 'columns': ['team_source_id']},
+        ],
+        'scope': 'staging',
+        'source_scopes': ['profiles', 'rosters', 'staging'],
+        'source_ids': False,
+    },
+    # ------------------------------------------------------------------
     # OPERATIONAL TABLES (core schema)
     # ------------------------------------------------------------------
     'runs': {
@@ -294,3 +327,10 @@ TABLES: Dict[str, TableDef] = {
         'source_ids': False
     }
 }
+
+
+PROFILE_TABLES = {name: meta for name, meta in TABLES.items() if meta.get('scope') == 'profiles'}
+STATS_TABLES = {name: meta for name, meta in TABLES.items() if meta.get('scope') == 'stats'}
+ROSTER_TABLES = {name: meta for name, meta in TABLES.items() if meta.get('scope') == 'rosters'}
+STAGING_TABLES = {name: meta for name, meta in TABLES.items() if meta.get('scope') == 'staging'}
+OPERATIONAL_TABLES = {name: meta for name, meta in TABLES.items() if meta.get('scope') in {'runs', 'tasks', 'backfill'}}

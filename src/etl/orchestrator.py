@@ -33,7 +33,6 @@ from src.core.lib.logging import phase_marker
 from src.core.lib.postgres import db_connection, quote_col
 from src.etl.lib.sources_resolver import (
     get_external_sources_for_league,
-    get_role_config,
     get_source_id_column,
 )
 from src.etl.sources.registry import get_source_modules
@@ -48,7 +47,7 @@ from src.etl.definitions.sources import SOURCES
 from src.core.lib.leagues_resolver import get_current_season, get_retained_seasons
 from src.etl.lib.cleanup import (
     normalize_stats_domains,
-    prune_orphan_profiles,
+    prune_entities,
     prune_stats_retention,
 )
 from src.etl.lib.backfill_tracker import (
@@ -67,12 +66,13 @@ from src.etl.lib.progress_tracker import (
     resolve_work,
     update_run_completed_groups,
 )
-from src.etl.lib.roster_maintainer import sync_rosters
+from src.etl.lib.entity_matcher import promote_staged_entities
+from src.etl.lib.roster_maintainer import stage_rosters
 
 logger = logging.getLogger(__name__)
 
 
-VALID_PHASES = set(VALID_ETL_PHASES) | {'orphan'}
+VALID_PHASES = set(VALID_ETL_PHASES)
 
 
 # ============================================================================
@@ -234,7 +234,7 @@ def _run_groups(
 # ETL PHASES
 # ============================================================================
 
-def _populate_profiles(
+def _stage_profiles(
     entities: List[str],
     seasons: List[str],
     season_type: str,
@@ -244,7 +244,7 @@ def _populate_profiles(
     **source_kw,
 ) -> int:
     """Phase: extract and upsert core.{entity}_profiles rows."""
-    logger.info(phase_marker('populate_profiles', f'{len(seasons)} season(s)'))
+    logger.info(phase_marker('stage_profiles', f'{len(seasons)} season(s)'))
     return _run_groups(
         'profiles', entities, seasons,
         season_type, season_type_name, team_ids, failed,
@@ -252,7 +252,7 @@ def _populate_profiles(
     )
 
 
-def _sync_rosters_phase(
+def _stage_rosters_phase(
     league_key: str,
     source_key: str,
     season: str,
@@ -261,14 +261,14 @@ def _sync_rosters_phase(
     roster_snapshot: Dict[str, Any],
     failed: List[Dict[str, Any]],
 ) -> int:
-    """Phase: pull a roster snapshot from the source and apply to roster tables.
+    """Phase: pull a roster snapshot from the source and stage it.
 
     The source client must expose ``fetch_roster_memberships(league_key, season,
     season_type_name, roster_snapshot)`` returning an iterable of
     ``(team_source_id, player_source_id[, jersey_num])`` tuples.
     Sources that don't support this skip silently.
     """
-    logger.info(phase_marker('rosters', f'league={league_key} source={source_key}'))
+    logger.info(phase_marker('stage_rosters', f'league={league_key} source={source_key}'))
 
     fetcher = getattr(client_mod, 'fetch_roster_memberships', None)
     if fetcher is None:
@@ -282,15 +282,56 @@ def _sync_rosters_phase(
         roster_pairs = fetcher(league_key, season, season_type_name, roster_snapshot)
     except Exception as exc:
         logger.exception(
-            'Roster snapshot for %s/%s failed: %s', league_key, source_key, exc,
+            'Roster staging snapshot for %s/%s failed: %s', league_key, source_key, exc,
         )
-        failed.append({
-            'phase': 'rosters', 'league': league_key, 'error': str(exc),
-        })
+        failed.append({'phase': 'stage_rosters', 'league': league_key, 'error': str(exc)})
         return 0
 
-    counts = sync_rosters(league_key, source_key, roster_pairs, season)
-    return counts['teams_active'] + counts['players_active']
+    counts = stage_rosters(league_key, source_key, roster_pairs, season)
+    return counts['teams_staged'] + counts['players_staged']
+
+
+def _stage_and_match_entities(
+    entities: List[str],
+    seasons: List[str],
+    season_type: str,
+    season_type_name: str,
+    team_ids: Dict[str, int],
+    failed: List[Dict[str, Any]],
+    **source_kw,
+) -> int:
+    """Stage entity rows and roster snapshots, then promote staged rows."""
+    total_rows = _stage_profiles(
+        entities,
+        seasons,
+        season_type,
+        season_type_name,
+        team_ids,
+        failed,
+        **source_kw,
+    )
+
+    client_mod = source_kw['client_mod']
+    roster_snapshot: Dict[str, Any] = {}
+    for sync_season in seasons:
+        total_rows += _stage_rosters_phase(
+            source_kw['league_key'],
+            source_kw['source_key'],
+            sync_season,
+            season_type_name,
+            client_mod,
+            roster_snapshot,
+            failed,
+        )
+
+    promoted = promote_staged_entities(source_kw['league_key'], source_kw['source_key'])
+    total_rows += (
+        promoted['teams_promoted']
+        + promoted['players_promoted']
+        + promoted['league_rosters_written']
+        + promoted['team_rosters_written']
+    )
+    return total_rows
 
 
 def _backfill(
@@ -468,7 +509,7 @@ def run_etl(
 
     Args:
         league_key:      Registered league key (e.g. ``'nba'``).  Required
-                         for every phase except ``'orphan'``.
+                         for every phase.
         phase:           Execution phase (see VALID_PHASES).
         entity:          ``'player'``, ``'team'``, or ``'all'``.
         season:          Season label.  Defaults to the league's current season.
@@ -481,12 +522,6 @@ def run_etl(
         raise ValueError(
             f"Invalid phase {phase!r}. Must be one of {sorted(VALID_PHASES)}"
         )
-
-    # Cross-league orphan sweep is a special case (no league required).
-    if phase == 'orphan':
-        out = prune_orphan_profiles()
-        logger.info('Orphan sweep complete: %s', out)
-        return
 
     if not league_key:
         raise ValueError(f"Phase {phase!r} requires --league")
@@ -501,10 +536,6 @@ def run_etl(
         raise ValueError(
             f"League {league_key!r} has no external sources available for ETL execution"
         )
-
-    roster_role_cfg = get_role_config(league_key, 'roster_maintainer')
-    roster_source_key = list(roster_role_cfg.keys())[0]
-    roster_source_config = roster_role_cfg[roster_source_key]
 
     season = season or get_current_season(league_key)
 
@@ -563,7 +594,7 @@ def run_etl(
         if not stage_seasons:
             logger.info('Skipping stage %s: no seasons resolved', stage_name)
             continue
-        if handler in {'populate_profiles', 'backfill_stats', 'update_current_stats'}:
+        if handler in {'stage_and_match_entities', 'backfill_stats', 'update_current_stats'}:
             stage_source_keys = execution_source_keys
 
             for stage_source_key in stage_source_keys:
@@ -587,14 +618,15 @@ def run_etl(
                     datasets=stage_bundle['datasets'],
                     api_field_names=stage_bundle['api_field_names'],
                     api_config=stage_bundle['api_config'],
+                    client_mod=stage_bundle['client_mod'],
                     make_fetcher=stage_bundle['client_mod'].make_fetcher,
                 )
 
                 stage_team_ids = _get_team_ids_for_source(stage_source_key)
                 logger.info(phase_marker(stage_name, f'source={stage_source_key}'))
 
-                if handler == 'populate_profiles':
-                    total_rows += _populate_profiles(
+                if handler == 'stage_and_match_entities':
+                    total_rows += _stage_and_match_entities(
                         stage_entities,
                         stage_seasons,
                         stage_st,
@@ -623,38 +655,6 @@ def run_etl(
                         failed,
                         **stage_source_kw,
                     )
-        elif handler == 'sync_rosters':
-            # Roster tables are current-only and always use the current roster maintainer config
-            stage_source_key = roster_source_key
-            stage_source_config = roster_source_config
-
-            stage_bundle = _get_source_bundle(stage_source_key)
-            regular_st_name, requested_st_name = _resolve_source_season_type_names(
-                stage_bundle,
-                regular_st,
-                season_type,
-            )
-            stage_st, stage_st_name = _resolve_stage_season_type(
-                stage,
-                regular_st,
-                regular_st_name,
-                season_type,
-                requested_st_name,
-            )
-
-            logger.info(phase_marker(stage_name, f'source={stage_source_key}'))
-            for sync_season in stage_seasons:
-                total_rows += _sync_rosters_phase(
-                    league_key,
-                    stage_source_key,
-                    sync_season,
-                    stage_st_name,
-                    stage_bundle['client_mod'],
-                    stage_source_config,
-                    failed,
-                )
-            # Roster sync can change active-team sets for all sources.
-            team_ids_cache.clear()
         elif handler == 'normalize_stats_domains':
             stage_st, _ = _resolve_stage_season_type(
                 stage,
@@ -670,6 +670,9 @@ def run_etl(
         elif handler == 'prune_stats_retention':
             logger.info(phase_marker(stage_name))
             total_rows += prune_stats_retention(league_key, stage_seasons[0])
+        elif handler == 'prune_entities':
+            logger.info(phase_marker(stage_name))
+            total_rows += prune_entities()
         else:
             raise ValueError(
                 f"Unknown ETL stage handler {handler!r} for league {league_key!r}"

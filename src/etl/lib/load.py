@@ -25,7 +25,6 @@ from src.core.lib.postgres import db_connection, quote_col
 from src.core.definitions.tables import TABLES, THE_GLASS_ID_COLUMN
 from src.etl.lib.sources_resolver import get_default_external_source, get_source_id_column
 from src.core.lib.tables_resolver import get_table_name
-from src.etl.lib.entity_matcher import approve_entities
 from src.core.lib.fk_resolver import load_fk_mapping, resolve_fk_value_columns
 
 logger = logging.getLogger(__name__)
@@ -131,6 +130,53 @@ def bulk_copy(
         raise
 
 
+def _bulk_merge_upsert(
+    conn: Any,
+    table: str,
+    columns: List[str],
+    data: List[tuple],
+    conflict_columns: List[str],
+    update_columns: Union[List[str], None] = None,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+) -> int:
+    """``INSERT ... ON CONFLICT DO UPDATE`` merge that preserves non-null values."""
+    if not data:
+        return 0
+
+    if update_columns is None:
+        conflict_set = set(conflict_columns)
+        update_columns = [c for c in columns if c not in conflict_set]
+
+    cols_sql = ', '.join(quote_col(c) for c in columns)
+    conflict_sql = ', '.join(quote_col(c) for c in conflict_columns)
+    update_sql = ', '.join(
+        f'{quote_col(c)} = COALESCE(EXCLUDED.{quote_col(c)}, {table}.{quote_col(c)})'
+        for c in update_columns
+    )
+    conflict_clause = (
+        f'ON CONFLICT ({conflict_sql}) DO UPDATE SET {update_sql}'
+        if update_columns else
+        f'ON CONFLICT ({conflict_sql}) DO NOTHING'
+    )
+
+    query = f'INSERT INTO {table} ({cols_sql}) VALUES %s {conflict_clause}'
+    cursor = conn.cursor()
+    written = 0
+
+    for offset in range(0, len(data), batch_size):
+        batch = data[offset:offset + batch_size]
+        try:
+            execute_values(cursor, query, batch, page_size=batch_size)
+            written += len(batch)
+        except Exception:
+            logger.error('Batch failed at offset %d in %s', offset, table)
+            conn.rollback()
+            raise
+
+    conn.commit()
+    return written
+
+
 # ---------------------------------------------------------------------------
 # ID resolution helpers
 # ---------------------------------------------------------------------------
@@ -169,15 +215,7 @@ def write_entity_rows(
         source_key = get_default_external_source(league_key)
 
     if scope == 'profiles':
-        approved_rows = approve_entities(
-            entity,
-            rows,
-            league_key=league_key,
-            source_key=source_key,
-            season=season,
-            season_type=season_type,
-        )
-        return _write_profile_rows(entity, approved_rows, source_key)
+        return write_staged_entity_rows(entity, rows, league_key, source_key)
 
     if scope == 'stats':
         return _write_stats_rows(
@@ -187,7 +225,82 @@ def write_entity_rows(
     raise ValueError(f"Unsupported scope: {scope!r}")
 
 
-def _write_profile_rows(
+def write_staged_entity_rows(
+    entity: str,
+    rows: Dict[Any, Dict[str, Any]],
+    league_key: str,
+    source_key: str,
+) -> int:
+    """Replace the staged snapshot for ``league_key``/``source_key``."""
+    table = get_table_name(entity, 'staging')
+
+    data_cols: Set[str] = set()
+    for vals in rows.values():
+        data_cols.update(vals.keys())
+    data_cols.discard('league_key')
+    data_cols.discard('source_key')
+    data_cols.discard('source_id')
+    sorted_data_cols = sorted(data_cols)
+
+    columns = ['league_key', 'source_key', 'source_id'] + sorted_data_cols
+    data: List[tuple] = []
+    for source_id, vals in rows.items():
+        if source_id is None:
+            continue
+        row_values = [league_key, source_key, str(source_id)] + [vals.get(c) for c in sorted_data_cols]
+        data.append(tuple(row_values))
+
+    if not data:
+        return 0
+
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"DELETE FROM {table} WHERE league_key = %s AND source_key = %s",
+                (league_key, source_key),
+            )
+        return bulk_copy(conn, table, columns, data)
+
+
+def merge_staged_entity_rows(
+    entity: str,
+    rows: Dict[Any, Dict[str, Any]],
+    league_key: str,
+    source_key: str,
+) -> int:
+    """Merge roster or overlay fields into an existing staged snapshot."""
+    table = get_table_name(entity, 'staging')
+
+    data_cols: Set[str] = set()
+    for vals in rows.values():
+        data_cols.update(vals.keys())
+    data_cols.discard('league_key')
+    data_cols.discard('source_key')
+    data_cols.discard('source_id')
+    sorted_data_cols = sorted(data_cols)
+
+    columns = ['league_key', 'source_key', 'source_id'] + sorted_data_cols
+    data: List[tuple] = []
+    for source_id, vals in rows.items():
+        if source_id is None:
+            continue
+        row_values = [league_key, source_key, str(source_id)] + [vals.get(c) for c in sorted_data_cols]
+        data.append(tuple(row_values))
+
+    if not data:
+        return 0
+
+    with db_connection() as conn:
+        return _bulk_merge_upsert(
+            conn,
+            table,
+            columns,
+            data,
+            conflict_columns=['league_key', 'source_key', 'source_id'],
+        )
+
+
+def write_core_profile_rows(
     entity: str,
     rows: Dict[Any, Dict[str, Any]],
     source_key: str,

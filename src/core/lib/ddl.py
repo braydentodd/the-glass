@@ -67,6 +67,19 @@ def _data_columns_for(scope: str, entity: str) -> List[Tuple[str, Dict[str, Any]
     ]
 
 
+def _data_columns_for_scopes(scopes: List[str], entity: str) -> List[Tuple[str, Dict[str, Any]]]:
+    """Return matching DB columns across several scopes without duplicates."""
+    ordered: List[Tuple[str, Dict[str, Any]]] = []
+    seen = set()
+    for scope in scopes:
+        for name, meta in _data_columns_for(scope=scope, entity=entity):
+            if name in seen:
+                continue
+            seen.add(name)
+            ordered.append((name, meta))
+    return ordered
+
+
 # ---------------------------------------------------------------------------
 # Single-column DDL fragments
 # ---------------------------------------------------------------------------
@@ -125,6 +138,25 @@ def _existing_columns(cur, schema: str, table: str) -> set:
     return {row[0] for row in cur.fetchall()}
 
 
+def _existing_unique_column_sets(cur, schema: str, table: str) -> set:
+        cur.execute(
+                """
+                SELECT tc.constraint_name, array_agg(kcu.column_name ORDER BY kcu.ordinal_position)
+                    FROM information_schema.table_constraints tc
+                    JOIN information_schema.key_column_usage kcu
+                        ON tc.constraint_name = kcu.constraint_name
+                     AND tc.table_schema = kcu.table_schema
+                     AND tc.table_name = kcu.table_name
+                 WHERE tc.table_schema = %s
+                     AND tc.table_name = %s
+                     AND tc.constraint_type IN ('PRIMARY KEY', 'UNIQUE')
+                 GROUP BY tc.constraint_name
+                """,
+                (schema, table),
+        )
+        return {tuple(row[1]) for row in cur.fetchall()}
+
+
 def _insert_row(
     cur,
     schema_name: str,
@@ -164,6 +196,7 @@ def _create_table(cur, schema_name: str, table_name: str, meta: Dict[str, Any]) 
     seen_columns: set = set()
 
     pk_cols = meta.get('primary_key') or []
+    source_scopes = meta.get('source_scopes') or [meta.get('scope', '')]
 
     # 1. Primary Keys
     for col in pk_cols:
@@ -179,8 +212,7 @@ def _create_table(cur, schema_name: str, table_name: str, meta: Dict[str, Any]) 
             seen_columns.add(col)
 
     # 3. Data columns
-    col_scope = meta.get('scope', '')
-    for col_name, col_def in _data_columns_for(scope=col_scope, entity=meta.get('entity')):
+    for col_name, col_def in _data_columns_for_scopes(scopes=source_scopes, entity=meta.get('entity')):
         if col_name not in seen_columns:
             fragments.append(_column_ddl(col_name, col_def))
             seen_columns.add(col_name)
@@ -192,8 +224,11 @@ def _create_table(cur, schema_name: str, table_name: str, meta: Dict[str, Any]) 
                 fragments.append(f"{quote_col(src_col)} {pg_type}")
                 seen_columns.add(src_col)
 
+        for src_col, _ in _get_source_id_columns_for_entity(meta['entity']):
+            fragments.append(f"UNIQUE ({quote_col(src_col)})")
+
     # 5. Column-level UNIQUE constraints (from DB_COLUMNS 'unique' flag)
-    for name, m in _data_columns_for(scope=col_scope, entity=meta.get('entity')):
+    for name, m in _data_columns_for_scopes(scopes=source_scopes, entity=meta.get('entity')):
         if m.get('unique') and name not in pk_cols:
             fragments.append(f"UNIQUE ({quote_col(name)})")
 
@@ -242,6 +277,7 @@ def _sync_table(cur, table_name: str, meta: Dict[str, Any], schema_name: str) ->
         return actions
 
     expected: List[Tuple[str, str]] = []
+    source_scopes = meta.get('source_scopes') or [meta.get('scope', '')]
 
     for pk in meta.get('primary_key') or []:
         expected.append((pk, DB_COLUMNS[pk]['type']))
@@ -253,8 +289,7 @@ def _sync_table(cur, table_name: str, meta: Dict[str, Any], schema_name: str) ->
             expected.append((col, DB_COLUMNS[col]['type']))
             seen.add(col)
 
-    col_scope = meta.get('scope', '')
-    for name, m in _data_columns_for(scope=col_scope, entity=meta.get('entity')):
+    for name, m in _data_columns_for_scopes(scopes=source_scopes, entity=meta.get('entity')):
         if name not in seen:
             expected.append((name, m['type']))
             seen.add(name)
@@ -264,6 +299,18 @@ def _sync_table(cur, table_name: str, meta: Dict[str, Any], schema_name: str) ->
             if src_col not in seen:
                 expected.append((src_col, pg_type))
                 seen.add(src_col)
+
+    existing_unique_sets = _existing_unique_column_sets(cur, schema_name, table_name)
+    if meta.get('source_ids', False) and meta.get('entity'):
+        for src_col, _ in _get_source_id_columns_for_entity(meta['entity']):
+            if (src_col,) in existing_unique_sets:
+                continue
+            constraint_name = f'uq_{table_name}_{src_col}'
+            cur.execute(
+                f'ALTER TABLE {schema_name}.{table_name} '
+                f'ADD CONSTRAINT {constraint_name} UNIQUE ({quote_col(src_col)})'
+            )
+            actions.append(f'added unique {src_col}')
 
     existing = _existing_columns(cur, schema_name, table_name)
     for col_name, pg_type in expected:
@@ -297,7 +344,9 @@ def ensure_schema(schema_name: str, conn=None) -> Dict[str, List[str]]:
 
                 if table_home == 'core' and schema_name != 'core':
                     continue
-                if table_home == 'league' and schema_name == 'core':
+                if table_home == 'league' and schema_name in {'core', 'staging'}:
+                    continue
+                if table_home == 'staging' and schema_name != 'staging':
                     continue
 
                 qualified = f'{schema_name}.{name}'
@@ -364,6 +413,7 @@ def bootstrap_schema(league_key: str, conn=None) -> Dict[str, List[str]]:
     actions: Dict[str, List[str]] = {}
     try:
         actions.update(ensure_schema('core', conn=conn))
+        actions.update(ensure_schema('staging', conn=conn))
         actions.update(ensure_schema(league_key, conn=conn))
         actions.update(ensure_league_profile(league_key, conn=conn))
 

@@ -10,7 +10,7 @@ Two-phase data hygiene:
                                 retention window.
 
   Phase B: Cross-league profile pruning
-        prune_orphan_profiles - DELETE rows from ``core.{entity}_profiles``
+        prune_entities - DELETE rows from ``core.{entity}_profiles``
                                 that have no stats rows in any league schema
                                 AND no roster history.
 
@@ -152,7 +152,7 @@ def prune_stats_retention(league_key: str, current_season: str) -> int:
 
 
 # ---------------------------------------------------------------------------
-# PHASE B -- cross-league orphan profile pruning
+# PHASE B -- cross-league entity pruning
 # ---------------------------------------------------------------------------
 
 def _profile_has_stats_predicate(entity: str) -> str:
@@ -176,7 +176,7 @@ def _profile_has_stats_predicate(entity: str) -> str:
     return ' UNION ALL '.join(sub_selects)
 
 
-def _delete_orphan_players(cur) -> int:
+def _delete_pruned_players(cur) -> int:
     """Delete player profiles with no stats anywhere and no roster history."""
     stats_pred = _profile_has_stats_predicate('player')
     cur.execute(
@@ -192,7 +192,7 @@ def _delete_orphan_players(cur) -> int:
     return cur.rowcount
 
 
-def _delete_orphan_teams(cur) -> int:
+def _delete_pruned_teams(cur) -> int:
     """Delete team profiles with no stats anywhere and no league/team-roster history."""
     stats_pred = _profile_has_stats_predicate('team')
     cur.execute(
@@ -212,24 +212,24 @@ def _delete_orphan_teams(cur) -> int:
     return cur.rowcount
 
 
-def prune_orphan_profiles() -> Dict[str, int]:
+def prune_entities() -> Dict[str, int]:
     """Cross-league sweep: delete profile rows that have no stats and no roster
     history.  Requires every league's Phase A run to have completed.
 
     Returns ``{'players': n, 'teams': n}``.
     """
-    logger.info('Phase B: prune_orphan_profiles')
+    logger.info('Phase B: prune_entities')
     conn = get_db_connection()
     out = {'players': 0, 'teams': 0}
     try:
         with conn.cursor() as cur:
-            out['players'] = _delete_orphan_players(cur)
-            out['teams'] = _delete_orphan_teams(cur)
+            out['players'] = _delete_pruned_players(cur)
+            out['teams'] = _delete_pruned_teams(cur)
         conn.commit()
         if out['players']:
-            logger.info('Deleted %d orphan player profiles', out['players'])
+            logger.info('Deleted %d unreferenced player profiles', out['players'])
         if out['teams']:
-            logger.info('Deleted %d orphan team profiles', out['teams'])
+            logger.info('Deleted %d unreferenced team profiles', out['teams'])
         return out
     except Exception:
         conn.rollback()

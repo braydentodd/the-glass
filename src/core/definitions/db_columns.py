@@ -94,7 +94,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'updated_at': {
         'type': 'TIMESTAMP',
-        'scope': ['profiles', 'stats', 'rosters'],
+        'scope': ['profiles', 'stats', 'rosters', 'staging', 'runs', 'tasks', 'backfill'],
         'nullable': False,
         'default': 'NOW()',
         'entity_types': ['league', 'player', 'team'],
@@ -106,7 +106,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'created_at': {
         'type': 'TIMESTAMP',
-        'scope': ['profiles', 'stats', 'rosters'],
+        'scope': ['profiles', 'stats', 'rosters', 'staging', 'runs', 'tasks', 'backfill'],
         'nullable': True,
         'default': 'NOW()',
         'entity_types': ['league', 'player', 'team'],
@@ -159,12 +159,48 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
+    'source_id': {
+        'type': 'TEXT',
+        'scope': ['staging'],
+        'nullable': False,
+        'default': None,
+        'entity_types': ['team', 'player'],
+        'update_frequency': 'per_execution',
+        'manager': 'source',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'team_source_id': {
+        'type': 'TEXT',
+        'scope': ['staging'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'update_frequency': 'per_execution',
+        'manager': 'source',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': None,
+    },
+    'matched_glass_id': {
+        'type': 'BIGINT',
+        'scope': ['staging'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['team', 'player'],
+        'update_frequency': 'per_execution',
+        'manager': 'execution_context',
+        'domain': None,
+        'comment': None,
+        'dataset_mapping': None,
+    },
     # ------------------------------------------------------------------
     # ENTITY INFORMATION  (league / team / player profile data)
     # ------------------------------------------------------------------
     'name': {
         'type': 'VARCHAR(100)',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['league', 'player', 'team'],
@@ -191,7 +227,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'height_ins_no_shoes': {
         'type': 'SMALLINT',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
@@ -209,7 +245,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'height_ins_with_shoes': {
         'type': 'SMALLINT',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
@@ -221,7 +257,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'weight_lbs': {
         'type': 'SMALLINT',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
@@ -239,7 +275,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'wingspan_ins': {
         'type': 'SMALLINT',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
@@ -264,7 +300,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'hand': {
         'type': 'CHAR',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
@@ -282,7 +318,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'birthdate': {
         'type': 'DATE',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
@@ -304,7 +340,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'seasons_exp': {
         'type': 'SMALLINT',
-        'scope': ['rosters'],
+        'scope': ['rosters', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['player'],
@@ -322,7 +358,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'abbr': {
         'type': 'VARCHAR(5)',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['league', 'team'],
@@ -340,7 +376,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'conf': {
         'type': 'VARCHAR(50)',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
@@ -358,7 +394,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'gender': {
         'type': 'CHAR',
-        'scope': ['profiles'],
+        'scope': ['profiles', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['league', 'team', 'player'],
@@ -3108,7 +3144,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'league_id': {
         'type': 'BIGINT',
-        'scope': ['rosters', 'runs', 'tasks', 'backfill'],
+        'scope': ['rosters', 'runs', 'tasks', 'backfill', 'staging'],
         'nullable': False,
         'default': None,
         'entity_types': ['league'],
@@ -3154,18 +3190,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'comment': None,
         'dataset_mapping': None,
     },
-    'source_key': {
-        'type': 'VARCHAR(50)',
-        'scope': ['backfill'],
-        'nullable': False,
-        'default': None,
-        'entity_types': None,
-        'update_frequency': 'per_execution',
-        'manager': 'execution_context',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': None,
-    },
     'coverage_signature': {
         'type': 'TEXT',
         'scope': ['backfill'],
@@ -3187,7 +3211,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     # ------------------------------------------------------------------
     'jersey_num': {
         'type': 'VARCHAR(3)',
-        'scope': ['rosters'],
+        'scope': ['rosters', 'staging'],
         'nullable': True,
         'default': None,
         'entity_types': ['player'],

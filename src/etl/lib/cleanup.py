@@ -25,7 +25,6 @@ from typing import Dict, List
 from src.core.lib.postgres import db_connection, get_db_connection, quote_col
 from src.core.definitions.leagues import LEAGUES
 from src.core.definitions.tables import (
-    CORE_SCHEMA,
     STATS_TABLES,
 )
 from src.core.definitions.stats import STAT_DOMAINS
@@ -187,10 +186,10 @@ def _delete_pruned_players(cur) -> int:
     stats_pred = _profile_has_stats_predicate('player')
     cur.execute(
         f"""
-        DELETE FROM {CORE_SCHEMA}.player_profiles p
+        DELETE FROM profiles.players p
         WHERE NOT EXISTS ({stats_pred})
           AND NOT EXISTS (
-              SELECT 1 FROM {CORE_SCHEMA}.team_rosters tr
+              SELECT 1 FROM rosters.teams tr
               WHERE tr.player_id = p.{quote_col('the_glass_id')}
           )
         """
@@ -203,14 +202,14 @@ def _delete_pruned_teams(cur) -> int:
     stats_pred = _profile_has_stats_predicate('team')
     cur.execute(
         f"""
-        DELETE FROM {CORE_SCHEMA}.team_profiles p
+        DELETE FROM profiles.teams p
         WHERE NOT EXISTS ({stats_pred})
           AND NOT EXISTS (
-              SELECT 1 FROM {CORE_SCHEMA}.league_rosters lr
+              SELECT 1 FROM rosters.leagues lr
               WHERE lr.team_id = p.{quote_col('the_glass_id')}
           )
           AND NOT EXISTS (
-              SELECT 1 FROM {CORE_SCHEMA}.team_rosters tr
+              SELECT 1 FROM rosters.teams tr
               WHERE tr.team_id = p.{quote_col('the_glass_id')}
           )
         """

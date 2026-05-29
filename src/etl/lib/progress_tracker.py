@@ -33,6 +33,7 @@ def resolve_work(
     season_type: str,
     groups: List[Dict[str, Any]],
     auto_resume: bool,
+    league_id: int = None,
 ) -> Tuple[int, List[Tuple[Dict[str, Any], int]]]:
     """Determine the run_id and pending work items for an entity/season.
 
@@ -45,9 +46,12 @@ def resolve_work(
     def item_key_fn(group: Dict[str, Any]) -> str:
         return _make_item_key(entity, group['dataset'], group['tier'], group.get('columns', {}))
     
+    filters = dict(entity_type=entity, season=season, season_type=season_type)
+    if league_id is not None:
+        filters['league_id'] = league_id
     return _resolve_work(
         conn, db_schema, _PIPELINE, groups, item_key_fn, auto_resume,
-        entity_type=entity, season=season, season_type=season_type,
+        **filters,
     )
 
 

@@ -27,7 +27,6 @@ def create_run(
     conn: Any,
     db_schema: str,
     pipeline: str,
-    entity_type: str,
     total_items: int,
     **metadata: Any,
 ) -> int:
@@ -37,18 +36,16 @@ def create_run(
         conn: Database connection
         db_schema: Database schema name
         pipeline: Pipeline identifier (e.g., 'etl', 'publish')
-        entity_type: Type of entity being processed
         total_items: Total number of items to process
-        **metadata: Additional pipeline-specific metadata (season, season_type, etc.)
+        **metadata: Additional pipeline-specific metadata
     
     Returns:
         The run process id
     """
-    # Build INSERT with dynamic metadata fields
     metadata_cols = list(metadata.keys())
     metadata_vals = list(metadata.values())
     
-    cols = ['pipeline', 'entity_type', 'total_items'] + metadata_cols
+    cols = ['pipeline', 'total_items'] + metadata_cols
     placeholders = ['%s'] * len(cols)
     
     query = (
@@ -57,13 +54,13 @@ def create_run(
         f"VALUES ({', '.join(placeholders)}) RETURNING process_id"
     )
     
-    vals = [pipeline, entity_type, total_items] + metadata_vals
+    vals = [pipeline, total_items] + metadata_vals
     
     with conn.cursor() as cur:
         cur.execute(query, vals)
         process_id = cur.fetchone()[0]
     conn.commit()
-    logger.info('Created %s run %d for %s', pipeline, process_id, entity_type)
+    logger.info('Created %s run %d', pipeline, process_id)
     return process_id
 
 
@@ -373,7 +370,7 @@ def resolve_work(
         conn: Database connection
         db_schema: Database schema name
         pipeline: Pipeline identifier
-        items: List of work items (tabs, groups, etc.)
+        items: List of work items (views, groups, etc.)
         item_key_fn: Function to convert an item to its item_key string
         auto_resume: Whether to attempt auto-resume
         **filters: Additional filters for finding resumable runs (entity_type, season, etc.)
@@ -382,7 +379,7 @@ def resolve_work(
         (run_process_id, [(item, task_process_id), ...])
     """
     if auto_resume:
-        run_process_id = find_resumable_run(conn, db_schema, pipeline, **filters)
+        run_process_id = find_resumable_run(conn, db_schema, pipeline)
         if run_process_id:
             logger.info('Resuming interrupted %s run %d', pipeline, run_process_id)
             pending = get_pending_task_process_ids(conn, db_schema, run_process_id, pipeline)
@@ -397,10 +394,6 @@ def resolve_work(
 
     # Create fresh run
     item_keys = [item_key_fn(item) for item in items]
-    # Handle both dict items (ETL) and string items (publish)
-    entity_type = items[0].get('entity_type', 'unknown') if items and isinstance(items[0], dict) else 'unknown'
-    # Extract entity_type from filters if provided (e.g., from publish)
-    entity_type = filters.pop('entity_type', entity_type)
-    run_process_id = create_run(conn, db_schema, pipeline, entity_type, len(items), **filters)
-    task_process_ids = register_tasks(conn, db_schema, run_process_id, pipeline, item_keys)
+    run_process_id = create_run(conn, db_schema, pipeline, len(items))
+    task_process_ids = register_tasks(conn, db_schema, run_process_id, pipeline, item_keys, **filters)
     return run_process_id, list(zip(items, task_process_ids))

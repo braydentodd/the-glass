@@ -13,10 +13,10 @@ from src.publish.destinations.sheets.client import get_or_create_worksheet, writ
 logger = logging.getLogger(__name__)
 
 
-def publish_tab(
+def publish_view(
     client,
     spreadsheet,
-    tab_name: str,
+    view_name: str,
     ir_payload: dict,
     data_only: bool = False,
     show_advanced: bool = False,
@@ -31,13 +31,13 @@ def publish_tab(
         "data_rows": [...],
         "percentile_cells": [...],
         "n_player_rows": int,
-        "tab_type": str,
+        "view_type": str,
         "display_name": str
     }
     """
-    logger.info('Publishing IR payload to Sheet tab: %s', tab_name)
+    logger.info('Publishing IR payload to Sheet tab: %s', view_name)
     
-    worksheet = get_or_create_worksheet(spreadsheet, tab_name, clear=not data_only)
+    worksheet = get_or_create_worksheet(spreadsheet, view_name, clear=not data_only)
     
     write_and_format(
         worksheet=worksheet,
@@ -47,7 +47,7 @@ def publish_tab(
         percentile_cells=ir_payload['percentile_cells'],
         n_player_rows=ir_payload['n_player_rows'],
         team_name=ir_payload['display_name'],
-        tab_type=ir_payload['tab_type'],
+        view_type=ir_payload['view_type'],
         show_advanced=show_advanced,
         data_only=data_only,
         build_fn=build_formatting_requests,

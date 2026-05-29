@@ -76,7 +76,7 @@ def _fetch_null_entity_ids(ctx: ExecutionContext, columns: List[str]) -> List[An
 
     source_id_col = get_source_id_column(ctx.source_key)
     entity_table = get_table_name(ctx.entity, 'profiles')
-    target_table = get_table_name(ctx.entity, ctx.scope, ctx.db_schema)
+    target_table = get_table_name(ctx.entity, ctx.scope)
 
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -371,14 +371,23 @@ def _execute_per_entity(
     columns: Dict[str, Dict[str, Any]],
     ctx: ExecutionContext,
     failed: List[Dict[str, Any]],
+    tier: str = 'player',
     removed_refresh_mode: str = 'null_only',
 ) -> int:
     """Per-entity API calls for simple columns.
 
     Iterates over all known entities in the DB, calls the dataset once
-    per entity (passing the entity's source_id), and extracts simple columns.
+    per entity, and extracts simple columns.
+
+    When *tier* is ``'team'``, passes ``team_id`` (from ``ctx.team_ids``)
+    instead of ``{entity}_id``, and iterates over team source IDs rather
+    than entity source IDs.
     """
-    if removed_refresh_mode == 'always':
+    if tier == 'team':
+        source_ids = list(ctx.team_ids.values())
+        if not source_ids:
+            return 0
+    elif removed_refresh_mode == 'always':
         source_id_col = get_source_id_column(ctx.source_key)
         entity_table = get_table_name(ctx.entity, 'profiles')
         with db_connection() as conn:
@@ -396,7 +405,7 @@ def _execute_per_entity(
     all_rows: Dict[int, Dict[str, Any]] = {}
     written_count = 0
     consecutive_failures = 0
-    id_param = f'{ctx.entity}_id'  # e.g., 'player_id' or 'team_id'
+    id_param = 'team_id' if tier == 'team' else f'{ctx.entity}_id'
 
     for idx, sid in enumerate(source_ids):
         try:
@@ -475,12 +484,16 @@ def execute_group(
 
     written = 0
 
+    # Normalize execution_tier values: per_team -> team, per_player -> player
+    if tier.startswith('per_'):
+        tier = tier[4:]
+
     if tier == 'team_call':
         written += _execute_team_call(dataset, params, columns, ctx, failed)
     elif tier in ('team', 'player'):
         if simple:
             written += _execute_per_entity(
-                dataset, simple, ctx, failed,
+                dataset, simple, ctx, failed, tier,
                 removed_refresh_mode=group.get('removed_refresh_mode', 'null_only'),
             )
         for col_name, source in pipelines.items():

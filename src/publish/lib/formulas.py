@@ -1,4 +1,4 @@
-"""Pure helpers for TAB_COLUMNS value lambdas.
+"""Pure helpers for VIEW_COLUMNS value lambdas.
 
 These replace the tuple-tree DSL formerly evaluated by
 `calculations.evaluate_expression`. Column lambdas call these directly

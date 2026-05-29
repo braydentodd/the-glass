@@ -33,8 +33,8 @@ def add_subparser(subparsers) -> None:
         help='League to sync.',
     )
     p.add_argument(
-        '--tab', metavar='NAME', default=None,
-        help='Sync this tab first (team abbr like "BOS", or "all_players" / "all_teams").',
+        '--view', metavar='NAME', default=None,
+        help='Sync this view first (team abbr like "BOS", or "all_players" / "all_teams").',
     )
     p.add_argument(
         '--stat-rate', choices=sorted(STAT_RATES), default=DEFAULT_STAT_RATE,

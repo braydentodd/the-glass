@@ -9,8 +9,8 @@ from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
 from psycopg2.extras import RealDictCursor
 
-from src.core.definitions.leagues import LEAGUES
-from src.core.definitions.tables import CORE_SCHEMA, get_table_name
+from src.core.definitions.tables import THE_GLASS_ID
+from src.core.lib.tables_resolver import get_table_name
 from src.core.lib.fk_resolver import load_fk_mapping
 from src.core.lib.postgres import db_connection, quote_col
 from src.etl.lib.load import write_core_profile_rows
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def _fetch_staged_rows(
     conn: Any,
     entity: str,
-    league_key: str,
+    league_id: int,
     source_key: str,
 ) -> List[Dict[str, Any]]:
     table_name = get_table_name(entity, 'staging')
@@ -30,11 +30,11 @@ def _fetch_staged_rows(
             f"""
             SELECT *
             FROM {table_name}
-            WHERE league_key = %s
+            WHERE league_id = %s
               AND source_key = %s
             ORDER BY source_id
             """,
-            (league_key, source_key),
+            (league_id, source_key),
         )
         return list(cur.fetchall())
 
@@ -55,19 +55,18 @@ def _stage_rows_to_profile_rows(rows: Sequence[Dict[str, Any]]) -> Dict[Any, Dic
 
 
 def _league_glass_id(conn: Any, league_key: str) -> int:
-    league_abbr = LEAGUES[league_key]['abbr']
     with conn.cursor() as cur:
         cur.execute(
             f"""
-            SELECT {quote_col('the_glass_id')}
-            FROM {CORE_SCHEMA}.league_profiles
-            WHERE abbr = %s
+            SELECT {quote_col(THE_GLASS_ID)}
+            FROM profiles.leagues
+            WHERE league_key = %s
             """,
-            (league_abbr,),
+            (league_key,),
         )
         row = cur.fetchone()
         if row is None:
-            raise RuntimeError(f'League {league_key!r} is missing from core.league_profiles')
+            raise RuntimeError(f'League {league_key!r} is missing from profiles.leagues')
         return int(row[0])
 
 
@@ -97,10 +96,10 @@ def _upsert_roster_rows(conn: Any, rows: Iterable[Tuple[int, int, Any]]) -> int:
     with conn.cursor() as cur:
         cur.executemany(
             f"""
-            INSERT INTO {CORE_SCHEMA}.team_rosters (team_id, player_id, jersey_num)
+            INSERT INTO rosters.teams (team_id, player_id, jersey_num)
             VALUES (%s, %s, %s)
             ON CONFLICT (team_id, player_id) DO UPDATE
-            SET jersey_num = COALESCE(EXCLUDED.jersey_num, {CORE_SCHEMA}.team_rosters.jersey_num)
+            SET jersey_num = COALESCE(EXCLUDED.jersey_num, rosters.teams.jersey_num)
             """,
             values,
         )
@@ -110,8 +109,9 @@ def _upsert_roster_rows(conn: Any, rows: Iterable[Tuple[int, int, Any]]) -> int:
 def promote_staged_entities(league_key: str, source_key: str) -> Dict[str, int]:
     """Promote staged entity rows into core tables and materialize roster links."""
     with db_connection() as conn:
-        team_rows = _fetch_staged_rows(conn, 'team', league_key, source_key)
-        player_rows = _fetch_staged_rows(conn, 'player', league_key, source_key)
+        league_id = _league_glass_id(conn, league_key)
+        team_rows = _fetch_staged_rows(conn, 'team', league_id, source_key)
+        player_rows = _fetch_staged_rows(conn, 'player', league_id, source_key)
 
         if not team_rows and not player_rows:
             return {
@@ -129,22 +129,20 @@ def promote_staged_entities(league_key: str, source_key: str) -> Dict[str, int]:
 
         team_map = load_fk_mapping(
             conn,
-            'core',
-            'team_profiles',
-            'the_glass_id',
+            'profiles',
+            'teams',
+            THE_GLASS_ID,
             source_key,
             team_source_ids,
         )
         player_map = load_fk_mapping(
             conn,
-            'core',
-            'player_profiles',
-            'the_glass_id',
+            'profiles',
+            'players',
+            THE_GLASS_ID,
             source_key,
             player_source_ids,
         )
-        league_id = _league_glass_id(conn, league_key)
-
         league_roster_pairs = [
             (league_id, team_map[str(row['source_id'])])
             for row in team_rows
@@ -163,17 +161,17 @@ def promote_staged_entities(league_key: str, source_key: str) -> Dict[str, int]:
             and str(row['team_source_id']) in team_map
         ]
 
-        league_rosters_written = _upsert_pairs(conn, f'{CORE_SCHEMA}.league_rosters', ('league_id', 'team_id'), league_roster_pairs)
+        league_rosters_written = _upsert_pairs(conn, 'rosters.leagues', ('league_id', 'team_id'), league_roster_pairs)
         team_rosters_written = _upsert_roster_rows(conn, roster_pairs)
 
         with conn.cursor() as cur:
             cur.execute(
-                f"DELETE FROM {get_table_name('team', 'staging')} WHERE league_key = %s AND source_key = %s",
-                (league_key, source_key),
+                f"DELETE FROM {get_table_name('team', 'staging')} WHERE league_id = %s AND source_key = %s",
+                (league_id, source_key),
             )
             cur.execute(
-                f"DELETE FROM {get_table_name('player', 'staging')} WHERE league_key = %s AND source_key = %s",
-                (league_key, source_key),
+                f"DELETE FROM {get_table_name('player', 'staging')} WHERE league_id = %s AND source_key = %s",
+                (league_id, source_key),
             )
 
     counts = {

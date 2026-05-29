@@ -23,38 +23,38 @@ def resolve_work(
     conn: Any,
     db_schema: str,
     league: str,
-    tabs: List[str],
+    views: List[str],
     auto_resume: bool,
 ) -> Tuple[int, List[Tuple[str, int]]]:
     """Determine the run_id and pending work items for a publish run.
     
-    Returns (run_process_id, [(tab_name, task_process_id), ...]).
+    Returns (run_process_id, [(view_name, task_process_id), ...]).
     """
-    def item_key_fn(tab: str) -> str:
-        return tab
+    def item_key_fn(view: str) -> str:
+        return view
     
     return _resolve_work(
-        conn, db_schema, _PIPELINE, tabs, item_key_fn, auto_resume,
+        conn, db_schema, _PIPELINE, views, item_key_fn, auto_resume,
         entity_type=league,
     )
 
 
-def mark_tab_started(conn: Any, db_schema: str, task_process_id: int) -> None:
+def mark_view_started(conn: Any, db_schema: str, task_process_id: int) -> None:
     """Mark a task entry as running."""
     _mark_task_started(conn, db_schema, task_process_id)
 
 
-def mark_tab_completed(conn: Any, db_schema: str, task_process_id: int) -> None:
+def mark_view_completed(conn: Any, db_schema: str, task_process_id: int) -> None:
     """Mark a task entry as completed."""
     _mark_task_completed(conn, db_schema, task_process_id)
 
 
-def mark_tab_failed(conn: Any, db_schema: str, task_process_id: int, error_message: str) -> None:
+def mark_view_failed(conn: Any, db_schema: str, task_process_id: int, error_message: str) -> None:
     """Mark a task entry as failed and increment retry count."""
     _mark_task_failed(conn, db_schema, task_process_id, error_message)
 
 
-def update_run_completed_tabs(conn: Any, db_schema: str, run_process_id: int) -> None:
+def update_run_completed_views(conn: Any, db_schema: str, run_process_id: int) -> None:
     """Sync the completed_items counter on the run record."""
     _update_run_completed_items(conn, db_schema, run_process_id, _PIPELINE)
 

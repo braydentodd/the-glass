@@ -1,6 +1,6 @@
 from typing import List, Any, Tuple, Union
 
-from src.publish.definitions.columns import TAB_COLUMNS
+from src.publish.definitions.view_columns import VIEW_COLUMNS
 from src.publish.definitions.layout import SECTIONS_CONFIG, SUMMARY_THRESHOLDS
 from src.publish.definitions.stats import DEFAULT_STAT_RATE, STAT_RATES
 from src.publish.lib.column_structure import ColumnContext
@@ -110,7 +110,7 @@ def build_entity_row(entity_data: dict, columns_list: List[Tuple],
 
         if is_pct:
             base_key = col_def.get('base_stat', col_key.replace('_pct', ''))
-            base_def = TAB_COLUMNS.get(base_key, {})
+            base_def = VIEW_COLUMNS.get(base_key, {})
             value = calculated.get(base_key)
 
             if value is not None and isinstance(value, (int, float)) and base_key in pcts:
@@ -308,7 +308,7 @@ def build_merged_entity_row(player_id, columns_list: List[Tuple],
                 continue
 
             # Regular companion
-            base_def = TAB_COLUMNS.get(base_key, col_def)
+            base_def = VIEW_COLUMNS.get(base_key, col_def)
             sec_ctx_pct = dict(context or {})
             if hasattr(col_ctx, 'base_section'):
                 is_current = col_ctx.base_section == 'current_stats'
@@ -345,7 +345,7 @@ def build_merged_entity_row(player_id, columns_list: List[Tuple],
                 sec_entity, sec_pcts, _ = section_data[first_key]
             else:
                 continue
-            base_def = TAB_COLUMNS.get(base_key, col_def)
+            base_def = VIEW_COLUMNS.get(base_key, col_def)
             calculated = calculate_entity_stats(sec_entity, entity_type, DEFAULT_STAT_RATE, context)
             value = calculated.get(base_key)
 
@@ -471,7 +471,7 @@ def build_summary_rows(columns_list: List[Tuple],
             # Generated percentile columns show rank + over/under
             if col_def.get('is_generated_percentile', False):
                 base_key = col_def.get('base_stat', col_key.replace('_pct', ''))
-                base_def = TAB_COLUMNS.get(base_key, col_def)
+                base_def = VIEW_COLUMNS.get(base_key, col_def)
                 col_ctx_cfg = SECTIONS_CONFIG.get(_base_section(col_ctx), {})
                 is_stats_section = col_ctx_cfg.get('stats_timeframe')
 

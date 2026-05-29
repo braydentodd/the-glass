@@ -69,13 +69,9 @@ def resolve_fk_value_columns(
         col = fk['column']
         raw_values = [row.get(col) for row in rows.values() if row.get(col) is not None]
         
-        # Route strictly based on config contract
-        ref_schema_raw = fk['ref_schema']
-        ref_schema = 'core' if ref_schema_raw == 'core' else league_key
-        
         fk_maps[col] = load_fk_mapping(
             conn, 
-            ref_schema=ref_schema,
+            ref_schema=fk['ref_schema'],
             ref_table=fk['ref_table'], 
             ref_column=fk['ref_column'],
             source_key=source_key, 

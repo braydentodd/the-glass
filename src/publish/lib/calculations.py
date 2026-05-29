@@ -3,7 +3,7 @@ from datetime import date, datetime
 from typing import Dict, Any, List, Union
 
 from src.core.definitions.stats import STAT_DOMAINS
-from src.publish.definitions.columns import TAB_COLUMNS
+from src.publish.definitions.view_columns import VIEW_COLUMNS
 from src.publish.definitions.layout import SECTIONS_CONFIG, VALUES_KEY_ENTITY
 from src.publish.definitions.stats import STAT_RATES
 
@@ -146,7 +146,7 @@ def evaluate_formula(col_key: str, entity_data: dict,
     Any ``TypeError``/``ZeroDivisionError``/``KeyError`` is surfaced as
     None, matching the legacy interpreter's null-propagation contract.
     """
-    col_def = TAB_COLUMNS.get(col_key)
+    col_def = VIEW_COLUMNS.get(col_key)
     if not col_def:
         return None
 
@@ -256,7 +256,7 @@ def calculate_entity_stats(entity_data: dict, entity_type: str = 'player',
     base_minutes = (base_mins_x10 or 0) / 10.0 if base_mins_x10 is not None else None
     base_possessions = entity_data.get('possessions')
 
-    for col_key, col_def in TAB_COLUMNS.items():
+    for col_key, col_def in VIEW_COLUMNS.items():
         values = col_def.get('values', {})
         if entity_type not in values:
             continue
@@ -343,7 +343,7 @@ def calculate_all_percentiles(all_entities: List[dict], entity_type: str,
         all_calculated.append((entity, stats))
 
     percentiles = {}
-    for col_key, col_def in TAB_COLUMNS.items():
+    for col_key, col_def in VIEW_COLUMNS.items():
         if not col_def.get('percentile'):
             continue
 
@@ -425,7 +425,7 @@ def get_percentile_rank(value: Any, sorted_weighted: List, reverse: bool = False
 
 def derive_db_fields(league: str = None, stats_sections: frozenset = None,
                      computed_fields: set = None) -> Dict[str, set]:
-    """Derive the DB column sets needed by publish queries from TAB_COLUMNS.
+    """Derive the DB column sets needed by publish queries from VIEW_COLUMNS.
 
     Dependency resolution looks at the ``fields`` tuple in each ``values`` declaration.
     Fields are explicitly prefixed with SQL aliases ('p.', 't.', 's.', 'tr.') to route
@@ -442,7 +442,7 @@ def derive_db_fields(league: str = None, stats_sections: frozenset = None,
     player_stats = set()
     team_stats = set()
 
-    for col_def in TAB_COLUMNS.values():
+    for col_def in VIEW_COLUMNS.values():
         if league and league not in col_def.get('leagues', []):
             continue
 

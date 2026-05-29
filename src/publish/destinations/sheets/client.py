@@ -59,7 +59,7 @@ def get_or_create_worksheet(spreadsheet, title: str, rows: int = 200,
 def apply_sheet_formatting(worksheet, columns_list, header_merges: list,
                            n_data_rows: int, team_name: str,
                            percentile_cells: list, n_player_rows: int, link_cells: list = None,
-                           tab_type: str = 'team',
+                           view_type: str = 'team',
                            show_advanced: bool = False,
                            data_only: bool = False,
                            build_fn: Union[Callable, None] = None):
@@ -132,7 +132,7 @@ def apply_sheet_formatting(worksheet, columns_list, header_merges: list,
         percentile_cells=percentile_cells,
         n_player_rows=n_player_rows,
         link_cells=link_cells,
-        tab_type=tab_type,
+        view_type=view_type,
         show_advanced=show_advanced,
         data_only=data_only,
     )
@@ -169,7 +169,7 @@ def apply_sheet_formatting(worksheet, columns_list, header_merges: list,
 
 def write_and_format(worksheet, columns, headers, data_rows,
                       percentile_cells, n_entity_rows,
-                      team_name, tab_type, show_advanced,
+                      team_name, view_type, show_advanced,
                       data_only, build_fn, link_cells=None):
     """Resize worksheet, write values, and apply formatting.
 
@@ -232,7 +232,7 @@ def write_and_format(worksheet, columns, headers, data_rows,
         percentile_cells=percentile_cells,
         n_player_rows=n_entity_rows,
         link_cells=link_cells,
-        tab_type=tab_type,
+        view_type=view_type,
         show_advanced=show_advanced,
         data_only=data_only,
         build_fn=build_fn,
@@ -253,7 +253,7 @@ def write_and_format(worksheet, columns, headers, data_rows,
 
 
 def move_sheet_to_position(worksheet, index):
-    """Move a worksheet to a specific tab position in the workbook."""
+    """Move a worksheet to a specific view position in the workbook."""
     try:
         rate_limiter = get_rate_limiter('google_sheets', is_destination=True)
         rate_limiter.with_retry(

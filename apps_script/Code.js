@@ -234,11 +234,11 @@ function onEditInstallable(e) {
   if (!rowLabel) {
     return;
   }
-  if (sheetType === 'players' && rowLabel === 'OPPONENTS') {
+  if (sheetType === 'all_players' && rowLabel === 'OPPONENTS') {
     return;
   }
 
-  var entityType = sheetType === 'teams' || rowLabel === 'TEAM' ? 'team' : 'player';
+  var entityType = sheetType === 'all_teams' || rowLabel === 'TEAM' ? 'team' : 'player';
   var newValue = e.range.getValue();
 
   var colIndices = config.column_indices || {};
@@ -286,18 +286,18 @@ function _findEditableMatch(lookup, rangeKey, editedCol) {
 }
 
 function _getTeamAbbrForRow(sheet, sheetType, editedRow, rowLabel, colIndices, config) {
-  if (sheetType === 'team') {
+  if (sheetType === 'individual_team') {
     return sheet.getName().toUpperCase();
   }
 
-  if (sheetType === 'players') {
+  if (sheetType === 'all_players') {
     if (rowLabel === 'TEAM') {
       return String(sheet.getRange(editedRow, colIndices.team || 2).getValue() || '').toUpperCase() || null;
     }
     return String(sheet.getRange(editedRow, colIndices.team || 2).getValue() || '').toUpperCase() || null;
   }
 
-  if (sheetType === 'teams') {
+  if (sheetType === 'all_teams') {
     var teamName = String(sheet.getRange(editedRow, 1).getValue() || '').trim();
     if (!teamName) {
       return null;
@@ -332,7 +332,7 @@ function _propagateValue(sheet, sheetType, entityType, entityId, teamAbbr, targe
     return;
   }
 
-  if (sheetType === 'team') {
+  if (sheetType === 'individual_team') {
     if (sheet.getName().toUpperCase() === teamAbbr.toUpperCase()) {
       var teamRow = _findRowByLabel(sheet, dataStart, 'TEAM');
       if (teamRow !== null) {
@@ -342,7 +342,7 @@ function _propagateValue(sheet, sheetType, entityType, entityId, teamAbbr, targe
     return;
   }
 
-  if (sheetType === 'teams') {
+  if (sheetType === 'all_teams') {
     var teamMap = config.team_name_to_abbr || {};
     var names = sheet.getRange(dataStart, 1, lastRow - dataStart + 1, 1).getValues();
     for (var r = 0; r < names.length; r++) {
@@ -379,31 +379,31 @@ function _getSheetType(sheetName) {
   var sheetNames = config.sheet_names || {};
 
   if ((sheetNames.players || []).indexOf(upper) !== -1) {
-    return 'players';
+    return 'all_players';
   }
   if ((sheetNames.teams || []).indexOf(upper) !== -1) {
-    return 'teams';
+    return 'all_teams';
   }
 
   var teamAbbrs = Object.values(config.team_name_to_abbr || {}).map(function(abbr) {
     return String(abbr || '').toUpperCase();
   });
   if (teamAbbrs.indexOf(upper) !== -1) {
-    return 'team';
+    return 'individual_team';
   }
 
   return null;
 }
 
 function _getRangeKey(sheetType) {
-  if (sheetType === 'team') {
-    return 'team_tab';
+  if (sheetType === 'individual_team') {
+    return 'team_view';
   }
-  if (sheetType === 'players') {
-    return 'all_players_tab';
+  if (sheetType === 'all_players') {
+    return 'all_players_view';
   }
-  if (sheetType === 'teams') {
-    return 'all_teams_tab';
+  if (sheetType === 'all_teams') {
+    return 'all_teams_view';
   }
   return null;
 }

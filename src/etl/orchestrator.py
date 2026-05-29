@@ -37,7 +37,6 @@ from src.etl.lib.sources_resolver import (
 )
 from src.etl.sources.registry import get_source_modules
 from src.core.definitions.leagues import LEAGUES
-from src.core.definitions.tables import CORE_SCHEMA
 from src.etl.definitions.pipeline import (
     PIPELINE_PHASES,
     PIPELINE_STEPS,
@@ -51,6 +50,7 @@ from src.etl.lib.cleanup import (
     prune_stats_retention,
 )
 from src.etl.lib.backfill_tracker import (
+    _resolve_league_id,
     compute_backfill_signature,
     is_backfill_coverage_current,
     upsert_backfill_coverage,
@@ -75,6 +75,9 @@ logger = logging.getLogger(__name__)
 VALID_PHASES = set(VALID_ETL_PHASES)
 
 
+OPS_SCHEMA = 'ops'
+
+
 # ============================================================================
 # DYNAMIC SOURCE LOADING
 # ============================================================================
@@ -94,26 +97,25 @@ def _load_source(source_key: str):
 
 def _get_active_team_source_ids(league_key: str, source_key: str) -> Dict[str, int]:
     """Return ``{team_abbr: team_source_id}`` for teams currently active in
-    ``core.league_rosters`` for the given league.
+    ``rosters.leagues`` for the given league.
 
     Used by per-team execution strategies that need to iterate over the team
     list (e.g. on/off court datasets).
     """
-    league_abbr = LEAGUES[league_key]['abbr']
     src_col = get_source_id_column(source_key)
     sql = f"""
         SELECT t.abbr, t.{quote_col(src_col)}
-          FROM {CORE_SCHEMA}.team_profiles t
-          JOIN {CORE_SCHEMA}.league_rosters lr
+          FROM profiles.teams t
+          JOIN rosters.leagues lr
             ON lr.team_id = t.{quote_col('the_glass_id')}
-          JOIN {CORE_SCHEMA}.league_profiles lp
+          JOIN profiles.leagues lp
             ON lp.{quote_col('the_glass_id')} = lr.league_id
-         WHERE lp.abbr = %s
+         WHERE lp.league_key = %s
          ORDER BY t.abbr
     """
     with db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, (league_abbr,))
+            cur.execute(sql, (league_key,))
             return {
                 row[0]: int(row[1])
                 for row in cur.fetchall()
@@ -181,9 +183,10 @@ def _run_groups(
             )
 
             with db_connection() as conn:
+                league_id = _resolve_league_id(conn, league_key)
                 run_process_id, work_items = resolve_work(
-                    conn, league_key, ent, season, season_type, groups,
-                    True,  # auto_resume
+                    conn, OPS_SCHEMA, ent, season, season_type, groups,
+                    True, league_id=league_id,
                 )
 
                 entity_rows = 0
@@ -198,24 +201,24 @@ def _run_groups(
                     ) as bar:
                         for group, progress_id in work_items:
                             bar.set_postfix_str(group['dataset'], refresh=False)
-                            mark_group_started(conn, league_key, progress_id)
+                            mark_group_started(conn, OPS_SCHEMA, progress_id)
                             try:
                                 rows = execute_group(group, ctx, failed)
                                 entity_rows += rows
-                                mark_group_completed(conn, league_key, progress_id, rows)
+                                mark_group_completed(conn, OPS_SCHEMA, progress_id, rows)
                             except Exception as exc:
                                 logger.exception(
                                     'Group %s failed: %s', group['dataset'], exc,
                                 )
-                                mark_group_failed(conn, league_key, progress_id, str(exc))
+                                mark_group_failed(conn, OPS_SCHEMA, progress_id, str(exc))
                                 failed.append({
                                     'dataset': group['dataset'], 'error': str(exc),
                                 })
                             bar.update(1)
 
                     total_rows += entity_rows
-                    update_run_completed_groups(conn, league_key, run_process_id)
-                    complete_run(conn, league_key, run_process_id, entity_rows)
+                    update_run_completed_groups(conn, OPS_SCHEMA, run_process_id)
+                    complete_run(conn, OPS_SCHEMA, run_process_id, entity_rows)
                     if on_entity_finished is not None:
                         on_entity_finished(
                             ent,
@@ -225,7 +228,7 @@ def _run_groups(
                             len(failed) > failed_before,
                         )
                 except Exception as exc:
-                    fail_run(conn, league_key, run_process_id, str(exc))
+                    fail_run(conn, OPS_SCHEMA, run_process_id, str(exc))
                     raise
 
     return total_rows
@@ -299,6 +302,7 @@ def _stage_and_match_entities(
     season_type_name: str,
     team_ids: Dict[str, int],
     failed: List[Dict[str, Any]],
+    client_mod: Any,
     **source_kw,
 ) -> int:
     """Stage entity rows and roster snapshots, then promote staged rows."""
@@ -312,7 +316,6 @@ def _stage_and_match_entities(
         **source_kw,
     )
 
-    client_mod = source_kw['client_mod']
     roster_snapshot: Dict[str, Any] = {}
     for sync_season in seasons:
         total_rows += _stage_rosters_phase(
@@ -668,10 +671,10 @@ def run_etl(
                         datasets=stage_bundle['datasets'],
                         api_field_names=stage_bundle['api_field_names'],
                         api_config=stage_bundle['api_config'],
-                        client_mod=stage_bundle['client_mod'],
                         make_fetcher=stage_bundle['client_mod'].make_fetcher,
                         in_season=in_season,
                     )
+                    stage_client_mod = stage_bundle['client_mod']
 
                     logger.info(phase_marker(stage_name, f'source={stage_source_key} season_type={st}'))
 
@@ -683,6 +686,7 @@ def run_etl(
                             stage_st_name,
                             stage_team_ids,
                             failed,
+                            stage_client_mod,
                             **stage_source_kw,
                         )
                     elif handler == 'backfill_stats':

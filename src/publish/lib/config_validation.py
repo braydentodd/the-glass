@@ -3,7 +3,7 @@ The Glass - Publish Config Validation
 
 Publish-specific validation: checks every declarative config in
 ``src.publish.definitions`` against its schema, and runs cross-reference
-checks between TAB_COLUMNS and SECTIONS_CONFIG.
+checks between VIEW_COLUMNS and SECTIONS_CONFIG.
 
 Add a new config?  Define a schema dict next to the data in
 ``src/publish/definitions/config.py``, then register it in
@@ -38,14 +38,14 @@ def _validate_section_subsection(sheets_columns: dict) -> List[str]:
 
         if is_stats and subsection is None:
             errors.append(
-                f"TAB_COLUMNS['{col_name}']: stats column missing 'subsection'"
+                f"VIEW_COLUMNS['{col_name}']: stats column missing 'subsection'"
             )
 
     return errors
 
 
-def _validate_tab_column_schema_uniformity(sheets_columns: dict) -> List[str]:
-    """All TAB_COLUMNS entries must expose the same top-level keys."""
+def _validate_view_column_schema_uniformity(sheets_columns: dict) -> List[str]:
+    """All VIEW_COLUMNS entries must expose the same top-level keys."""
     errors: List[str] = []
     expected_keys = None
 
@@ -59,7 +59,7 @@ def _validate_tab_column_schema_uniformity(sheets_columns: dict) -> List[str]:
         extra = sorted(keys - expected_keys)
         if missing or extra:
             errors.append(
-                f"TAB_COLUMNS['{col_name}']: schema mismatch; "
+                f"VIEW_COLUMNS['{col_name}']: schema mismatch; "
                 f"missing={missing!r}, extra={extra!r}"
             )
 
@@ -68,7 +68,7 @@ def _validate_tab_column_schema_uniformity(sheets_columns: dict) -> List[str]:
 
 def _validate_width_classes(sheets_columns: dict) -> List[str]:
     """Width classes may be named tokens or positive integer overrides."""
-    from src.publish.definitions.columns import _VALID_WIDTH_CLASSES
+    from src.publish.definitions.view_columns import _VALID_WIDTH_CLASSES
 
     errors: List[str] = []
     for col_name, col_def in sheets_columns.items():
@@ -76,20 +76,20 @@ def _validate_width_classes(sheets_columns: dict) -> List[str]:
         if isinstance(wc, int) and not isinstance(wc, bool):
             if wc <= 0:
                 errors.append(
-                    f"TAB_COLUMNS['{col_name}']: 'width_class' integer override must be > 0, got {wc!r}"
+                    f"VIEW_COLUMNS['{col_name}']: 'width_class' integer override must be > 0, got {wc!r}"
                 )
             continue
 
         if isinstance(wc, str) and wc not in _VALID_WIDTH_CLASSES:
             errors.append(
-                f"TAB_COLUMNS['{col_name}']: 'width_class' value {wc!r} "
+                f"VIEW_COLUMNS['{col_name}']: 'width_class' value {wc!r} "
                 f"not in {_VALID_WIDTH_CLASSES}"
             )
             continue
 
         if wc is not None and not isinstance(wc, str):
             errors.append(
-                f"TAB_COLUMNS['{col_name}']: 'width_class' must be a string token or positive integer override, got {type(wc).__name__}"
+                f"VIEW_COLUMNS['{col_name}']: 'width_class' must be a string token or positive integer override, got {type(wc).__name__}"
             )
     return errors
 
@@ -104,7 +104,7 @@ def _validate_column_section_refs(sheets_columns: dict) -> List[str]:
         for section in col_def.get('sections', []):
             if section not in known_sections:
                 errors.append(
-                    f"TAB_COLUMNS['{col_name}']: references unknown "
+                    f"VIEW_COLUMNS['{col_name}']: references unknown "
                     f"section '{section}'"
                 )
     return errors
@@ -165,7 +165,7 @@ def _validate_field_prefixes(sheets_columns: dict) -> List[str]:
                     
                 if not prefix_pattern.match(field):
                     errors.append(
-                        f"TAB_COLUMNS['{col_name}']['values']['{values_key}']: "
+                        f"VIEW_COLUMNS['{col_name}']['values']['{values_key}']: "
                         f"field '{field}' missing required prefix (must start with "
                         f"one of {sorted(valid_prefixes)})"
                     )
@@ -179,16 +179,16 @@ def _validate_field_prefixes(sheets_columns: dict) -> List[str]:
 
 
 def validate_config(league_key: str = None) -> List[str]:
-    from src.publish.definitions.columns import TAB_COLUMNS
+    from src.publish.definitions.view_columns import VIEW_COLUMNS
     from src.publish.definitions.stats import STAT_RATES
     errors: List[str] = []
-    errors.extend(_validate_tab_column_schema_uniformity(TAB_COLUMNS))
-    errors.extend(_validate_section_subsection(TAB_COLUMNS))
-    errors.extend(_validate_width_classes(TAB_COLUMNS))
-    errors.extend(_validate_column_section_refs(TAB_COLUMNS))
+    errors.extend(_validate_view_column_schema_uniformity(VIEW_COLUMNS))
+    errors.extend(_validate_section_subsection(VIEW_COLUMNS))
+    errors.extend(_validate_width_classes(VIEW_COLUMNS))
+    errors.extend(_validate_column_section_refs(VIEW_COLUMNS))
     errors.extend(_validate_subsection_section_refs())
     errors.extend(_validate_stat_rates_default_unique(STAT_RATES))
-    errors.extend(_validate_field_prefixes(TAB_COLUMNS))
+    errors.extend(_validate_field_prefixes(VIEW_COLUMNS))
     return errors
 
 

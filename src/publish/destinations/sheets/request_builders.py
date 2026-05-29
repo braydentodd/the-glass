@@ -20,7 +20,7 @@ class SheetContext:
     n_data_rows: int
     n_player_rows: int
     columns_list: List[Tuple]
-    tab_type: str
+    view_type: str
     frozen_columns: int
     column_border_weight: int
     column_header_color: dict
@@ -33,7 +33,7 @@ def build_formatting_requests(ws_id: int, columns_list: List[Tuple],
                               team_name: str,
                               percentile_cells: Union[List[dict], None] = None,
                               n_player_rows: int = 0, link_cells: Union[List[dict], None] = None,
-                              tab_type: str = 'team',
+                              view_type: str = 'team',
                               show_advanced: bool = False,
                               data_only: bool = False) -> list:
     """
@@ -52,7 +52,7 @@ def build_formatting_requests(ws_id: int, columns_list: List[Tuple],
         team_name: Full team name for display
         percentile_cells: List of {row, col, percentile, reverse} for shading
         n_player_rows: Number of player rows (for filter range; team/opp excluded)
-        tab_type: 'individual_team', 'all_players', or 'all_teams'
+        view_type: 'individual_team', 'all_players', or 'all_teams'
         show_advanced: If True, keep advanced columns visible (override config)
 
     Returns:
@@ -84,7 +84,7 @@ def build_formatting_requests(ws_id: int, columns_list: List[Tuple],
     if data_only:
         return build_partial_update_requests(
             ws_id, percentile_cells_offset, link_cells_offset, columns_list,
-            data_start, n_player_rows, n_data_rows, tab_type
+            data_start, n_player_rows, n_data_rows, view_type
         )
 
     # Build context for sub-builders
@@ -97,7 +97,7 @@ def build_formatting_requests(ws_id: int, columns_list: List[Tuple],
         n_data_rows=n_data_rows,
         n_player_rows=n_player_rows,
         columns_list=columns_list,
-        tab_type=tab_type,
+        view_type=view_type,
         frozen_columns=frozen_columns,
         column_border_weight=column_border_weight,
         column_header_color=column_header_color,
@@ -261,7 +261,7 @@ def _build_link_requests(ws_id: int, link_cells: list) -> list:
 def build_partial_update_requests(ws_id: int, percentile_cells: Union[List[dict], None],
                                    link_cells: Union[List[dict], None], columns_list: List[Tuple],
                                    data_start: int, n_player_rows: int, n_data_rows: int,
-                                   tab_type: str) -> list:
+                                   view_type: str) -> list:
     """Build partial update requests for fast sync (mode/timeframe changes only).
     
     Skips structural formatting, resize, and widths; only reapplies data-dependent pieces.
@@ -274,7 +274,7 @@ def build_partial_update_requests(ws_id: int, percentile_cells: Union[List[dict]
     if link_cells:
         fast.extend(_build_link_requests(ws_id, link_cells))
     # Null-formula backgrounds for team/opp rows
-    if tab_type == 'individual_team' and n_data_rows > n_player_rows:
+    if view_type == 'individual_team' and n_data_rows > n_player_rows:
         fast.extend(_build_null_formula_bg_requests(
             ws_id, columns_list, data_start, n_player_rows, n_data_rows
         ))
@@ -721,7 +721,7 @@ def _build_footer_divider(ctx: SheetContext) -> list:
     requests = []
     if ctx.n_player_rows > 0 and ctx.n_data_rows > ctx.n_player_rows:
         sep_row = ctx.data_start + ctx.n_player_rows
-        divider_bg = ctx.data_separator_bg if ctx.tab_type == 'individual_team' else get_color_for_raw(COLORS[ctx.fmt.get('footer_divider_bg', 'black')])
+        divider_bg = ctx.data_separator_bg if ctx.view_type == 'individual_team' else get_color_for_raw(COLORS[ctx.fmt.get('footer_divider_bg', 'black')])
         divider_height = ctx.fmt.get('footer_divider_height', 4)
         requests.append({
             'repeatCell': {
@@ -834,7 +834,7 @@ def _build_data_overlays(ctx: SheetContext, percentile_cells: Union[List[dict], 
             }
         })
     
-    if ctx.tab_type == 'individual_team' and ctx.n_data_rows > ctx.n_player_rows:
+    if ctx.view_type == 'individual_team' and ctx.n_data_rows > ctx.n_player_rows:
         requests.extend(_build_null_formula_bg_requests(ctx.ws_id, ctx.columns_list, ctx.data_start, ctx.n_player_rows, ctx.n_data_rows))
     
     return requests

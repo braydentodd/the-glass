@@ -12,7 +12,7 @@ Usage:
     python -m src.cli etl --league nba --phase upsert
     python -m src.cli etl --league nba --phase prune
     python -m src.cli publish --league nba
-    python -m src.cli publish --league nba --tab BOS --stat-rate per_minute
+    python -m src.cli publish --league nba --view BOS --stat-rate per_minute
     python -m src.cli publish --league nba --export-config
 
 Subcommand phases (etl):
@@ -116,7 +116,7 @@ def _run_publish(args) -> int:
         {
             'league':             league,
             'stat_rate':          args.stat_rate,
-            'priority_tab':       args.tab or '(none)',
+            'priority_view':       args.view or '(none)',
             'historical_seasons': args.historical_timeframe,
             'data_only':          args.data_only,
             'show_advanced':      args.show_advanced,
@@ -148,7 +148,7 @@ def _run_publish(args) -> int:
             show_advanced=args.show_advanced,
             historical_config=historical_config,
             data_only=args.data_only,
-            priority_tab=args.tab,
+            priority_view=args.view,
             config_export=not args.skip_config_export,
             destination=destination,
         )

@@ -6,15 +6,15 @@ Top-level orchestration for the publish layer.  Mirrors :mod:`src.etl.orchestrat
     src.publish.cli           (argparse + dispatch)
         |
         v
-    src.publish.orchestrator  (this module: build SyncContext, drive tabs)
+    src.publish.orchestrator  (this module: build SyncContext, drive views)
         |
-        +--> src.publish.lib.executor    (one tab at a time)
+        +--> src.publish.lib.executor    (one view at a time)
         +--> src.publish.lib.calculations (percentile populations)
         +--> src.publish.lib.queries      (reads from the warehouse)
 
 Knows nothing about HTTP transports or argparse -- just builds the run
 context, precomputes shared percentile populations once, and dispatches
-to the per-tab workers in :mod:`src.publish.lib.executor`.
+to the per-view workers in :mod:`src.publish.lib.executor`.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from src.core.lib.leagues_resolver import (
     get_current_season_year,
 )
 from src.publish.definitions.destinations import DESTINATIONS
-from src.publish.definitions.layout import AGGREGATE_TABS, SECTIONS_CONFIG
+from src.publish.definitions.layout import AGGREGATE_VIEWS, SECTIONS_CONFIG
 from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
 from src.publish.destinations.sheets.config import (
     GOOGLE_SHEETS_CONFIG,
@@ -48,19 +48,19 @@ from src.publish.destinations.sheets.client import get_sheets_client
 from src.publish.lib.calculations import compute_pct_by_rate, derive_db_fields
 from src.publish.lib.executor import (
     SyncContext,
-    sync_players_tab,
-    sync_team_tab,
-    sync_teams_tab,
+    sync_players_view,
+    sync_team_view,
+    sync_teams_view,
 )
 from src.publish.destinations.sheets.config_exporter import export_config
 from src.publish.lib.progress_tracker import (
     complete_run,
     fail_run,
-    mark_tab_completed,
-    mark_tab_failed,
-    mark_tab_started,
+    mark_view_completed,
+    mark_view_failed,
+    mark_view_started,
     resolve_work,
-    update_run_completed_tabs,
+    update_run_completed_views,
 )
 from src.publish.lib.queries import (
     fetch_all_players,
@@ -108,7 +108,7 @@ def _push_apps_script_config(league: str, destination: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Percentile pre-computation  (one-shot, used by every tab below)
+# Percentile pre-computation  (one-shot, used by every view below)
 # ---------------------------------------------------------------------------
 
 def _precompute_percentiles(
@@ -117,7 +117,7 @@ def _precompute_percentiles(
 ) -> dict:
     """Pre-compute league-wide percentile populations for every stat rate.
 
-    Called once per orchestrator run so every team and aggregate tab share
+    Called once per orchestrator run so every team and aggregate view share
     the same population baselines (consistency + speed).
     """
     current_season = ctx.league_config[ctx.season_key]
@@ -217,84 +217,84 @@ def _precompute_percentiles(
 
 
 # ---------------------------------------------------------------------------
-# Tab-loop helper
+# view-loop helper
 # ---------------------------------------------------------------------------
 
-def _sync_all_tabs(
+def _sync_all_views(
     ctx,
     client,
     spreadsheet,
     conn,
     run_id: int,
     *,
-    team_tabs,
-    aggregate_tabs,
+    team_views,
+    aggregate_views,
     pending_lookup: dict,
     team_names: dict,
     precomputed: dict,
     delay: float,
     sync_kwargs: dict,
 ) -> list:
-    """Iterate team tabs then aggregate tabs, tracking progress per tab.
+    """Iterate team views then aggregate views, tracking progress per view.
 
-    Returns a list of tab names that failed.
+    Returns a list of view names that failed.
     """
     db_schema = ctx.db_schema
     total_pending = sum(
-        1 for t in list(team_tabs) + list(aggregate_tabs) if t in pending_lookup
+        1 for t in list(team_views) + list(aggregate_views) if t in pending_lookup
     )
-    failed_tabs = []
+    failed_views = []
 
-    with progress(total=total_pending, desc='publish', unit='tab', leave=False) as bar:
-        for tab in team_tabs:
-            if tab not in pending_lookup:
+    with progress(total=total_pending, desc='publish', unit='view', leave=False) as bar:
+        for view in team_views:
+            if view not in pending_lookup:
                 continue
-            pid = pending_lookup[tab]
-            bar.set_postfix_str(tab, refresh=False)
-            mark_tab_started(conn, db_schema, pid)
+            pid = pending_lookup[view]
+            bar.set_postfix_str(view, refresh=False)
+            mark_view_started(conn, db_schema, pid)
             try:
-                sync_team_tab(
-                    ctx, client, spreadsheet, tab,
-                    team_name=team_names.get(tab, tab),
+                sync_team_view(
+                    ctx, client, spreadsheet, view,
+                    team_name=team_names.get(view, view),
                     precomputed=precomputed,
                     **sync_kwargs,
                 )
-                mark_tab_completed(conn, db_schema, pid)
-                update_run_completed_tabs(conn, db_schema, run_id)
+                mark_view_completed(conn, db_schema, pid)
+                update_run_completed_views(conn, db_schema, run_id)
             except Exception as exc:
-                logger.error('%s failed: %s', tab, exc, exc_info=True)
-                failed_tabs.append(tab)
-                mark_tab_failed(conn, db_schema, pid, str(exc))
+                logger.error('%s failed: %s', view, exc, exc_info=True)
+                failed_views.append(view)
+                mark_view_failed(conn, db_schema, pid, str(exc))
             bar.update(1)
             time.sleep(delay)
 
-        for tab in aggregate_tabs:
-            if tab not in pending_lookup:
+        for view in aggregate_views:
+            if view not in pending_lookup:
                 continue
-            pid = pending_lookup[tab]
-            bar.set_postfix_str(tab, refresh=False)
-            mark_tab_started(conn, db_schema, pid)
+            pid = pending_lookup[view]
+            bar.set_postfix_str(view, refresh=False)
+            mark_view_started(conn, db_schema, pid)
             try:
-                if tab == 'all_players':
-                    sync_players_tab(
+                if view == 'all_players':
+                    sync_players_view(
                         ctx, client, spreadsheet,
                         precomputed=precomputed, **sync_kwargs,
                     )
                 else:
-                    sync_teams_tab(
+                    sync_teams_view(
                         ctx, client, spreadsheet,
                         precomputed=precomputed, **sync_kwargs,
                     )
-                mark_tab_completed(conn, db_schema, pid)
-                update_run_completed_tabs(conn, db_schema, run_id)
+                mark_view_completed(conn, db_schema, pid)
+                update_run_completed_views(conn, db_schema, run_id)
             except Exception as exc:
-                logger.error('%s tab failed: %s', tab, exc, exc_info=True)
-                failed_tabs.append(tab)
-                mark_tab_failed(conn, db_schema, pid, str(exc))
+                logger.error('%s view failed: %s', view, exc, exc_info=True)
+                failed_views.append(view)
+                mark_view_failed(conn, db_schema, pid, str(exc))
             bar.update(1)
             time.sleep(delay)
 
-    return failed_tabs
+    return failed_views
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +307,7 @@ def run_publish(
     show_advanced: bool,
     historical_config: dict,
     data_only: bool,
-    priority_tab: Union[str, None],
+    priority_view: Union[str, None],
     config_export: bool = True,
     destination: str = 'google_sheets',
 ) -> None:
@@ -384,51 +384,51 @@ def run_publish(
     team_names = {abbr: name for _, (abbr, name) in teams_db.items()}
     abbrs = sorted(team_names.keys())
 
-    if priority_tab:
-        pt = priority_tab.upper()
+    if priority_view:
+        pt = priority_view.upper()
         if pt in abbrs:
             abbrs = [pt] + [a for a in abbrs if a != pt]
 
-    aggregate_order = list(AGGREGATE_TABS)
-    if priority_tab and priority_tab.lower() in aggregate_order:
-        first = priority_tab.lower()
+    aggregate_order = list(AGGREGATE_VIEWS)
+    if priority_view and priority_view.lower() in aggregate_order:
+        first = priority_view.lower()
         aggregate_order = [first] + [s for s in aggregate_order if s != first]
 
-    all_tabs = abbrs + aggregate_order
+    all_views = abbrs + aggregate_order
 
     # Auto-resume: resolve pending work (may be subset if resuming)
     conn = get_db_connection()
     try:
         run_process_id, pending_items = resolve_work(
-            conn, db_schema, league, all_tabs, auto_resume=_AUTO_RESUME,
+            conn, db_schema, league, all_views, auto_resume=_AUTO_RESUME,
         )
     except Exception:
         conn.close()
         raise
 
-    pending_lookup = {tab: pid for tab, pid in pending_items}
+    pending_lookup = {view: pid for view, pid in pending_items}
     total_pending = len(pending_items)
     logger.info(
-        phase_marker('publish_tabs', f'{total_pending} pending of {len(all_tabs)} total'),
+        phase_marker('publish_views', f'{total_pending} pending of {len(all_views)} total'),
     )
 
-    # Build team_gids for aggregate tabs (needed for hyperlink resolution)
+    # Build team_gids for aggregate views (needed for hyperlink resolution)
     team_gids = {ws.title: ws.id for ws in spreadsheet.worksheets()}
     sync_kwargs['team_gids'] = team_gids
 
-    failed_tabs = _sync_all_tabs(
+    failed_views = _sync_all_views(
         ctx, client, spreadsheet, conn, run_process_id,
-        team_tabs=abbrs, aggregate_tabs=aggregate_order,
+        team_views=abbrs, aggregate_views=aggregate_order,
         pending_lookup=pending_lookup, team_names=team_names,
         precomputed=precomputed, delay=delay, sync_kwargs=sync_kwargs,
     )
 
-    if failed_tabs:
-        failed_list = ', '.join(failed_tabs)
+    if failed_views:
+        failed_list = ', '.join(failed_views)
         logger.error('Sync finished with failures: %s', failed_list)
-        fail_run(conn, db_schema, run_process_id, f'Sync failed for tab(s): {failed_list}')
+        fail_run(conn, db_schema, run_process_id, f'Sync failed for view(s): {failed_list}')
         conn.close()
-        raise RuntimeError(f'Sync failed for tab(s): {failed_list}')
+        raise RuntimeError(f'Sync failed for view(s): {failed_list}')
 
     logger.info('Sync complete')
     complete_run(conn, db_schema, run_process_id)

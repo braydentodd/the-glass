@@ -24,8 +24,6 @@ from typing import Any, Dict, List, Tuple, Union
 from psycopg2.extras import RealDictCursor
 
 from src.core.lib.postgres import get_db_connection
-from src.core.definitions.leagues import LEAGUES
-from src.core.definitions.tables import CORE_SCHEMA
 from src.core.definitions.stats import SEASON_TYPE_GROUPS
 
 logger = logging.getLogger(__name__)
@@ -108,21 +106,20 @@ def get_teams_from_db(league_key: str) -> Dict[int, Tuple[str, str]]:
     """Return ``{the_glass_id: (abbr, name)}`` for teams currently active in
     ``core.league_rosters`` for ``league_key``.
     """
-    league_abbr = LEAGUES[league_key]['abbr']
     sql = f"""
         SELECT t.{_quote_col('the_glass_id')}, t.abbr, t.name
-          FROM {CORE_SCHEMA}.team_profiles t
-          JOIN {CORE_SCHEMA}.league_rosters lr
+          FROM profiles.teams t
+          JOIN rosters.leagues lr
             ON lr.team_id = t.{_quote_col('the_glass_id')}
-          JOIN {CORE_SCHEMA}.league_profiles lp
+          JOIN profiles.leagues lp
             ON lp.{_quote_col('the_glass_id')} = lr.league_id
-                 WHERE lp.abbr = %s
+         WHERE lp.league_key = %s
           ORDER BY t.abbr
     """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute(sql, (league_abbr,))
+            cur.execute(sql, (league_key,))
             return {int(row[0]): (row[1], row[2]) for row in cur.fetchall()}
     finally:
         conn.close()
@@ -168,7 +165,7 @@ def fetch_players_for_team(
         query = f"""
             SELECT {', '.join(all_fields)}
               FROM {players_tbl} p
-              JOIN {CORE_SCHEMA}.team_rosters tr
+              JOIN rosters.teams tr
                                 ON tr.player_id = p.{glass_id}
               JOIN {teams_tbl} t
                 ON t.{glass_id} = tr.team_id
@@ -244,7 +241,7 @@ def fetch_all_players(
               FROM {stats_tbl} s
               JOIN {players_tbl} p ON p.{glass_id} = s.{glass_id}
               JOIN {teams_tbl}   t ON t.{glass_id} = s.team_id
-                            LEFT JOIN {CORE_SCHEMA}.team_rosters tr
+                            LEFT JOIN rosters.teams tr
                                 ON tr.player_id = s.{glass_id}
                              AND tr.team_id = s.team_id
              WHERE s.{season_col_name} = %s AND s.season_type = %s

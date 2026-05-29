@@ -26,11 +26,11 @@ load_dotenv()
 from src.core.lib.postgres import db_connection, quote_col
 from src.core.lib.tables_resolver import get_table_name
 from src.etl.sources.the_glass_sheets.config import SOURCE_CONFIG
-from src.publish.definitions.columns import TAB_COLUMNS
+from src.publish.definitions.view_columns import VIEW_COLUMNS
 from src.publish.destinations.sheets.config import SHEETS_FORMATTING
 from src.publish.destinations.sheets.client import get_sheets_client
 from src.publish.destinations.sheets.config import GOOGLE_SHEETS_CONFIG
-from src.publish.lib.column_structure import build_tab_columns, get_column_index
+from src.publish.lib.column_structure import build_view_columns, get_column_index
 
 logger = logging.getLogger(__name__)
 
@@ -71,13 +71,13 @@ def _coerce_cell(value: Any, fmt: str) -> Any:
 # ---------------------------------------------------------------------------
 
 def _editable_field_specs() -> List[Dict[str, Any]]:
-    """Walk TAB_COLUMNS and yield specs for every column flagged ``editable``.
+    """Walk VIEW_COLUMNS and yield specs for every column flagged ``editable``.
 
     Each spec carries the column key, target DB field, format, and the entity
     types it applies to (player / team).
     """
     specs: List[Dict[str, Any]] = []
-    for col_key, col_def in TAB_COLUMNS.items():
+    for col_key, col_def in VIEW_COLUMNS.items():
         if not col_def.get('editable', False):
             continue
         values = col_def.get('values', {}) or {}
@@ -215,8 +215,8 @@ def sync_edits(league_key: str, dry_run: bool = False) -> Dict[str, int]:
     """Read editable fields from the league's sheets and write to core profiles.
 
     Sheets layout assumption (handled by the publish layer):
-        - Player tab has a ``the_glass_id`` column.
-        - Team tab has a ``the_glass_id`` column.
+        - Player view has a ``the_glass_id`` column.
+        - Team view has a ``the_glass_id`` column.
 
     Returns ``{'players_updated': N, 'teams_updated': N}``.
     """
@@ -229,11 +229,11 @@ def sync_edits(league_key: str, dry_run: bool = False) -> Dict[str, int]:
         logger.info('No editable fields defined; nothing to sync')
         return {'players_updated': 0, 'teams_updated': 0}
 
-    players_columns = build_tab_columns(
-        entity='player', stats_mode='both', tab_type='players', league=league_key,
+    players_columns = build_view_columns(
+        entity='player', stats_mode='both', view_type='players', league=league_key,
     )
-    teams_columns = build_tab_columns(
-        entity='team', stats_mode='both', tab_type='teams', league=league_key,
+    teams_columns = build_view_columns(
+        entity='team', stats_mode='both', view_type='teams', league=league_key,
     )
 
     player_field_map = _resolve_column_indices(specs, players_columns, 'player')

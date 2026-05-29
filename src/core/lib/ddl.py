@@ -12,7 +12,7 @@ import logging
 from typing import Any, Dict, List, Tuple
 
 from src.core.lib.postgres import get_db_connection, quote_col
-from src.core.definitions.tables import TABLES
+from src.core.definitions.tables import TABLES, _schemas
 from src.core.definitions.db_columns import DB_COLUMNS
 
 logger = logging.getLogger(__name__)
@@ -104,10 +104,9 @@ def _column_ddl(name: str, meta: Dict[str, Any]) -> str:
     return ' '.join(parts)
 
 
-def _foreign_key_ddl(fk: Dict[str, Any], default_schema: str = 'core') -> str:
+def _foreign_key_ddl(fk: Dict[str, Any]) -> str:
     """Render a ``FOREIGN KEY`` clause."""
-    ref_schema = fk.get('ref_schema') or default_schema
-    target = f"{ref_schema}.{fk['ref_table']}"
+    target = f"{fk['ref_schema']}.{fk['ref_table']}"
     return (
         f"FOREIGN KEY ({quote_col(fk['column'])}) "
         f"REFERENCES {target}"
@@ -190,56 +189,66 @@ def _insert_row(
 # Core Schema Build Engine
 # ---------------------------------------------------------------------------
 
+def _get_expected_columns(meta: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
+    """Return the complete ordered set of (column_name, column_meta) for a table.
+
+    Centralises column resolution so that both ``_create_table`` and
+    ``_sync_table`` derive their column lists from a single source of truth.
+    """
+    expected: List[Tuple[str, Dict[str, Any]]] = []
+    seen: set = set()
+    source_scopes = meta.get('source_scopes') or [meta.get('scope', '')]
+
+    for col in meta.get('primary_key') or []:
+        expected.append((col, DB_COLUMNS[col]))
+        seen.add(col)
+
+    for fk in meta.get('foreign_keys', []):
+        col = fk['column']
+        if col not in seen:
+            expected.append((col, DB_COLUMNS[col]))
+            seen.add(col)
+
+    for name, m in _data_columns_for_scopes(scopes=source_scopes, entity=meta.get('entity')):
+        if name not in seen:
+            expected.append((name, m))
+            seen.add(name)
+
+    if meta.get('source_ids', False) and meta.get('entity'):
+        for src_col, pg_type in _get_source_id_columns_for_entity(meta['entity']):
+            if src_col not in seen:
+                expected.append((src_col, {'type': pg_type}))
+                seen.add(src_col)
+
+    return expected
+
+
 def _create_table(cur, schema_name: str, table_name: str, meta: Dict[str, Any]) -> int:
     """Unified CREATE TABLE builder driven strictly by registry config."""
     fragments: List[str] = []
-    seen_columns: set = set()
+    pk_cols = set(meta.get('primary_key') or [])
 
-    pk_cols = meta.get('primary_key') or []
+    for col_name, col_meta in _get_expected_columns(meta):
+        fragments.append(_column_ddl(col_name, col_meta))
+
+    # Column-level UNIQUE constraints (from DB_COLUMNS 'unique' flag)
     source_scopes = meta.get('source_scopes') or [meta.get('scope', '')]
-
-    # 1. Primary Keys
-    for col in pk_cols:
-        if col not in seen_columns:
-            fragments.append(_column_ddl(col, DB_COLUMNS[col]))
-            seen_columns.add(col)
-
-    # 2. Foreign Key columns
-    for fk in meta.get('foreign_keys', []):
-        col = fk['column']
-        if col not in seen_columns:
-            fragments.append(_column_ddl(col, DB_COLUMNS[col]))
-            seen_columns.add(col)
-
-    # 3. Data columns
-    for col_name, col_def in _data_columns_for_scopes(scopes=source_scopes, entity=meta.get('entity')):
-        if col_name not in seen_columns:
-            fragments.append(_column_ddl(col_name, col_def))
-            seen_columns.add(col_name)
-
-    # 4. Source ID columns
-    if meta.get('source_ids', False) and meta.get('entity'):
-        for src_col, pg_type in _get_source_id_columns_for_entity(meta['entity']):
-            if src_col not in seen_columns:
-                fragments.append(f"{quote_col(src_col)} {pg_type}")
-                seen_columns.add(src_col)
-
-        for src_col, _ in _get_source_id_columns_for_entity(meta['entity']):
-            fragments.append(f"UNIQUE ({quote_col(src_col)})")
-
-    # 5. Column-level UNIQUE constraints (from DB_COLUMNS 'unique' flag)
     for name, m in _data_columns_for_scopes(scopes=source_scopes, entity=meta.get('entity')):
         if m.get('unique') and name not in pk_cols:
             fragments.append(f"UNIQUE ({quote_col(name)})")
 
-    # 6. Table-level constraints: PK, FK, multi-column UNIQUE
+    # Source ID UNIQUE constraints
+    if meta.get('source_ids', False) and meta.get('entity'):
+        for src_col, _ in _get_source_id_columns_for_entity(meta['entity']):
+            fragments.append(f"UNIQUE ({quote_col(src_col)})")
+
+    # Table-level constraints: PK, FK, multi-column UNIQUE
     if pk_cols:
         pk_str = ', '.join(quote_col(c) for c in pk_cols)
         fragments.append(f"PRIMARY KEY ({pk_str})")
 
     for fk in meta.get('foreign_keys', []):
-        ref_schema = 'core' if fk['ref_schema'] == 'core' else schema_name
-        fragments.append(_foreign_key_ddl(fk, default_schema=ref_schema))
+        fragments.append(_foreign_key_ddl(fk))
 
     for uc in meta.get('unique_constraints') or []:
         uc_cols = ', '.join(quote_col(c) for c in uc)
@@ -251,7 +260,7 @@ def _create_table(cur, schema_name: str, table_name: str, meta: Dict[str, Any]) 
         + "\n)"
     )
 
-    # 7. Indexes
+    # Indexes
     for idx in meta.get('indexes', []):
         idx_name = f"idx_{table_name}_{idx['name']}"
         cols = ', '.join(quote_col(c) for c in idx['columns'])
@@ -301,48 +310,25 @@ def _sync_table(cur, table_name: str, meta: Dict[str, Any], schema_name: str) ->
         actions.append(f'created ({n} columns)')
         return actions
 
-    expected: List[Tuple[str, str]] = []
-    source_scopes = meta.get('source_scopes') or [meta.get('scope', '')]
-
-    for pk in meta.get('primary_key') or []:
-        expected.append((pk, DB_COLUMNS[pk]['type']))
-
-    seen = {col for col, _ in expected}
-    for fk in meta.get('foreign_keys', []):
-        col = fk['column']
-        if col not in seen:
-            expected.append((col, DB_COLUMNS[col]['type']))
-            seen.add(col)
-
-    for name, m in _data_columns_for_scopes(scopes=source_scopes, entity=meta.get('entity')):
-        if name not in seen:
-            expected.append((name, m['type']))
-            seen.add(name)
-
-    if meta.get('source_ids', False) and meta.get('entity'):
-        for src_col, pg_type in _get_source_id_columns_for_entity(meta['entity']):
-            if src_col not in seen:
-                expected.append((src_col, pg_type))
-                seen.add(src_col)
+    expected = _get_expected_columns(meta)
 
     existing_unique_sets = _existing_unique_column_sets(cur, schema_name, table_name)
     if meta.get('source_ids', False) and meta.get('entity'):
         for src_col, _ in _get_source_id_columns_for_entity(meta['entity']):
             if (src_col,) in existing_unique_sets:
                 continue
-            constraint_name = f'uq_{table_name}_{src_col}'
             cur.execute(
-                f'ALTER TABLE {schema_name}.{table_name} '
-                f'ADD CONSTRAINT {constraint_name} UNIQUE ({quote_col(src_col)})'
+                f'CREATE UNIQUE INDEX IF NOT EXISTS uq_{table_name}_{src_col} '
+                f'ON {schema_name}.{table_name} ({quote_col(src_col)})'
             )
             actions.append(f'added unique {src_col}')
 
     existing = _existing_columns(cur, schema_name, table_name)
-    for col_name, pg_type in expected:
+    for col_name, col_meta in expected:
         if col_name not in existing:
             cur.execute(
                 f'ALTER TABLE {schema_name}.{table_name} '
-                f'ADD COLUMN IF NOT EXISTS {quote_col(col_name)} {pg_type}'
+                f'ADD COLUMN IF NOT EXISTS {quote_col(col_name)} {col_meta["type"]}'
             )
             actions.append(f'added {col_name}')
 
@@ -366,15 +352,8 @@ def ensure_schema(schema_name: str, conn=None) -> Dict[str, List[str]]:
             cur.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
             for name, meta in TABLES.items():
-                table_home = meta.get('schema')
-
-                if table_home == 'core' and schema_name != 'core':
+                if meta.get('schema') != schema_name:
                     continue
-                if table_home == 'league' and schema_name in {'core', 'staging'}:
-                    continue
-                if table_home == 'staging' and schema_name != 'staging':
-                    continue
-
                 qualified = f'{schema_name}.{name}'
                 acts = _sync_table(cur, name, meta, schema_name=schema_name)
                 actions[qualified] = acts
@@ -392,7 +371,7 @@ def ensure_schema(schema_name: str, conn=None) -> Dict[str, List[str]]:
 
 
 def ensure_league_profile(league_key: str, conn=None) -> Dict[str, List[str]]:
-    """Ensure the ``core.league_profiles`` row exists for a single league."""
+    """Ensure the ``profiles.leagues`` row exists for a single league."""
     own = conn is None
     if own:
         conn = get_db_connection()
@@ -407,18 +386,21 @@ def ensure_league_profile(league_key: str, conn=None) -> Dict[str, List[str]]:
 
             cfg = LEAGUES[league_key]
 
-            vals: Dict[str, Any] = {
-                col: cfg[col]
-                for col, _ in _data_columns_for(scope='profiles', entity='league')
-                if col in cfg
-            }
+            vals: Dict[str, Any] = {}
+            for col, col_def in _data_columns_for(scope='profiles', entity='league'):
+                if col in cfg:
+                    vals[col] = cfg[col]
+                elif col_def.get('manager') == 'execution_context':
+                    if col == 'league_key':
+                        vals[col] = league_key
 
             if not vals:
                 raise ValueError(f"No seedable columns found for league {league_key!r}")
 
-            conflict_cols = TABLES['league_profiles']['unique_constraints'][0]
-            _insert_row(cur, 'core', 'league_profiles', vals, conflict_cols)
-            actions['core.league_profiles'] = [f"seeded ({', '.join(sorted(vals.keys()))})"]
+            constraints = TABLES['profiles.leagues'].get('unique_constraints')
+            conflict_cols = constraints[0] if constraints else ['league_key']
+            _insert_row(cur, 'profiles', 'leagues', vals, conflict_cols)
+            actions['profiles.leagues'] = [f"seeded ({', '.join(sorted(vals.keys()))})"]
 
         conn.commit()
         return actions
@@ -431,16 +413,15 @@ def ensure_league_profile(league_key: str, conn=None) -> Dict[str, List[str]]:
 
 
 def bootstrap_schema(league_key: str, conn=None) -> Dict[str, List[str]]:
-    """Unified bootstrap: ensure core schema, league schema, and league row."""
+    """Unified bootstrap: ensure all schemas and seed the league profile row."""
     own = conn is None
     if own:
         conn = get_db_connection()
 
     actions: Dict[str, List[str]] = {}
     try:
-        actions.update(ensure_schema('core', conn=conn))
-        actions.update(ensure_schema('staging', conn=conn))
-        actions.update(ensure_schema(league_key, conn=conn))
+        for schema_name in sorted(_schemas()):
+            actions.update(ensure_schema(schema_name, conn=conn))
         actions.update(ensure_league_profile(league_key, conn=conn))
 
         if own:

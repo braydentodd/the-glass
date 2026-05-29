@@ -194,7 +194,7 @@ DATASETS: Dict[str, DatasetDef] = {
     },
     'teamdashboardbyshootingsplits': {
         'min_season': '2012-13',
-        'execution_tier': 'per_league',
+        'execution_tier': 'per_team',
         'default_result_set': 'ShotTypeTeamDashboard',
         'season_type_param': 'season_type_all_star',
         'per_mode_param': 'per_mode_detailed',

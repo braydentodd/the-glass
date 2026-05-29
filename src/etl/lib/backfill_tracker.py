@@ -2,7 +2,8 @@
 The Glass - Backfill Coverage Tracker
 
 Tracks historical stats backfill completeness by persisting a deterministic
-coverage signature for each (entity_type, season, season_type, source_key).
+coverage signature for each (entity_type, season, season_type, source_key)
+in ``ops.coverages``.
 
 When the required call-group surface changes (for example, a new DB column is
 added), the signature changes and the next backfill run reprocesses that
@@ -31,12 +32,12 @@ def compute_backfill_signature(entity: str, groups: Iterable[Dict[str, Any]]) ->
 
 
 def _resolve_league_id(conn: Any, league_key: str) -> int:
-    """Resolve league_id for a league_key by looking it up in core.league_profiles."""
+    """Resolve league_id for a league_key by looking it up in profiles.leagues."""
     with conn.cursor() as cur:
-        cur.execute("SELECT the_glass_id FROM core.league_profiles WHERE league_key = %s", (league_key,))
+        cur.execute("SELECT the_glass_id FROM profiles.leagues WHERE league_key = %s", (league_key,))
         row = cur.fetchone()
         if not row:
-            raise ValueError(f"League profile with league_key {league_key!r} not found in core.league_profiles")
+            raise ValueError(f"League profile with league_key {league_key!r} not found in profiles.leagues")
         return int(row[0])
 
 
@@ -52,9 +53,9 @@ def is_backfill_coverage_current(
     """Return True when stored coverage signature matches required signature."""
     league_id = _resolve_league_id(conn, league_key)
 
-    meta = TABLES['backfill_tracker']
-    schema = meta['schema']  # 'core'
-    table = 'backfill_tracker'
+    meta = TABLES['ops.coverages']
+    schema = meta['schema']
+    table = 'coverages'
 
     query = f"""
         SELECT coverage_signature
@@ -83,9 +84,9 @@ def upsert_backfill_coverage(
     """Insert or update backfill tracker state for a completed entity/season."""
     league_id = _resolve_league_id(conn, league_key)
 
-    meta = TABLES['backfill_tracker']
-    schema = meta['schema']  # 'core'
-    table = 'backfill_tracker'
+    meta = TABLES['ops.coverages']
+    schema = meta['schema']
+    table = 'coverages'
     pks = meta['primary_key']
 
     # Build ON CONFLICT clause dynamically from configured primary keys

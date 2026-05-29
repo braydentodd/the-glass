@@ -349,14 +349,15 @@ def _write_stats_rows(
     every FK-bearing data column from source-id to the_glass_id form.  Rows
     that cannot be fully resolved are skipped.
     """
-    table = get_table_name(entity, 'stats', league_key=league_key)
-    bare_table = table.split('.', 1)[1]
-    meta = TABLES[bare_table]
+    table = get_table_name(entity, 'stats')
+    schema_name, bare_name = table.split('.', 1)
+    qualified_key = f'{schema_name}.{bare_name}'
+    meta = TABLES[qualified_key]
     pk_columns: List[str] = meta['primary_key']
 
     with db_connection() as conn:
         # Resolve the row-key source ids -> the_glass_id for the entity
-        glass_ids = load_fk_mapping(conn, entity, source_key, list(rows.keys()))
+        glass_ids = load_fk_mapping(conn, 'profiles', bare_name, 'the_glass_id', source_key, list(rows.keys()))
 
         translated: Dict[Any, Dict[str, Any]] = {}
         unresolved_keys = 0
@@ -379,7 +380,7 @@ def _write_stats_rows(
 
         # Translate any remaining source-id columns to the_glass_id (e.g. team_id)
         translated, dropped = resolve_fk_value_columns(
-            translated, conn, league_key, source_key, bare_table,
+            translated, conn, league_key, source_key, qualified_key,
         )
         if dropped:
             logger.warning(

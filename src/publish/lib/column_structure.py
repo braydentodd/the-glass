@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, List, Tuple, Union
 
-from src.publish.definitions.columns import TAB_COLUMNS
+from src.publish.definitions.view_columns import VIEW_COLUMNS
 from src.publish.definitions.layout import SECTIONS_CONFIG, SUBSECTIONS
 from src.publish.definitions.presentation import PRESENTATION_DEFAULTS
 from src.publish.definitions.stats import DEFAULT_STAT_RATE, STAT_RATES
@@ -104,7 +104,7 @@ _SEPARATOR_DEF = {
     'description': '',
     'sections': [],
     'subsection': None,
-    'tabs': ['all_teams', 'all_players', 'individual_team'],
+    'views': ['all_teams', 'all_players', 'individual_team'],
     'stats_mode': 'both',
     'percentile': None,
     'editable': False,
@@ -138,7 +138,7 @@ def generate_percentile_columns() -> dict:
     stat + companion pair so the column name spans both.
     """
     pct_columns = {}
-    for col_key, col_def in TAB_COLUMNS.items():
+    for col_key, col_def in VIEW_COLUMNS.items():
         if not col_def.get('percentile'):
             continue
         pct_key = f"{col_key}_pct"
@@ -174,13 +174,13 @@ def _make_companion_def(base_def: dict, base_key: str,
         'values': base_def.get('values', {}),
         'is_opponent_col': base_def.get('is_opponent_col', False),
         'width_class': PRESENTATION_DEFAULTS.get('percentile_companion_width', 10),
-        'tabs': base_def.get('tabs', ['all_teams', 'all_players', 'individual_team']),
+        'views': base_def.get('views', ['all_teams', 'all_players', 'individual_team']),
     }
 
 
 def get_all_columns_with_percentiles() -> dict:
-    """Get TAB_COLUMNS plus auto-generated percentile columns."""
-    all_cols = dict(TAB_COLUMNS)
+    """Get VIEW_COLUMNS plus auto-generated percentile columns."""
+    all_cols = dict(VIEW_COLUMNS)
     all_cols.update(generate_percentile_columns())
     return all_cols
 
@@ -197,7 +197,7 @@ def get_columns_by_filters(section=None, subsection=None, entity=None,
         stats_mode: 'basic', 'advanced', or 'both'
         include_percentiles: Include auto-generated percentile columns
     """
-    columns = get_all_columns_with_percentiles() if include_percentiles else TAB_COLUMNS
+    columns = get_all_columns_with_percentiles() if include_percentiles else VIEW_COLUMNS
     filtered = {}
     subsection_filter = _normalize_subsection_key(subsection) if subsection else None
 
@@ -222,7 +222,7 @@ def get_columns_by_filters(section=None, subsection=None, entity=None,
 def get_columns_for_section_and_entity(section: str, entity: str,
                                        stats_mode: str = 'both',
                                        include_percentiles: bool = False,
-                                       tab_type: str = None) -> List[Tuple]:
+                                       view_type: str = None) -> List[Tuple]:
     """
     Get ordered columns for a section and entity.
     All sections with subsection-assigned columns are ordered by SUBSECTIONS;
@@ -235,7 +235,7 @@ def get_columns_for_section_and_entity(section: str, entity: str,
 
     # Convert values object for opponent columns (only in stats sections)
     is_stats_section = SECTIONS_CONFIG.get(section, {}).get('stats_timeframe') is not None
-    if tab_type in ['all_teams', 'teams'] and is_stats_section:
+    if view_type in ['all_teams', 'teams'] and is_stats_section:
         opp_columns = {}
         for col_key, col_def in columns.items():
             opp_expr = col_def.get('values', {}).get('opponents', {}, {}).get('fn').get('fn')
@@ -273,18 +273,18 @@ def get_columns_for_section_and_entity(section: str, entity: str,
     ordered = list(no_subsec)
     ordered_subsections = set()
     for subsec, cfg in SUBSECTIONS.items():
-        # Check if the subsection is applicable for this section and tab
-        cfg_tabs = cfg.get('tabs', [])
-        tab_match = True
-        if tab_type:
-            if tab_type == 'individual_team' and 'team' in cfg_tabs:
-                tab_match = True
-            elif tab_type in cfg_tabs:
-                tab_match = True
+        # Check if the subsection is applicable for this section and view
+        cfg_views = cfg.get('views', [])
+        view_match = True
+        if view_type:
+            if view_type == 'individual_team' and 'team' in cfg_views:
+                view_match = True
+            elif view_type in cfg_views:
+                view_match = True
             else:
-                tab_match = False
+                view_match = False
 
-        if section not in cfg.get('sections', []) or not tab_match:
+        if section not in cfg.get('sections', []) or not view_match:
             continue
         
         if subsec in subsec_groups:
@@ -298,13 +298,13 @@ def get_columns_for_section_and_entity(section: str, entity: str,
     return ordered
 
 
-def build_tab_columns(entity: str = 'player', stats_mode: str = 'both',
-                        tab_type: str = 'individual_team',
+def build_view_columns(entity: str = 'player', stats_mode: str = 'both',
+                        view_type: str = 'individual_team',
                         default_mode: str = DEFAULT_STAT_RATE,
                         league: str = None,
                         default_timeframe: int = 3) -> List[Tuple]:
     """
-    Build complete column structure for a tab with rate tripling.
+    Build complete column structure for a view with rate tripling.
 
     Returns list of (column_key, column_def, visible, context_section) tuples.
 
@@ -313,12 +313,12 @@ def build_tab_columns(entity: str = 'player', stats_mode: str = 'both',
     is visible; others are hidden for instant rate switching via column show/hide.
 
     Percentile columns are interleaved immediately after their base stat column.
-    Columns are filtered by their 'tabs' array and 'leagues' list.
+    Columns are filtered by their 'views' array and 'leagues' list.
     """
     fmt = PRESENTATION_DEFAULTS
     hide_advanced = fmt.get('hide_advanced_columns', True)
 
-    _TAB_TYPE_KEY = {
+    _view_TYPE_KEY = {
         'individual_team': 'individual_team',
         'team': 'individual_team',
         'all_players': 'all_players',
@@ -326,22 +326,22 @@ def build_tab_columns(entity: str = 'player', stats_mode: str = 'both',
         'all_teams': 'all_teams',
         'teams': 'all_teams',
     }
-    tab_key = _TAB_TYPE_KEY.get(tab_type, 'team')
+    view_key = _view_TYPE_KEY.get(view_type, 'team')
     pct_columns = generate_percentile_columns()
 
-    def _normalize_tabs(col_def):
-        col_tabs = col_def.get('tabs', ['all_teams', 'all_players', 'individual_team'])
-        if isinstance(col_tabs, str):
-            return [col_tabs]
-        return col_tabs
+    def _normalize_views(col_def):
+        col_views = col_def.get('views', ['all_teams', 'all_players', 'individual_team'])
+        if isinstance(col_views, str):
+            return [col_views]
+        return col_views
 
     def _skip_column(col_def):
         """Return True if this column should be skipped for the current context."""
-        if tab_key not in _normalize_tabs(col_def):
+        if view_key not in _normalize_views(col_def):
             return True
         if league and league not in col_def.get('leagues', []):
             return True
-        if tab_key == 'all_teams':
+        if view_key == 'all_teams':
             vals = col_def.get('values', {})
             if 'all_teams' not in vals and 'teams' not in vals and 'team' not in vals:
                 return True
@@ -352,7 +352,7 @@ def build_tab_columns(entity: str = 'player', stats_mode: str = 'both',
         section_cols = get_columns_for_section_and_entity(
             section=section, entity=None,
             stats_mode='both', include_percentiles=False,
-            tab_type=tab_key
+            view_type=view_key
         )
         prev_subsection_key = None
         for col_key, col_def in section_cols:

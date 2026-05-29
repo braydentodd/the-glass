@@ -48,7 +48,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
 
     'process_id': {
         'type': 'BIGINT GENERATED ALWAYS AS IDENTITY',
-        'scope': ['runs', 'tasks'],
+        'scope': ['ops'],
         'nullable': False,
         'default': None,
         'entity_types': None,
@@ -59,7 +59,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'run_id': {
         'type': 'BIGINT',
-        'scope': ['tasks'],
+        'scope': ['ops'],
         'nullable': False,
         'default': None,
         'entity_types': None,
@@ -81,7 +81,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'entity_type': {
         'type': 'TEXT',
-        'scope': ['runs', 'tasks', 'backfill'],
+        'scope': ['ops'],
         'nullable': False,
         'default': None,
         'entity_types': None,
@@ -92,7 +92,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'updated_at': {
         'type': 'TIMESTAMP',
-        'scope': ['profiles', 'stats', 'rosters', 'staging', 'runs', 'tasks', 'backfill'],
+        'scope': ['profiles', 'stats', 'rosters', 'staging', 'ops'],
         'nullable': False,
         'default': 'NOW()',
         'entity_types': ['league', 'player', 'team'],
@@ -103,7 +103,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'created_at': {
         'type': 'TIMESTAMP',
-        'scope': ['profiles', 'stats', 'rosters', 'staging', 'runs', 'tasks', 'backfill'],
+        'scope': ['profiles', 'stats', 'rosters', 'staging', 'ops'],
         'nullable': False,
         'default': 'NOW()',
         'entity_types': ['league', 'player', 'team'],
@@ -114,7 +114,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'season': {
         'type': 'TEXT',
-        'scope': ['stats', 'tasks', 'backfill'],
+        'scope': ['stats', 'ops'],
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
@@ -125,7 +125,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'season_type': {
         'type': 'TEXT',
-        'scope': ['stats', 'tasks', 'backfill'],
+        'scope': ['stats', 'ops'],
         'nullable': True,
         'default': None,
         'entity_types': ['player', 'team'],
@@ -3157,7 +3157,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     # ------------------------------------------------------------------
     'pipeline': {
         'type': 'TEXT',
-        'scope': ['runs', 'tasks'],
+        'scope': ['ops'],
         'nullable': False,
         'default': None,
         'entity_types': None,
@@ -3168,7 +3168,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'status': {
         'type': 'TEXT',
-        'scope': ['runs', 'tasks'],
+        'scope': ['ops'],
         'nullable': False,
         'default': "'pending'",
         'entity_types': None,
@@ -3190,7 +3190,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'total_items': {
         'type': 'INTEGER',
-        'scope': ['runs'],
+        'scope': ['ops'],
         'nullable': False,
         'default': '0',
         'entity_types': None,
@@ -3201,7 +3201,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'completed_items': {
         'type': 'INTEGER',
-        'scope': ['runs'],
+        'scope': ['ops'],
         'nullable': False,
         'default': '0',
         'entity_types': None,
@@ -3212,7 +3212,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'total_rows': {
         'type': 'INTEGER',
-        'scope': ['runs'],
+        'scope': ['ops'],
         'nullable': False,
         'default': '0',
         'entity_types': None,
@@ -3223,7 +3223,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'error_message': {
         'type': 'TEXT',
-        'scope': ['runs', 'tasks'],
+        'scope': ['ops'],
         'nullable': True,
         'default': None,
         'entity_types': None,
@@ -3232,11 +3232,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'comment': None,
         'dataset_mapping': None,
     },
-
-    # ------------------------------------------------------------------
-    # OPERATIONAL COLUMNS - TASKS TABLE
-    # ------------------------------------------------------------------
-    # run_id handled as an identity column in the SYSTEM COLUMNS section
 
     # ------------------------------------------------------------------
     # REFERENCE ID COLUMNS (foreign keys referencing core.*_profiles)
@@ -3266,7 +3261,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'league_id': {
         'type': 'BIGINT',
-        'scope': ['rosters', 'runs', 'tasks', 'backfill', 'staging'],
+        'scope': ['rosters', 'stats', 'ops', 'staging'],
         'nullable': False,
         'default': None,
         'entity_types': ['league'],
@@ -3277,10 +3272,10 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'source_key': {
         'type': 'TEXT',
-        'scope': ['backfill', 'staging'],
+        'scope': ['ops', 'staging'],
         'nullable': False,
         'default': None,
-        'entity_types': None,
+        'entity_types': ['team', 'player'],
         'manager': 'execution_context',
         'domain': None,
         'comment': None,
@@ -3288,7 +3283,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'item_key': {
         'type': 'TEXT',
-        'scope': ['tasks'],
+        'scope': ['ops'],
         'nullable': False,
         'default': None,
         'entity_types': None,
@@ -3299,7 +3294,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'rows_written': {
         'type': 'INTEGER',
-        'scope': ['tasks'],
+        'scope': ['ops'],
         'nullable': False,
         'default': '0',
         'entity_types': None,
@@ -3310,7 +3305,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'retry_count': {
         'type': 'INTEGER',
-        'scope': ['tasks'],
+        'scope': ['ops'],
         'nullable': False,
         'default': '0',
         'entity_types': None,
@@ -3321,7 +3316,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     },
     'coverage_signature': {
         'type': 'TEXT',
-        'scope': ['backfill'],
+        'scope': ['ops'],
         'nullable': False,
         'default': None,
         'entity_types': None,

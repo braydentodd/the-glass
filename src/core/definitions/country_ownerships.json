@@ -1,0 +1,31 @@
+{
+    "USA": [
+        "PUR",
+        "ISV",
+        "GUM",
+        "ASA",
+        "NMI"
+    ],
+    "GBR": [
+        "BER",
+        "IVB",
+        "CAY",
+        "GIB",
+        "MAT",
+        "TCI"
+    ],
+    "FRA": [
+        "TAH",
+        "CAL"
+    ],
+    "NED": [
+        "ARU"
+    ],
+    "NZL": [
+        "COK"
+    ],
+    "CHN": [
+        "MAC",
+        "HKG"
+    ]
+}

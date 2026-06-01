@@ -181,27 +181,6 @@ DATASETS: Dict[str, DatasetDef] = {
         'dataset_type': 'api_endpoint',
     },
 
-    # --- Shooting splits (since 2012-13) ---
-
-    'teamdashboardbyshootingsplits': {
-        'min_season': '2012-13',
-        'execution_tier': 'per_team',
-        'default_result_set': 'ShotTypeTeamDashboard',
-        'season_type_param': 'season_type_all_star',
-        'per_mode_param': 'per_mode_detailed',
-        'entity_types': ['team'],
-        'dataset_type': 'api_endpoint',
-    },
-    'shotchartdetail': {
-        'min_season': '1996-97',
-        'execution_tier': 'per_team',
-        'default_result_set': 'Shot_Chart_Detail',
-        'season_type_param': 'season_type_all_star',
-        'context_measure_param': 'context_measure_simple',
-        'entity_types': ['player'],
-        'dataset_type': 'api_endpoint',
-    },
-
     # --- Player info (all time) ---
 
     'commonallplayers': {
@@ -229,15 +208,6 @@ DATASETS: Dict[str, DatasetDef] = {
 
     # --- On/Off court (since 2007-08) ---
 
-    'teamplayeronoffsummary': {
-        'min_season': '2007-08',
-        'execution_tier': 'per_team',
-        'default_result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
-        'season_type_param': 'season_type_all_star',
-        'per_mode_param': 'per_mode_detailed',
-        'entity_types': ['player'],
-        'dataset_type': 'api_endpoint',
-    },
     'teamplayeronoffdetails': {
         'min_season': '2007-08',
         'execution_tier': 'per_team',

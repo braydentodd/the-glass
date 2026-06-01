@@ -541,9 +541,9 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             'nba': {
                 'nba_api': {
                     'player': {
-                        'dataset': 'teamplayeronoffsummary',
+                        'dataset': 'teamplayeronoffdetails',
                         'tier': 'team_call',
-                        'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
                         'player_id_field': 'VS_PLAYER_ID',
                         'field': 'MIN',
                         'scale': 10
@@ -700,9 +700,9 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         },
     },
     # ------------------------------------------------------------------
-    # PUTBACKS & DUNKS  (pipeline: filter shooting splits -> aggregate)
+    # UNASSISTED FIELD GOALS  (per-player shooting splits)
     # ------------------------------------------------------------------
-    'putbacks': {
+    'unassisted_fg2m_pct_x10': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -715,35 +715,22 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             'nba': {
                 'nba_api': {
                     'player': {
-                        'dataset': 'shotchartdetail',
-                        'tier': 'team_call',
-                        'params': {'context_measure_simple': 'FGM', 'player_id': '0'},
-                        'result_set': 'Shot_Chart_Detail',
-                        'player_id_field': 'PLAYER_ID',
-                        'field': 'SHOT_MADE_FLAG',
-                        'filter_field': 'ACTION_TYPE',
-                        'filter_values': ['Putback Dunk Shot', 'Putback Layup Shot', 'Tip Dunk Shot', 'Tip Layup Shot'],
-                        'aggregation': 'sum',
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'PCT_UAST_2PM',
+                        'scale': 10,
+                        'params': {'measure_type_detailed_defense': 'Scoring'},
                     },
                     'team': {
-                        'dataset': 'shotchartdetail',
-                        'tier': 'team_call',
-                        'params': {'context_measure_simple': 'FGM', 'player_id': '0'},
-                        'result_set': 'Shot_Chart_Detail',
-                        'player_id_field': 'PLAYER_ID',
-                        'field': 'SHOT_MADE_FLAG',
-                        'filter_field': 'ACTION_TYPE',
-                        'filter_values': ['Putback Dunk Shot', 'Putback Layup Shot', 'Tip Dunk Shot', 'Tip Layup Shot'],
-                        'aggregation': 'sum',
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'PCT_UAST_2PM',
+                        'scale': 10,
+                        'params': {'measure_type_detailed_defense': 'Scoring'},
                     },
                 },
             },
         },
     },
-    # ------------------------------------------------------------------
-    # UNASSISTED FIELD GOALS  (per-player shooting splits)
-    # ------------------------------------------------------------------
-    'unassisted_fg2m': {
+    'unassisted_fg3m_pct_x10': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -752,18 +739,24 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'manager': 'in_season_source',
         'domain': 'base',
         'comment': None,
-        'dataset_mapping': None
-    },
-    'unassisted_fg3m': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': 'base',
-        'comment': None,
-        'dataset_mapping': None
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'PCT_UAST_3PM',
+                        'scale': 10,
+                        'params': {'measure_type_detailed_defense': 'Scoring'},
+                    },
+                    'team': {
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'PCT_UAST_3PM',
+                        'scale': 10,
+                        'params': {'measure_type_detailed_defense': 'Scoring'},
+                    },
+                },
+            },
+        },
     },
     # ------------------------------------------------------------------
     # REBOUNDS
@@ -1136,25 +1129,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'charges_drawn': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': 'hustle',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'CHARGES_DRAWN'},
-                    'team': {'dataset': 'leaguehustlestatsteam', 'field': 'CHARGES_DRAWN'},
-                },
-            },
-        },
-    },
-    'contested_d_fg2a': {
+    'cont_d_fg2a': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -1172,7 +1147,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'contested_d_fg3a': {
+    'cont_d_fg3a': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -2324,32 +2299,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'player_id_field': 'EntityId',
                         'field': 'SecondsPerPossDef',
                         'scale': 10,
-                    },
-                },
-            },
-        },
-    },
-    'zbounds': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['team'],
-        'manager': 'in_season_source',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'team': {
-                        'dataset': 'pbp_team_totals',
-                        'field': 'SelfOReb',
-                    },
-                    'player': {
-                        'dataset': 'pbp_player_totals',
-                        'result_set': 'PbpTotals',
-                        'player_id_field': 'EntityId',
-                        'field': 'SelfOReb',
                     },
                 },
             },

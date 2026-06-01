@@ -489,7 +489,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -580,7 +580,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -604,7 +604,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -631,7 +631,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -649,7 +649,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -670,7 +670,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -688,7 +688,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -709,7 +709,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -717,7 +717,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                     'player': {
                         'dataset': 'shotchartdetail',
                         'tier': 'team_call',
-                        'params': {'context_measure_simple': 'FGA', 'player_id': '0'},
+                        'params': {'context_measure_simple': 'FGM', 'player_id': '0'},
                         'result_set': 'Shot_Chart_Detail',
                         'player_id_field': 'PLAYER_ID',
                         'field': 'SHOT_MADE_FLAG',
@@ -728,48 +728,10 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                     'team': {
                         'dataset': 'shotchartdetail',
                         'tier': 'team_call',
-                        'params': {'context_measure_simple': 'FGA', 'player_id': '0'},
+                        'params': {'context_measure_simple': 'FGM', 'player_id': '0'},
                         'result_set': 'Shot_Chart_Detail',
                         'player_id_field': 'PLAYER_ID',
                         'field': 'SHOT_MADE_FLAG',
-                        'filter_field': 'ACTION_TYPE',
-                        'filter_values': ['Putback Dunk Shot', 'Putback Layup Shot', 'Tip Dunk Shot', 'Tip Layup Shot'],
-                        'aggregation': 'sum',
-                    },
-                },
-            },
-        },
-    },
-    'putbacks_fga': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'shotchartdetail',
-                        'tier': 'team_call',
-                        'params': {'context_measure_simple': 'FGA', 'player_id': '0'},
-                        'result_set': 'Shot_Chart_Detail',
-                        'player_id_field': 'PLAYER_ID',
-                        'field': 'SHOT_ATTEMPTED_FLAG',
-                        'filter_field': 'ACTION_TYPE',
-                        'filter_values': ['Putback Dunk Shot', 'Putback Layup Shot', 'Tip Dunk Shot', 'Tip Layup Shot'],
-                        'aggregation': 'sum',
-                    },
-                    'team': {
-                        'dataset': 'shotchartdetail',
-                        'tier': 'team_call',
-                        'params': {'context_measure_simple': 'FGA', 'player_id': '0'},
-                        'result_set': 'Shot_Chart_Detail',
-                        'player_id_field': 'PLAYER_ID',
-                        'field': 'SHOT_ATTEMPTED_FLAG',
                         'filter_field': 'ACTION_TYPE',
                         'filter_values': ['Putback Dunk Shot', 'Putback Layup Shot', 'Tip Dunk Shot', 'Tip Layup Shot'],
                         'aggregation': 'sum',
@@ -781,55 +743,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     # ------------------------------------------------------------------
     # UNASSISTED FIELD GOALS  (per-player shooting splits)
     # ------------------------------------------------------------------
-    'unassisted_rim_fgm': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'playerdashboardbyshootingsplits',
-                        'tier': 'player',
-                        'params': {'measure_type_detailed': 'Base', 'per_mode_detailed': 'Totals'},
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'ShotAreaPlayerDashboard',
-                                'fields': {'FGM': 'FGM', 'rate': 'PCT_UAST_FGM'},
-                                'filter_field': 'GROUP_VALUE',
-                                'filter_values': ['Restricted Area'],
-                            },
-                            {'type': 'math', 'expression': 'FGM * rate'}
-                        ]
-                    },
-                    'team': {
-                        'dataset': 'teamdashboardbyshootingsplits',
-                        'tier': 'team',
-                        'params': {
-                            'measure_type_detailed_defense': 'Base',
-                            'per_mode_detailed': 'Totals',
-                        },
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'ShotAreaTeamDashboard',
-                                'fields': {'FGM': 'FGM', 'rate': 'PCT_UAST_FGM'},
-                                'filter_field': 'GROUP_VALUE',
-                                'filter_values': ['Restricted Area'],
-                            },
-                            {'type': 'math', 'expression': 'FGM * rate'}
-                        ]
-                    },
-                },
-            },
-        },
-    },
     'unassisted_fg2m': {
         'type': 'SMALLINT',
         'scope': ['stats'],
@@ -837,43 +750,9 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'playerdashboardbyshootingsplits',
-                        'tier': 'player',
-                        'params': {'measure_type_detailed': 'Base', 'per_mode_detailed': 'Totals'},
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'OverallPlayerDashboard',
-                                'fields': {'FGM': 'FGM', 'FG3M': 'FG3M', 'rate': 'PCT_UAST_2PM'}
-                            },
-                            {'type': 'math', 'expression': '(FGM - FG3M) * rate'}
-                        ]
-                    },
-                    'team': {
-                        'dataset': 'teamdashboardbyshootingsplits',
-                        'tier': 'team',
-                        'params': {
-                            'measure_type_detailed_defense': 'Base',
-                            'per_mode_detailed': 'Totals',
-                        },
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'OverallTeamDashboard',
-                                'fields': {'FGM': 'FGM', 'FG3M': 'FG3M', 'rate': 'PCT_UAST_2PM'}
-                            },
-                            {'type': 'math', 'expression': '(FGM - FG3M) * rate'}
-                        ]
-                    }
-                }
-            }
-        }
+        'dataset_mapping': None
     },
     'unassisted_fg3m': {
         'type': 'SMALLINT',
@@ -882,83 +761,13 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'playerdashboardbyshootingsplits',
-                        'tier': 'player',
-                        'params': {'measure_type_detailed': 'Base', 'per_mode_detailed': 'Totals'},
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'OverallPlayerDashboard',
-                                'fields': {'FG3M': 'FG3M', 'rate': 'PCT_UAST_3PM'}
-                            },
-                            {'type': 'math', 'expression': 'FG3M * rate'}
-                        ]
-                    },
-                    'team': {
-                        'dataset': 'teamdashboardbyshootingsplits',
-                        'tier': 'team',
-                        'params': {
-                            'measure_type_detailed_defense': 'Base',
-                            'per_mode_detailed': 'Totals',
-                        },
-                        'operations': [
-                            {
-                                'type': 'extract',
-                                'result_set': 'OverallTeamDashboard',
-                                'fields': {'FG3M': 'FG3M', 'rate': 'PCT_UAST_3PM'}
-                            },
-                            {'type': 'math', 'expression': 'FG3M * rate'}
-                        ]
-                    }
-                }
-            }
-        }
+        'dataset_mapping': None
     },
     # ------------------------------------------------------------------
     # REBOUNDS
     # ------------------------------------------------------------------
-    'o_rebs': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'OREB'},
-                    'team': {'dataset': 'leaguedashteamstats', 'field': 'OREB'},
-                },
-            },
-        },
-    },
-    'd_rebs': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {'dataset': 'leaguedashplayerstats', 'field': 'DREB'},
-                    'team': {'dataset': 'leaguedashteamstats', 'field': 'DREB'},
-                },
-            },
-        },
-    },
     'o_reb_pct_x1000': {
         'type': 'SMALLINT',
         'scope': ['stats'],
@@ -966,7 +775,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -994,7 +803,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1025,7 +834,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1179,7 +988,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1259,7 +1068,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1277,7 +1086,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1295,7 +1104,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1345,7 +1154,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'contests': {
+    'contested_d_fg2a': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -1357,8 +1166,26 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'dataset_mapping': {
             'nba': {
                 'nba_api': {
-                    'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'CONTESTED_SHOTS'},
-                    'team': {'dataset': 'leaguehustlestatsteam', 'field': 'CONTESTED_SHOTS'},
+                    'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'CONTESTED_SHOTS_2PT'},
+                    'team': {'dataset': 'leaguehustlestatsteam', 'field': 'CONTESTED_SHOTS_2PT'},
+                },
+            },
+        },
+    },
+    'contested_d_fg3a': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player', 'team'],
+        'manager': 'in_season_source',
+        'domain': 'hustle',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {'dataset': 'leaguehustlestatsplayer', 'field': 'CONTESTED_SHOTS_3PT'},
+                    'team': {'dataset': 'leaguehustlestatsteam', 'field': 'CONTESTED_SHOTS_3PT'},
                 },
             },
         },
@@ -1366,58 +1193,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
     # ------------------------------------------------------------------
     # DEFENSIVE SHOT TRACKING  (leaguedashptdefend / leaguedashptteamdefend)
     # ------------------------------------------------------------------
-    'd_close_fgm': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashptdefend',
-                        'field': 'FGM_LT_06',
-                        'params': {'defense_category': 'Less Than 6Ft'},
-                    },
-                    'team': {
-                        'dataset': 'leaguedashptteamdefend',
-                        'field': 'FGM_LT_06',
-                        'params': {'defense_category': 'Less Than 6Ft'},
-                    },
-                },
-            },
-        },
-    },
-    'd_close_fga': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashptdefend',
-                        'field': 'FGA_LT_06',
-                        'params': {'defense_category': 'Less Than 6Ft'},
-                    },
-                    'team': {
-                        'dataset': 'leaguedashptteamdefend',
-                        'field': 'FGA_LT_06',
-                        'params': {'defense_category': 'Less Than 6Ft'},
-                    },
-                },
-            },
-        },
-    },
     'd_fg2m': {
         'type': 'SMALLINT',
         'scope': ['stats'],
@@ -1523,115 +1298,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         },
     },
     # ------------------------------------------------------------------
-    # RATINGS
-    # ------------------------------------------------------------------
-    'o_rtg_x10': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashplayerstats',
-                        'field': 'OFF_RATING',
-                        'scale': 10,
-                        'params': {'measure_type_detailed_defense': 'Advanced'},
-                    },
-                    'team': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OFF_RATING',
-                        'scale': 10,
-                        'params': {'measure_type_detailed_defense': 'Advanced'},
-                    },
-                },
-            },
-        },
-    },
-    'd_rtg_x10': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'leaguedashplayerstats',
-                        'field': 'DEF_RATING',
-                        'scale': 10,
-                        'params': {'measure_type_detailed_defense': 'Advanced'},
-                    },
-                    'team': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'DEF_RATING',
-                        'scale': 10,
-                        'params': {'measure_type_detailed_defense': 'Advanced'},
-                    },
-                },
-            },
-        },
-    },
-    'off_o_rtg_x10': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'teamplayeronoffsummary',
-                        'tier': 'team_call',
-                        'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
-                        'player_id_field': 'VS_PLAYER_ID',
-                        'field': 'OFF_RATING',
-                        'scale': 10,
-                        'aggregation': 'minute_weighted',
-                    },
-                },
-            },
-        },
-    },
-    'off_d_rtg_x10': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'teamplayeronoffsummary',
-                        'tier': 'team_call',
-                        'result_set': 'PlayersOffCourtTeamPlayerOnOffSummary',
-                        'player_id_field': 'VS_PLAYER_ID',
-                        'field': 'DEF_RATING',
-                        'scale': 10,
-                        'aggregation': 'minute_weighted',
-                    },
-                },
-            },
-        },
-    },
-    # ------------------------------------------------------------------
     # ON/OFF COUNTING STATS (TEAMPLAYERONOFFDETAILS)
     # ------------------------------------------------------------------
     'on_2fgm': {
@@ -1641,7 +1307,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1665,7 +1331,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1689,7 +1355,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1713,7 +1379,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1737,7 +1403,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1761,7 +1427,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1785,7 +1451,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1809,7 +1475,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1833,7 +1499,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1857,7 +1523,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1881,7 +1547,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1905,7 +1571,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1929,7 +1595,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1953,7 +1619,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -1977,7 +1643,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2001,7 +1667,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2025,7 +1691,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2050,7 +1716,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2075,7 +1741,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2100,7 +1766,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2125,7 +1791,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2150,7 +1816,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2168,31 +1834,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'on_opp_pts': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'teamplayeronoffdetails',
-                        'tier': 'team_call',
-                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
-                        'player_id_field': 'VS_PLAYER_ID',
-                        'field': 'OPP_PTS',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                        'aggregation': 'sum',
-                    },
-                },
-            },
-        },
-    },
     'on_opp_tovs': {
         'type': 'SMALLINT',
         'scope': ['stats'],
@@ -2200,7 +1841,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2225,7 +1866,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2250,7 +1891,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2275,7 +1916,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2300,7 +1941,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2325,7 +1966,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2350,7 +1991,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2368,31 +2009,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'off_opp_pts': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'player': {
-                        'dataset': 'teamplayeronoffdetails',
-                        'tier': 'team_call',
-                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
-                        'player_id_field': 'VS_PLAYER_ID',
-                        'field': 'OPP_PTS',
-                        'params': {'measure_type_detailed_defense': 'Opponent'},
-                        'aggregation': 'sum',
-                    },
-                },
-            },
-        },
-    },
     'off_opp_tovs': {
         'type': 'SMALLINT',
         'scope': ['stats'],
@@ -2400,7 +2016,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player'],
         'manager': 'in_season_source',
-        'domain': 'onoff',
+        'domain': 'off',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2413,6 +2029,109 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'field': 'OPP_TOV',
                         'params': {'measure_type_detailed_defense': 'Opponent'},
                         'aggregation': 'sum',
+                    },
+                },
+            },
+        },
+    },
+    # ------------------------------------------------------------------
+    # ON/OFF REBOUND PCT (TEAMPLAYERONOFFDETAILS — ADVANCED)
+    # ------------------------------------------------------------------
+    'on_o_reb_pct_x1000': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'manager': 'in_season_source',
+        'domain': 'base',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OREB_PCT',
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                        'scale': 1000,
+                    },
+                },
+            },
+        },
+    },
+    'on_d_reb_pct_x1000': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'manager': 'in_season_source',
+        'domain': 'base',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'DREB_PCT',
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                        'scale': 1000,
+                    },
+                },
+            },
+        },
+    },
+    'off_o_reb_pct_x1000': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'manager': 'in_season_source',
+        'domain': 'off',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'OREB_PCT',
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                        'scale': 1000,
+                    },
+                },
+            },
+        },
+    },
+    'off_d_reb_pct_x1000': {
+        'type': 'SMALLINT',
+        'scope': ['stats'],
+        'nullable': True,
+        'default': None,
+        'entity_types': ['player'],
+        'manager': 'in_season_source',
+        'domain': 'off',
+        'comment': None,
+        'dataset_mapping': {
+            'nba': {
+                'nba_api': {
+                    'player': {
+                        'dataset': 'teamplayeronoffdetails',
+                        'tier': 'team_call',
+                        'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
+                        'player_id_field': 'VS_PLAYER_ID',
+                        'field': 'DREB_PCT',
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
+                        'scale': 1000,
                     },
                 },
             },
@@ -2444,35 +2163,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    # ------------------------------------------------------------------
-    # PBP STATS (INITIAL INTEGRATION)
-    # ------------------------------------------------------------------
-    'heaves': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['team'],
-        'manager': 'in_season_source',
-        'domain': 'tracking',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'team': {
-                        'dataset': 'pbp_team_totals',
-                        'field': 'HeaveAttempts',
-                    },
-                    'player': {
-                        'dataset': 'pbp_player_totals',
-                        'result_set': 'PbpTotals',
-                        'player_id_field': 'EntityId',
-                        'field': 'HeaveAttempts',
-                    },
-                },
-            },
-        },
-    },
     'poss': {
         'type': 'SMALLINT',
         'scope': ['stats'],
@@ -2480,154 +2170,20 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'default': None,
         'entity_types': ['player', 'team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
-                'pbp_stats': {
+                'nba_api': {
                     'team': {
-                        'dataset': 'pbp_team_totals',
-                        'field': 'OffPoss',
+                        'dataset': 'leaguedashteamstats',
+                        'field': 'POSS',
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
                     },
                     'player': {
-                        'dataset': 'pbp_player_totals',
-                        'result_set': 'PbpTotals',
-                        'player_id_field': 'EntityId',
-                        'field': 'OffPoss',
-                    },
-                },
-            },
-        },
-    },
-    'o_rtg': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'team': {
-                        'dataset': 'pbp_team_totals',
-                        'derived': {'math': '(Points / OffPoss) * 100', 'fields': ['Points', 'OffPoss']},
-                    },
-                    'player': {
-                        'dataset': 'pbp_player_totals',
-                        'result_set': 'PbpTotals',
-                        'player_id_field': 'EntityId',
-                        'derived': {'math': '(Points / OffPoss) * 100', 'fields': ['Points', 'OffPoss']},
-                    },
-                },
-            },
-        },
-    },
-    'd_rtg': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'team': {
-                        'dataset': 'pbp_team_totals',
-                        'derived': {'math': '(OpponentPoints / DefPoss) * 100', 'fields': ['OpponentPoints', 'DefPoss']},
-                    },
-                    'player': {
-                        'dataset': 'pbp_player_totals',
-                        'result_set': 'PbpTotals',
-                        'player_id_field': 'EntityId',
-                        'derived': {'math': '(OpponentPoints / DefPoss) * 100', 'fields': ['OpponentPoints', 'DefPoss']},
-                    },
-                },
-            },
-        },
-    },
-    'o_reb_pct': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'team': {
-                        'dataset': 'pbp_team_totals',
-                        'field': 'OffFGReboundPct',
-                        'scale': 1000,
-                    },
-                    'player': {
-                        'dataset': 'pbp_player_totals',
-                        'result_set': 'PbpTotals',
-                        'player_id_field': 'EntityId',
-                        'field': 'OffFGReboundPct',
-                        'scale': 1000,
-                    },
-                },
-            },
-        },
-    },
-    'd_reb_pct': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player', 'team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'team': {
-                        'dataset': 'pbp_team_totals',
-                        'field': 'DefFGReboundPct',
-                        'scale': 1000,
-                    },
-                    'player': {
-                        'dataset': 'pbp_player_totals',
-                        'result_set': 'PbpTotals',
-                        'player_id_field': 'EntityId',
-                        'field': 'DefFGReboundPct',
-                        'scale': 1000,
-                    },
-                },
-            },
-        },
-    },
-    'blocks_recovered': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['team'],
-        'manager': 'in_season_source',
-        'domain': 'hustle',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'team': {
-                        'dataset': 'pbp_team_totals',
-                        'field': 'RecoveredBlocks',
-                    },
-                    'player': {
-                        'dataset': 'pbp_player_totals',
-                        'result_set': 'PbpTotals',
-                        'player_id_field': 'EntityId',
-                        'field': 'RecoveredBlocks',
+                        'dataset': 'leaguedashplayerstats',
+                        'field': 'POSS',
+                        'params': {'measure_type_detailed_defense': 'Advanced'},
                     },
                 },
             },
@@ -2717,7 +2273,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'o_pace': {
+    'o_pace_x10': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
@@ -2745,14 +2301,14 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
             },
         },
     },
-    'd_pace': {
+    'd_pace_x10': {
         'type': 'SMALLINT',
         'scope': ['stats'],
         'nullable': True,
         'default': None,
         'entity_types': ['team'],
         'manager': 'in_season_source',
-        'domain': None,
+        'domain': 'base',
         'comment': None,
         'dataset_mapping': {
             'nba': {
@@ -2794,342 +2350,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                         'result_set': 'PbpTotals',
                         'player_id_field': 'EntityId',
                         'field': 'SelfOReb',
-                    },
-                },
-            },
-        },
-    },
-    'on_d_reb_pct': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'DReb% - Missed FGs - On',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'on_o_reb_pct': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'OReb% - Missed FGs - On',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'on_blocks_recovered': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'Blocks Recovered % - On',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'on_rim_fga': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'At Rim Shot Frequency - On',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'on_rim_fgm': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'At Rim FG% - On',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'on_d_rim_fga': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'At Rim Shot Frequency - Defense - On',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'on_d_rim_fgm': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'At Rim FG% - Defense - On',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'off_d_reb_pct': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'DReb% - Missed FGs - Off',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'off_o_reb_pct': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'OReb% - Missed FGs - Off',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'off_blocks_recovered': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'Blocks Recovered % - Off',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'off_rim_fga': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'At Rim Shot Frequency - Off',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'off_rim_fgm': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'At Rim FG% - Off',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'off_d_rim_fga': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'At Rim Shot Frequency - Defense - Off',
-                        'scale': 10000,
-                    },
-                },
-            },
-        },
-    },
-    'off_d_rim_fgm': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['player'],
-        'manager': 'in_season_source',
-        'domain': 'onoff',
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'pbp_stats': {
-                    'player': {
-                        'dataset': 'pbp_on_off',
-                        'tier': 'team_call',
-                        'result_set': 'OnOffStats',
-                        'player_id_field': 'PlayerId',
-                        'field': 'At Rim FG% - Defense - Off',
-                        'scale': 10000,
                     },
                 },
             },
@@ -3480,43 +2700,6 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
                     'team': {
                         'dataset': 'leaguedashteamstats',
                         'field': 'OPP_FTA',
-                        'params': {'measure_type_detailed_defense': 'Opponent'}
-                    }
-                }
-            }
-        },
-    },
-    'opp_o_rebs': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'team': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_OREB',
-                        'params': {'measure_type_detailed_defense': 'Opponent'}}}}}},
-    'opp_d_rebs': {
-        'type': 'SMALLINT',
-        'scope': ['stats'],
-        'nullable': True,
-        'default': None,
-        'entity_types': ['team'],
-        'manager': 'in_season_source',
-        'domain': None,
-        'comment': None,
-        'dataset_mapping': {
-            'nba': {
-                'nba_api': {
-                    'team': {
-                        'dataset': 'leaguedashteamstats',
-                        'field': 'OPP_DREB',
                         'params': {'measure_type_detailed_defense': 'Opponent'}
                     }
                 }

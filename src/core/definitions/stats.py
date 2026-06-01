@@ -18,18 +18,22 @@ from typing import Any, Dict
 STAT_DOMAINS: Dict[str, Dict[str, Any]] = {
     'base': {
         'minutes_col': 'mins_x10',
+        'possessions_col': 'poss',
         'primary':     True
     },
     'tracking': {
         'minutes_col': 'tracking_mins_x10',
+        'possessions_col': None,
         'primary':     False
     },
     'hustle': {
         'minutes_col': 'hustle_mins_x10',
+        'possessions_col': None,
         'primary':     False
     },
-    'onoff': {
+    'off': {
         'minutes_col': 'off_mins_x10',
+        'possessions_col': None,
         'primary':     False
     }
 }

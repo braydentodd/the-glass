@@ -183,15 +183,6 @@ DATASETS: Dict[str, DatasetDef] = {
 
     # --- Shooting splits (since 2012-13) ---
 
-    'playerdashboardbyshootingsplits': {
-        'min_season': '2012-13',
-        'execution_tier': 'per_player',
-        'default_result_set': 'ShotTypePlayerDashboard',
-        'season_type_param': 'season_type_playoffs',
-        'per_mode_param': 'per_mode_detailed',
-        'entity_types': ['player'],
-        'dataset_type': 'api_endpoint',
-    },
     'teamdashboardbyshootingsplits': {
         'min_season': '2012-13',
         'execution_tier': 'per_team',

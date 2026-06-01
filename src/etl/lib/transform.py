@@ -8,7 +8,7 @@ The pipeline engine executes multi-step transformations defined in config.
 
 import logging
 from datetime import date, datetime
-from typing import Any, Callable, Dict, List, Literal, Union
+from typing import Any, Callable, Dict, Literal, Union
 
 logger = logging.getLogger(__name__)
 
@@ -380,46 +380,3 @@ def aggregate_multi_season_most_recent_non_null(values_by_year: Dict[int, Any]) 
         if value is not None:
             return value
     return None
-
-
-# ============================================================================
-# PER-TEAM AGGREGATION (used by team_call pattern)
-# ============================================================================
-
-DEFAULT_MINUTES_FIELD = 'MIN'
-
-
-def _aggregate_per_team(
-    raw_rows: List[Dict[str, Any]],
-    columns: Dict[str, Dict[str, Any]],
-    minutes_field: Union[str, None] = None,
-) -> Dict[str, Any]:
-    """Aggregate a list of raw API rows into one dict of column values.
-
-    Supports ``sum`` (default) and ``minute_weighted`` aggregation modes
-    configured via ``source['aggregation']``.
-    """
-    minutes_field = minutes_field or DEFAULT_MINUTES_FIELD
-    total_minutes = sum(float(r.get(minutes_field) or 0) for r in raw_rows)
-    values: Dict[str, Any] = {}
-
-    for col_name, source in columns.items():
-        nba_field = source.get('field')
-        scale = source.get('scale', 1)
-        transform_name = source.get('transform', 'safe_int')
-        aggregation = source.get('aggregation', 'sum')
-
-        if aggregation == 'minute_weighted' and total_minutes > 0:
-            weighted_sum = 0.0
-            for r in raw_rows:
-                val = r.get(nba_field)
-                mins = float(r.get(minutes_field) or 0)
-                if val is not None and mins > 0:
-                    weighted_sum += float(val) * mins
-            raw = weighted_sum / total_minutes
-        else:
-            raw = sum(float(r.get(nba_field) or 0) for r in raw_rows)
-
-        values[col_name] = apply_transform(raw, transform_name, scale)
-
-    return values

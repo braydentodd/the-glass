@@ -12,9 +12,8 @@ import logging
 from typing import Any, Dict, List, Tuple
 
 from src.core.lib.postgres import get_db_connection, quote_col
-from src.core.definitions.schema import TABLES, SEQUENCES
+from src.core.definitions.schema import TABLES, SEQUENCES, TABLE_ENTITY
 from src.core.definitions.db_columns import DB_COLUMNS
-from src.core.lib.tables_resolver import TABLE_ENTITY
 
 logger = logging.getLogger(__name__)
 

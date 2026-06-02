@@ -24,7 +24,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.core.lib.postgres import db_connection, quote_col
-from src.core.lib.tables_resolver import get_table_name
 from src.etl.sources.the_glass_sheets.config import SOURCE_CONFIG
 from src.publish.definitions.view_columns import VIEW_COLUMNS
 from src.publish.destinations.sheets.config import SHEETS_FORMATTING
@@ -270,7 +269,7 @@ def sync_edits(league_key: str, dry_run: bool = False) -> Dict[str, int]:
             logger.info('Read %d rows from %s', len(data_rows), ws.title)
             updates = _extract_rows(data_rows, pid_idx, player_field_map)
             results['players_updated'] = _apply_updates(
-                get_table_name('player', 'profiles'), updates, dry_run,
+                'profiles.players', updates, dry_run,
             )
 
     if team_field_map:
@@ -282,7 +281,7 @@ def sync_edits(league_key: str, dry_run: bool = False) -> Dict[str, int]:
             logger.info('Read %d rows from %s', len(data_rows), ws.title)
             updates = _extract_rows(data_rows, tid_idx, team_field_map)
             results['teams_updated'] = _apply_updates(
-                get_table_name('team', 'profiles'), updates, dry_run,
+                'profiles.teams', updates, dry_run,
             )
 
     return results

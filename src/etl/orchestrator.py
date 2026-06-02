@@ -31,7 +31,6 @@ from src.core.lib.terminal import progress
 from src.core.lib.schema_builder import bootstrap_schema
 from src.core.lib.logging import phase_marker
 from src.core.lib.postgres import db_connection, quote_col
-from src.core.lib.tables_resolver import get_table_name
 from src.etl.lib.sources_resolver import (
     build_source_id_columns,
     get_external_sources_for_league,
@@ -107,10 +106,10 @@ def _get_active_team_source_ids(league_key: str, source_key: str) -> Dict[str, i
     src_col = get_source_id_column(source_key)
     sql = f"""
         SELECT t.abbr, t.{quote_col(src_col)}
-          FROM {get_table_name('team', 'profiles')} t
-          JOIN {get_table_name('team', 'rosters')} lr
+          FROM profiles.teams t
+          JOIN rosters.leagues_teams lr
             ON lr.team_id = t.{quote_col('the_glass_id')}
-          JOIN {get_table_name('league', 'profiles')} lp
+          JOIN profiles.leagues lp
             ON lp.{quote_col('the_glass_id')} = lr.league_id
          WHERE lp.code = %s
          ORDER BY t.abbr

@@ -27,7 +27,6 @@ from src.core.definitions.leagues import LEAGUES
 from src.core.definitions.schema import TABLES
 from src.core.definitions.stats import STAT_DOMAINS
 from src.core.lib.leagues_resolver import get_oldest_retained_season
-from src.core.lib.tables_resolver import get_table_name
 from src.core.definitions.db_columns import DB_COLUMNS
 from typing import Union
 
@@ -94,7 +93,8 @@ def normalize_stats_domains(
     if not seasons:
         return 0
 
-    table = get_table_name(entity, 'stats')
+    _STATS_TABLES = {'player': 'stats.player_seasons', 'team': 'stats.team_seasons'}
+    table = _STATS_TABLES[entity]
     domain_cols = _collect_domain_columns(entity)
     if not domain_cols:
         return 0
@@ -151,7 +151,7 @@ def prune_stats_retention(league_key: str, current_season: str) -> int:
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f'SELECT the_glass_id FROM {get_table_name("league", "profiles")} WHERE code = %s',
+                f'SELECT the_glass_id FROM profiles.leagues WHERE code = %s',
                 (league_key,),
             )
             row = cur.fetchone()
@@ -168,9 +168,8 @@ def prune_stats_retention(league_key: str, current_season: str) -> int:
                 entity = _TABLE_ENTITY_MAP.get(table_name)
                 if not entity:
                     continue
-                stats_table = get_table_name(entity, 'stats')
                 cur.execute(
-                    f"DELETE FROM {stats_table} WHERE league_id = %s AND season < %s",
+                    f"DELETE FROM stats.{table_name} WHERE league_id = %s AND season < %s",
                     (league_id, oldest),
                 )
                 if cur.rowcount:
@@ -202,9 +201,8 @@ def _profile_has_stats_predicate(entity: str) -> str:
         }
         if _TABLE_ENTITY_MAP.get(table_name) != entity:
             continue
-        stats_table = get_table_name(entity, 'stats')
         sub_selects.append(
-            f"SELECT 1 FROM {stats_table} s "
+            f"SELECT 1 FROM stats.{table_name} s "
             f"WHERE s.{quote_col(entity_id_col)} = p.{quote_col('the_glass_id')}"
         )
     if not sub_selects:
@@ -217,10 +215,10 @@ def _delete_pruned_players(cur) -> int:
     stats_pred = _profile_has_stats_predicate('player')
     cur.execute(
         f"""
-        DELETE FROM {get_table_name('player', 'profiles')} p
+        DELETE FROM profiles.players p
         WHERE NOT EXISTS ({stats_pred})
           AND NOT EXISTS (
-              SELECT 1 FROM {get_table_name('player', 'rosters')} tr
+              SELECT 1 FROM rosters.teams_players tr
               WHERE tr.player_id = p.{quote_col('the_glass_id')}
           )
         """
@@ -233,14 +231,14 @@ def _delete_pruned_teams(cur) -> int:
     stats_pred = _profile_has_stats_predicate('team')
     cur.execute(
         f"""
-        DELETE FROM {get_table_name('team', 'profiles')} p
+        DELETE FROM profiles.teams p
         WHERE NOT EXISTS ({stats_pred})
           AND NOT EXISTS (
-              SELECT 1 FROM {get_table_name('team', 'rosters')} lr
+              SELECT 1 FROM rosters.leagues_teams lr
               WHERE lr.team_id = p.{quote_col('the_glass_id')}
           )
           AND NOT EXISTS (
-              SELECT 1 FROM {get_table_name('player', 'rosters')} tr
+              SELECT 1 FROM rosters.teams_players tr
               WHERE tr.team_id = p.{quote_col('the_glass_id')}
           )
         """

@@ -410,3 +410,8 @@ TABLES: Dict[str, TableDef] = {
         'source_ids': False,
     },
 }
+
+# table_name -> entity (e.g. 'players' -> 'player')
+TABLE_ENTITY: Dict[str, str] = {
+    table_name: meta['entity'] for table_name, meta in TABLES.items()
+}

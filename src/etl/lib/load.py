@@ -24,7 +24,6 @@ from psycopg2.extras import execute_values
 from src.core.lib.postgres import db_connection, quote_col
 from src.core.definitions.schema import TABLES
 from src.etl.lib.sources_resolver import get_default_external_source, get_source_id_column
-from src.core.lib.tables_resolver import get_table_name
 from src.etl.lib.fk_resolver import load_fk_mapping, resolve_fk_value_columns
 from src.etl.definitions.execution import DEFAULT_BATCH_SIZE
 
@@ -231,7 +230,8 @@ def write_staged_entity_rows(
     source_key: str,
 ) -> int:
     """Replace the staged snapshot for ``league_key``/``source_key``."""
-    table = get_table_name(entity, 'staging')
+    _STAGING_TABLES = {'player': 'staging.unmatched_players', 'team': 'staging.unmatched_teams'}
+    table = _STAGING_TABLES[entity]
 
     data_cols: Set[str] = set()
     for vals in rows.values():
@@ -244,7 +244,7 @@ def write_staged_entity_rows(
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT the_glass_id FROM {get_table_name('league', 'profiles')} WHERE code = %s",
+                f"SELECT the_glass_id FROM profiles.leagues WHERE code = %s",
                 (league_key,),
             )
             row = cur.fetchone()
@@ -279,7 +279,8 @@ def merge_staged_entity_rows(
     source_key: str,
 ) -> int:
     """Merge roster or overlay fields into an existing staged snapshot."""
-    table = get_table_name(entity, 'staging')
+    _STAGING_TABLES = {'player': 'staging.unmatched_players', 'team': 'staging.unmatched_teams'}
+    table = _STAGING_TABLES[entity]
 
     data_cols: Set[str] = set()
     for vals in rows.values():
@@ -292,7 +293,7 @@ def merge_staged_entity_rows(
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT the_glass_id FROM {get_table_name('league', 'profiles')} WHERE code = %s",
+                f"SELECT the_glass_id FROM profiles.leagues WHERE code = %s",
                 (league_key,),
             )
             row = cur.fetchone()
@@ -331,7 +332,8 @@ def write_core_profile_rows(
     Conflict key: per-source identity column (UNIQUE).  ``the_glass_id`` is allocated
     automatically by the sequence.
     """
-    table = get_table_name(entity, 'profiles')
+    _PROFILE_TABLES = {'player': 'profiles.players', 'team': 'profiles.teams'}
+    table = _PROFILE_TABLES[entity]
     src_col = get_source_id_column(source_key)
 
     data_cols: Set[str] = set()
@@ -371,7 +373,8 @@ def _write_stats_rows(
     ``the_glass_id``) and translates every FK-bearing data column from source-id
     to ``the_glass_id`` form.  Rows that cannot be fully resolved are skipped.
     """
-    table = get_table_name(entity, 'stats')
+    _STATS_TABLES = {'player': 'stats.player_seasons', 'team': 'stats.team_seasons'}
+    table = _STATS_TABLES[entity]
     schema_name, bare_name = table.split('.', 1)
     qualified_key = f'{schema_name}.{bare_name}'
     meta = TABLES[qualified_key]
@@ -380,7 +383,8 @@ def _write_stats_rows(
 
     with db_connection() as conn:
         # Resolve the row-key source ids -> the_glass_id via the profile table
-        entity_table = get_table_name(entity, 'profiles')
+        _PROFILE_TABLES = {'player': 'profiles.players', 'team': 'profiles.teams'}
+        entity_table = _PROFILE_TABLES[entity]
         _, entity_bare = entity_table.split('.', 1)
         glass_ids = load_fk_mapping(
             conn, 'profiles', entity_bare, 'the_glass_id', source_key, list(rows.keys()),
@@ -422,7 +426,7 @@ def _write_stats_rows(
         # Leagues are keyed by league_key, not by source_id.
         with conn.cursor() as cur:
             cur.execute(
-                f'SELECT the_glass_id FROM {get_table_name("league", "profiles")} WHERE code = %s',
+                f'SELECT the_glass_id FROM profiles.leagues WHERE code = %s',
                 (league_key,),
             )
             row = cur.fetchone()

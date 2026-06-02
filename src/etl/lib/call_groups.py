@@ -14,8 +14,7 @@ import logging
 from typing import Any, Dict, List, Tuple, Union
 
 from src.core.definitions.db_columns import DB_COLUMNS
-from src.core.definitions.schema import DEFAULT_TYPE_TRANSFORMS
-from src.core.lib.tables_resolver import get_table_name, TABLE_ENTITY
+from src.core.definitions.schema import DEFAULT_TYPE_TRANSFORMS, TABLE_ENTITY
 
 logger = logging.getLogger(__name__)
 
@@ -241,8 +240,16 @@ def build_call_groups(
     simple_groups: Dict[tuple, Dict[str, Dict[str, Any]]] = {}
     special: List[Dict[str, Any]] = []
 
+    _ENTITY_SCOPE_TABLE = {
+        ('player', 'profiles'): 'players',
+        ('team', 'profiles'): 'teams',
+        ('player', 'stats'): 'player_seasons',
+        ('team', 'stats'): 'team_seasons',
+        ('player', 'rosters'): 'teams_players',
+        ('team', 'rosters'): 'leagues_teams',
+    }
     if scope:
-        table_name = get_table_name(entity, scope).split('.', 1)[1]
+        table_name = _ENTITY_SCOPE_TABLE[(entity, scope)]
         matched_cols = _COLUMNS_BY_TABLE.get(table_name, [])
     else:
         matched_cols = _COLUMNS_BY_ENTITY.get(entity, [])

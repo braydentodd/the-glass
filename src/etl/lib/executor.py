@@ -19,7 +19,6 @@ from typing import Any, Callable, Dict, List
 
 from src.core.lib.postgres import db_connection, quote_col
 from src.etl.lib.sources_resolver import get_source_id_column
-from src.core.lib.tables_resolver import get_table_name
 from src.etl.lib.extract import (
     extract_columns_from_result,
     extract_raw_rows,
@@ -100,9 +99,17 @@ def _fetch_null_entity_ids(
     if cols_key in ctx._null_entity_cache:
         return ctx._null_entity_cache[cols_key]
 
+    _PROFILE_TABLES = {'player': 'profiles.players', 'team': 'profiles.teams'}
+    _STATS_TABLES = {'player': 'stats.player_seasons', 'team': 'stats.team_seasons'}
+
     source_id_col = get_source_id_column(ctx.source_key)
-    entity_table = get_table_name(ctx.entity, 'profiles')
-    target_table = get_table_name(ctx.entity, ctx.scope)
+    entity_table = _PROFILE_TABLES[ctx.entity]
+    if ctx.scope == 'profiles':
+        target_table = entity_table
+    elif ctx.scope == 'stats':
+        target_table = _STATS_TABLES[ctx.entity]
+    else:
+        raise ValueError(f"Unsupported scope {ctx.scope!r}")
 
     def _query(cur):
         if entity_table == target_table:
@@ -447,7 +454,8 @@ def _execute_per_entity(
             return 0
     elif removed_refresh_mode == 'always':
         source_id_col = get_source_id_column(ctx.source_key)
-        entity_table = get_table_name(ctx.entity, 'profiles')
+        _PROFILE_TABLES = {'player': 'profiles.players', 'team': 'profiles.teams'}
+        entity_table = _PROFILE_TABLES[ctx.entity]
         def _query_all(cur):
             cur.execute(f"SELECT {quote_col(source_id_col)} FROM {entity_table}")
             return [row[0] for row in cur.fetchall() if row[0] is not None]

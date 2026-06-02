@@ -10,7 +10,6 @@ from typing import Any, Dict, Iterable, List, Sequence, Tuple
 from psycopg2.extras import RealDictCursor
 
 from src.core.definitions.schema import TABLES, THE_GLASS_ID
-from src.core.lib.tables_resolver import get_table_name
 from src.etl.lib.fk_resolver import load_fk_mapping
 from src.core.lib.postgres import db_connection, quote_col
 from src.core.definitions.db_columns import DB_COLUMNS
@@ -34,13 +33,16 @@ def _get_table_columns(table_name: str) -> set:
     return _TABLE_COLS_CACHE[table_name]
 
 
+_STAGING_TABLES = {'player': 'staging.unmatched_players', 'team': 'staging.unmatched_teams'}
+
+
 def _fetch_staged_rows(
     conn: Any,
     entity: str,
     league_id: int,
     source_key: str,
 ) -> List[Dict[str, Any]]:
-    table_name = get_table_name(entity, 'staging')
+    table_name = _STAGING_TABLES[entity]
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             f"""
@@ -84,7 +86,7 @@ def _league_glass_id(conn: Any, league_key: str) -> int:
         cur.execute(
             f"""
             SELECT {quote_col(THE_GLASS_ID)}
-            FROM {get_table_name('league', 'profiles')}
+            FROM profiles.leagues
             WHERE code = %s
             """,
             (league_key,),
@@ -119,7 +121,7 @@ def _upsert_roster_rows(conn: Any, rows: Iterable[Dict[str, Any]]) -> int:
     if not values:
         return 0
 
-    table = get_table_name('player', 'rosters')
+    table = 'rosters.teams_players'
     pk_cols = TABLES[table.split('.', 1)[1]]['primary_key']
 
     extra_cols = sorted({
@@ -221,16 +223,16 @@ def promote_staged_entities(league_key: str, source_key: str) -> Dict[str, int]:
             and str(row['team_source_id']) in team_map
         ]
 
-        league_rosters_written = _upsert_pairs(conn, get_table_name('team', 'rosters'), ('league_id', 'team_id'), league_roster_pairs)
+        league_rosters_written = _upsert_pairs(conn, 'rosters.leagues_teams', ('league_id', 'team_id'), league_roster_pairs)
         team_rosters_written = _upsert_roster_rows(conn, roster_pairs)
 
         with conn.cursor() as cur:
             cur.execute(
-                f"DELETE FROM {get_table_name('team', 'staging')} WHERE league_id = %s AND source = %s",
+                f"DELETE FROM staging.unmatched_teams WHERE league_id = %s AND source = %s",
                 (league_id, source_key),
             )
             cur.execute(
-                f"DELETE FROM {get_table_name('player', 'staging')} WHERE league_id = %s AND source = %s",
+                f"DELETE FROM staging.unmatched_players WHERE league_id = %s AND source = %s",
                 (league_id, source_key),
             )
 

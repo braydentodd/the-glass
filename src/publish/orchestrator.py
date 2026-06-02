@@ -30,7 +30,6 @@ from typing import Union
 from src.core.lib.terminal import progress
 from src.core.lib.logging import phase_marker
 from src.core.lib.postgres import get_db_connection
-from src.core.lib.tables_resolver import get_table_name
 from src.core.definitions.leagues import LEAGUES
 from src.core.lib.leagues_resolver import (
     format_season_label,
@@ -345,10 +344,10 @@ def run_publish(
         sheet_formatting=SHEETS_FORMATTING,
         league_config=league_config,
         db_schema=db_schema,
-        player_entity_table=get_table_name('player', 'profiles', db_schema),
-        team_entity_table=get_table_name('team', 'profiles', db_schema),
-        player_stats_table=get_table_name('player', 'stats', db_schema),
-        team_stats_table=get_table_name('team', 'stats', db_schema),
+        player_entity_table='profiles.players',
+        team_entity_table='profiles.teams',
+        player_stats_table='stats.player_seasons',
+        team_stats_table='stats.team_seasons',
         player_entity_fields=db_fields['player_entity_fields'],
         team_entity_fields=db_fields['team_entity_fields'],
         stat_fields=db_fields['stat_fields'],

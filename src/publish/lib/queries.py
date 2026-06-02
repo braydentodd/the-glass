@@ -24,7 +24,6 @@ from typing import Any, Dict, List, Tuple, Union
 from psycopg2.extras import RealDictCursor
 
 from src.core.lib.postgres import get_db_connection
-from src.core.lib.tables_resolver import get_table_name
 from src.core.definitions.stats import SEASON_TYPE_GROUPS
 
 logger = logging.getLogger(__name__)
@@ -109,10 +108,10 @@ def get_teams_from_db(league_key: str) -> Dict[int, Tuple[str, str]]:
     """
     sql = f"""
         SELECT t.{_quote_col('the_glass_id')}, t.abbr, t.name
-          FROM {get_table_name('team', 'profiles')} t
-          JOIN {get_table_name('team', 'rosters')} lr
+          FROM profiles.teams t
+          JOIN rosters.leagues_teams lr
             ON lr.team_id = t.{_quote_col('the_glass_id')}
-          JOIN {get_table_name('league', 'profiles')} lp
+          JOIN profiles.leagues lp
             ON lp.{_quote_col('the_glass_id')} = lr.league_id
          WHERE lp.code = %s
           ORDER BY t.abbr
@@ -166,7 +165,7 @@ def fetch_players_for_team(
         query = f"""
             SELECT {', '.join(all_fields)}
               FROM {players_tbl} p
-              JOIN {get_table_name('player', 'rosters')} tr
+              JOIN rosters.teams_players tr
                                 ON tr.player_id = p.{glass_id}
               JOIN {teams_tbl} t
                 ON t.{glass_id} = tr.team_id
@@ -242,7 +241,7 @@ def fetch_all_players(
               FROM {stats_tbl} s
               JOIN {players_tbl} p ON p.{glass_id} = s.{glass_id}
               JOIN {teams_tbl}   t ON t.{glass_id} = s.team_id
-                            LEFT JOIN {get_table_name('player', 'rosters')} tr
+                            LEFT JOIN rosters.teams_players tr
                                 ON tr.player_id = s.{glass_id}
                              AND tr.team_id = s.team_id
              WHERE s.{season_col_name} = %s AND s.season_type = %s

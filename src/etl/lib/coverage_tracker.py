@@ -16,9 +16,8 @@ import logging
 from typing import Any, Dict, List, Tuple
 
 from src.core.definitions.db_columns import DB_COLUMNS
-from src.core.definitions.schema import TABLES
+from src.core.definitions.schema import TABLES, TABLE_ENTITY
 from src.core.lib.postgres import db_connection, quote_col
-from src.core.lib.tables_resolver import get_table_name, TABLE_ENTITY
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ def _resolve_league_id(conn: Any, league_key: str) -> int:
     """Resolve league_id for a league_key by looking it up in profiles.leagues."""
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT the_glass_id FROM {get_table_name('league', 'profiles')} WHERE code = %s",
+            f"SELECT the_glass_id FROM profiles.leagues WHERE code = %s",
             (league_key,),
         )
         row = cur.fetchone()
@@ -152,7 +151,7 @@ def prune_coverages(league_key: str) -> int:
         league_id = _resolve_league_id(conn, league_key)
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT entity_type, field FROM {get_table_name('coverage', 'ops')} WHERE league_id = %s",
+                f"SELECT entity_type, field FROM ops.coverages WHERE league_id = %s",
                 (league_id,),
             )
             to_delete: List[Tuple[str, str]] = [
@@ -168,7 +167,7 @@ def prune_coverages(league_key: str) -> int:
             flat = [item for pair in to_delete for item in pair]
             cur.execute(
                 f"""
-                DELETE FROM {get_table_name('coverage', 'ops')}
+                DELETE FROM ops.coverages
                 WHERE league_id = %s
                   AND (entity_type, field) IN (VALUES {values})
                 """,

@@ -12,40 +12,23 @@ they cover, so cleanup and publish must use the domain's own denominator
 instead of the row-level one.
 """
 
-from typing import Any, Dict
+from typing import Dict
 
-
-STAT_DOMAINS: Dict[str, Dict[str, Any]] = {
-    'base': {
-        'minutes_col': 'mins_x10',
-        'possessions_col': 'poss',
-        'primary':     True
+STAT_RATES = {
+    'per_poss': {
+        'short_label': 'Poss',
+        'rate':        100
     },
-    'tracking': {
-        'minutes_col': 'tracking_mins_x10',
-        'possessions_col': None,
-        'primary':     False
+    'per_min': {
+        'short_label': 'Min',
+        'rate':        40
     },
-    'hustle': {
-        'minutes_col': 'hustle_mins_x10',
-        'possessions_col': None,
-        'primary':     False
-    },
-    'off': {
-        'minutes_col': 'off_mins_x10',
-        'possessions_col': None,
-        'primary':     False
-    }
 }
 
 
 # Codes are grouped into "regular_season" vs "postseason"; queries use the
 # groups to decide which season_type values to aggregate.
-SEASON_TYPE_GROUPS: Dict[str, tuple] = {
-    'regular_season': ('rs',),
-    'postseason':     ('po', 'pi', 'ct')
+SEASON_TYPE_GROUPS: Dict[str, list[str]] = {
+    'regular_season': ['rs'],
+    'postseason':     ['po', 'pi', 'ct']
 }
-
-
-# Global pipeline data-retention policy (seasons).
-RETENTION_SEASONS: int = 6

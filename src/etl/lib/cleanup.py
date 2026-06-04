@@ -26,7 +26,7 @@ from src.core.lib.postgres import db_connection, get_db_connection, quote_col
 from src.core.definitions.leagues import LEAGUES
 from src.core.definitions.schema import TABLES, TABLE_ENTITY
 from src.core.definitions.stats import STAT_DOMAINS
-from src.core.lib.leagues_resolver import get_oldest_retained_season
+from src.core.lib.league_resolver import get_oldest_retained_season
 from src.core.definitions.db_columns import DB_COLUMNS
 from typing import Union
 

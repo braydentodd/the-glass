@@ -19,7 +19,7 @@ in :func:`validate_config`.
 import logging
 from typing import Dict, List, Union
 
-from src.etl.definitions.datasets import get_source_entities
+from src.etl.lib.source_resolver import get_identity_entities
 
 VALID_ENTITY_TYPES = frozenset({'league', 'player', 'team', 'country'})
 
@@ -54,13 +54,15 @@ def _validate_source_structure(
     db_columns: Dict[str, Dict],
     sources: Dict[str, Dict],
 ) -> List[str]:
-    """Validate the nested sources structure in DB_COLUMNS.
+    """Validate the nested identity structure in DB_COLUMNS.
 
-    DB_COLUMNS uses a nested structure: {league: {source: {entity: {...}}}}
-    where league is the league key (e.g., 'nba') and source is the actual
-    source key (e.g., 'nba_api'). Provider maps may only contain entity
+    DB_COLUMNS uses a nested structure: {league: {identity: {entity: {...}}}}
+    where league is the league key (e.g., 'NBA') and identity is the
+    identity key (e.g., 'nba_id'). Provider maps may only contain entity
     keys; provider-level metadata keys are rejected.
     """
+    from src.etl.definitions.datasets import DATASETS
+
     errors = []
     for col_name, meta in db_columns.items():
         col_sources = meta.get('dataset_mapping')
@@ -69,39 +71,39 @@ def _validate_source_structure(
 
         prefix = f"DB_COLUMNS['{col_name}']"
         if not isinstance(col_sources, dict):
-            errors.append(f"{prefix}: 'sources' must be dict or None")
+            errors.append(f"{prefix}: 'dataset_mapping' must be dict or None")
             continue
 
-        # col_sources is {league: {source: {entity: {...}}}}
-        for league, source_dict in col_sources.items():
-            if not isinstance(source_dict, dict):
-                errors.append(f"{prefix}: sources['{league}'] must be dict")
+        # col_sources is {league: {identity: {entity: {...}}}}
+        for league, identity_dict in col_sources.items():
+            if not isinstance(identity_dict, dict):
+                errors.append(f"{prefix}: dataset_mapping['{league}'] must be dict")
                 continue
 
-            for provider, entities in source_dict.items():
-                if provider not in sources:
-                    errors.append(f"{prefix}: sources['{league}']['{provider}'] not registered in SOURCES")
+            for identity, entities in identity_dict.items():
+                if identity not in DATASETS:
+                    errors.append(f"{prefix}: dataset_mapping['{league}']['{identity}'] not registered in DATASETS")
                     continue
-                entity_types = get_source_entities(provider)
+                entity_types = get_identity_entities(identity)
                 if not isinstance(entities, dict):
-                    errors.append(f"{prefix}: sources['{league}']['{provider}'] must be dict")
+                    errors.append(f"{prefix}: dataset_mapping['{league}']['{identity}'] must be dict")
                     continue
                 for entity_name, source_def in entities.items():
                     if entity_name not in VALID_ENTITY_TYPES:
                         errors.append(
-                            f"{prefix}: sources['{league}']['{provider}'] contains unsupported key {entity_name!r}; "
+                            f"{prefix}: dataset_mapping['{league}']['{identity}'] contains unsupported key {entity_name!r}; "
                             "only entity keys are allowed"
                         )
                         continue
                     if not isinstance(source_def, dict):
                         errors.append(
-                            f"{prefix}: sources['{league}']['{provider}']['{entity_name}'] must be dict"
+                            f"{prefix}: dataset_mapping['{league}']['{identity}']['{entity_name}'] must be dict"
                         )
                         continue
                     if entity_name not in entity_types:
                         errors.append(
-                            f"{prefix}: sources['{league}']['{provider}']['{entity_name}'] - "
-                            f"source '{provider}' does not declare entity_types {entity_name!r}"
+                            f"{prefix}: dataset_mapping['{league}']['{identity}']['{entity_name}'] - "
+                            f"identity '{identity}' does not declare entity_types {entity_name!r}"
                         )
     return errors
 
@@ -164,7 +166,7 @@ def _validate_table_definitions(
         prefix = f"TABLES['{table_name}']"
 
         # Collect columns declared on this table (both database columns and FK columns)
-        fk_columns = {fk.get('column') for fk in meta.get('foreign_keys', []) if fk.get('column')}
+        fk_columns = {fk.get('column') for fk in (meta.get('foreign_keys') or []) if fk.get('column')}
         surrogate_pks = {'process_id', 'id'}
         
         # 2. Primary Key validation
@@ -183,7 +185,7 @@ def _validate_table_definitions(
                     )
 
         # 3. Foreign Key validation
-        fks = meta.get('foreign_keys', [])
+        fks = meta.get('foreign_keys') or []
         if not isinstance(fks, list):
             errors.append(f"{prefix}: foreign_keys must be a list")
         else:
@@ -233,7 +235,7 @@ def _validate_table_definitions(
                                 )
 
         # 5. Indexes validation
-        idxs = meta.get('indexes', [])
+        idxs = meta.get('indexes') or []
         if not isinstance(idxs, list):
             errors.append(f"{prefix}: indexes must be a list")
         else:
@@ -286,7 +288,7 @@ def _validate_fk_targets(tables: Dict[str, Dict]) -> List[str]:
     errors: List[str] = []
 
     for tname, meta in tables.items():
-        for fk in meta.get('foreign_keys', []):
+        for fk in (meta.get('foreign_keys') or []):
             prefix = f"TABLES['{tname}'] FK on '{fk.get('column', '?')}'"
             for action_key in ('on_update', 'on_delete'):
                 action = fk.get(action_key)
@@ -372,8 +374,6 @@ def validate_config() -> List[str]:
     errors.extend(_validate_pg_types(DB_COLUMNS))
     errors.extend(_validate_source_structure(DB_COLUMNS, SOURCES))
     errors.extend(_validate_table_definitions(TABLES, DB_COLUMNS))
-    errors.extend(_validate_domain_coverage(DB_COLUMNS))
-    errors.extend(_validate_domain_primaries())
     errors.extend(_validate_fk_targets(TABLES))
     errors.extend(_validate_league_stage_definitions())
     

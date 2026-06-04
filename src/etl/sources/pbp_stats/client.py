@@ -12,9 +12,9 @@ import requests
 
 from src.core.definitions.leagues import LEAGUES
 from src.core.lib.rate_limiter import get_rate_limiter
-from src.core.lib.seasons_resolver import format_season_param
+from src.core.lib.season_resolver import format_season_param
 from src.etl.definitions.datasets import DATASETS
-from src.etl.lib.sources_resolver import get_source_league_id
+from src.etl.lib.source_resolver import get_source_league_id
 from src.etl.sources.pbp_stats.config import API_CONFIG
 
 logger = logging.getLogger(__name__)

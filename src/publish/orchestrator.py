@@ -31,7 +31,7 @@ from src.core.lib.terminal import progress
 from src.core.lib.logging import phase_marker
 from src.core.lib.postgres import get_db_connection
 from src.core.definitions.leagues import LEAGUES
-from src.core.lib.leagues_resolver import (
+from src.core.lib.league_resolver import (
     format_season_label,
     get_current_season,
     get_current_season_year,

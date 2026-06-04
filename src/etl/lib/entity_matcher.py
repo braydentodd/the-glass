@@ -33,7 +33,7 @@ def _get_table_columns(table_name: str) -> set:
     return _TABLE_COLS_CACHE[table_name]
 
 
-_STAGING_TABLES = {'player': 'staging.unmatched_players', 'team': 'staging.unmatched_teams'}
+_STAGING_TABLES = {'player': 'profiles.players_staging', 'team': 'profiles.teams_staging'}
 
 
 def _fetch_staged_rows(
@@ -228,11 +228,11 @@ def promote_staged_entities(league_key: str, source_key: str) -> Dict[str, int]:
 
         with conn.cursor() as cur:
             cur.execute(
-                f"DELETE FROM staging.unmatched_teams WHERE league_id = %s AND source = %s",
+                f"DELETE FROM profiles.teams_staging WHERE league_id = %s AND source = %s",
                 (league_id, source_key),
             )
             cur.execute(
-                f"DELETE FROM staging.unmatched_players WHERE league_id = %s AND source = %s",
+                f"DELETE FROM profiles.players_staging WHERE league_id = %s AND source = %s",
                 (league_id, source_key),
             )
 

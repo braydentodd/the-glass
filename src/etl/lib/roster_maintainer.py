@@ -8,7 +8,7 @@ import logging
 from typing import Any, Dict, Iterable, List, Tuple
 
 from src.etl.lib.load import merge_staged_entity_rows
-from src.etl.lib.sources_resolver import get_rosters_fields
+from src.etl.lib.source_resolver import get_rosters_fields
 
 logger = logging.getLogger(__name__)
 

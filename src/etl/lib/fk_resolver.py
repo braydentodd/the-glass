@@ -9,7 +9,7 @@ from typing import Any, Dict, Iterable, Tuple
 
 from src.core.definitions.schema import TABLES
 from src.core.lib.postgres import quote_col
-from src.etl.lib.sources_resolver import get_source_id_column
+from src.etl.lib.source_resolver import get_source_id_column
 
 
 def load_fk_mapping(

@@ -24,9 +24,7 @@ VALID_PG_TYPES = frozenset({
     'SERIAL', 'SMALLINT', 'INTEGER', 'BIGINT', 'VARCHAR', 'TEXT', 'CHAR',
     'BOOLEAN', 'TIMESTAMP', 'DATE', 'NUMERIC', 'REAL', 'DOUBLE PRECISION',
 })
-VALID_REFRESH_MODES = frozenset({'null_only', 'always'})
 VALID_FK_ACTIONS = frozenset({'CASCADE', 'RESTRICT', 'SET NULL', 'NO ACTION'})
-VALID_MANAGERS = frozenset({'db', 'execution_context', 'in_season_source', 'perennial_source'})
 VALID_FK_STRATEGIES = frozenset({'direct', 'profile_lookup'})
 
 THE_GLASS_ID = 'the_glass_id'
@@ -91,7 +89,6 @@ class TableDef(TypedDict):
     foreign_keys: Union[List[FKDef], None]
     unique_constraints: Union[List[List[str]], None]
     indexes: Union[List[IndexDef], None]
-    source_ids: Union[bool, None]
 
 
 # ============================================================================
@@ -106,11 +103,28 @@ TABLES: Dict[str, TableDef] = {
     'leagues': {
         'entity': 'league',
         'schema': 'profiles',
-        'primary_key': ['the_glass_id'],
-        'foreign_keys': [],
-        'unique_constraints': [['code']],
-        'indexes': [],
-        'source_ids': False,
+        'primary_key': ['code'],
+        'foreign_keys': None,
+        'unique_constraints': None,
+        'indexes': None
+    },
+    'countries': {
+        'entity': 'country',
+        'schema': 'profiles',
+        'primary_key': ['code'],
+        'foreign_keys': [
+            {
+                'column': 'sovereign_code',
+                'ref_schema': 'profiles',
+                'ref_table': 'countries',
+                'ref_column': 'code',
+                'strategy': 'profile_lookup',
+                'on_update': 'CASCADE',
+                'on_delete': 'SET NULL'
+            }
+        ],
+        'unique_constraints': None,
+        'indexes': None
     },
     'teams': {
         'entity': 'team',
@@ -118,74 +132,76 @@ TABLES: Dict[str, TableDef] = {
         'primary_key': ['the_glass_id'],
         'foreign_keys': [
             {
-                'column':     'country_id',
+                'column': 'country_code',
                 'ref_schema': 'profiles',
-                'ref_table':  'countries',
-                'ref_column': 'the_glass_id',
-                'strategy':   'profile_lookup',
-                'on_update':  'CASCADE',
-                'on_delete':  'SET NULL',
-            },
+                'ref_table': 'countries',
+                'ref_column': 'code',
+                'strategy': 'profile_lookup',
+                'on_update': 'CASCADE',
+                'on_delete': 'CASCADE'
+            }
         ],
         'unique_constraints': None,
-        'indexes': [],
-        'source_ids': True,
+        'indexes': None
     },
     'players': {
         'entity': 'player',
         'schema': 'profiles',
         'primary_key': ['the_glass_id'],
-        'foreign_keys': [],
+        'foreign_keys': None,
         'unique_constraints': None,
-        'indexes': [],
-        'source_ids': True,
-    },
-    'countries': {
-        'entity': 'country',
-        'schema': 'profiles',
-        'primary_key': ['the_glass_id'],
-        'foreign_keys': [
-            {
-                'column':     'sovereign_id',
-                'ref_schema': 'profiles',
-                'ref_table':  'countries',
-                'ref_column': 'the_glass_id',
-                'strategy':   'profile_lookup',
-                'on_update':  'CASCADE',
-                'on_delete':  'SET NULL',
-            },
-        ],
-        'unique_constraints': [['code']],
-        'indexes': [],
-        'source_ids': False,
+        'indexes': None
     },
     # ------------------------------------------------------------------
-    # STAGING TABLES (profiles schema, transient ingestion)
+    # STAGING TABLES (carbon copies of parent tables, minus the_glass_id & FKs)
     # ------------------------------------------------------------------
-    'unmatched_teams': {
+    'teams_staging': {
         'entity': 'team',
-        'schema': 'staging',
-        'primary_key': ['league_id', 'source_id'],
-        'foreign_keys': [],
+        'schema': 'profiles',
+        'primary_key': ['identity', 'identity_code'],
+        'foreign_keys': None,
         'unique_constraints': None,
-        'indexes': [
-            {'name': 'league_source', 'columns': ['league_id', 'source']},
-            {'name': 'matched_glass_id', 'columns': ['matched_glass_id']},
-        ],
-        'source_ids': False,
+        'indexes': None
     },
-    'unmatched_players': {
+    'players_staging': {
         'entity': 'player',
-        'schema': 'staging',
-        'primary_key': ['league_id', 'source_id'],
-        'foreign_keys': [],
+        'schema': 'profiles',
+        'primary_key': ['identity', 'identity_code'],
+        'foreign_keys': None,
         'unique_constraints': None,
-        'indexes': [
-            {'name': 'league_source', 'columns': ['league_id', 'source']},
-            {'name': 'matched_glass_id', 'columns': ['matched_glass_id']},
-            {'name': 'team_source_id', 'columns': ['team_source_id']},
-        ],
-        'source_ids': False,
+        'indexes': None
+    },
+    'player_seasons_staging': {
+        'entity': 'player',
+        'schema': 'stats',
+        'primary_key': ['identity', 'identity_code', 'season', 'season_type'],
+        'foreign_keys': None,
+        'unique_constraints': None,
+        'indexes': None
+    },
+    'team_seasons_staging': {
+        'entity': 'team',
+        'schema': 'stats',
+        'primary_key': ['identity', 'identity_code', 'team_identity_code', 'season', 'season_type'],
+        'foreign_keys': None,
+        'unique_constraints': None,
+        'indexes': None
+    },
+    'leagues_teams_staging': {
+        'entity': 'league',
+        'schema': 'rosters',
+        'primary_key': ['league_code', 'team_identity_code'],
+        'foreign_keys': None,
+        'unique_constraints': None,
+        'indexes': None
+    },
+    'teams_players_staging': {
+        'entity': 'team',
+        'schema': 'rosters',
+        'primary_key': ['league_code', 'team_identity_code', 'player_identity_code'],
+        'foreign_keys': None,
+        'unique_constraints': None,
+        'indexes': None
     },
     # ------------------------------------------------------------------
     # ROSTERS SCHEMA
@@ -193,13 +209,13 @@ TABLES: Dict[str, TableDef] = {
     'leagues_teams': {
         'entity': 'league',
         'schema': 'rosters',
-        'primary_key': ['league_id', 'team_id'],
+        'primary_key': ['league_code', 'team_id'],
         'foreign_keys': [
             {
-                'column':     'league_id',
+                'column':     'league_code',
                 'ref_schema': 'profiles',
                 'ref_table':  'leagues',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'code',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -215,19 +231,18 @@ TABLES: Dict[str, TableDef] = {
             },
         ],
         'unique_constraints': None,
-        'indexes': [],
-        'source_ids': False,
+        'indexes': None
     },
     'teams_players': {
         'entity': 'team',
         'schema': 'rosters',
-        'primary_key': ['league_id', 'team_id', 'player_id'],
+        'primary_key': ['league_code', 'team_id', 'player_id'],
         'foreign_keys': [
             {
-                'column':     'league_id',
+                'column':     'league_code',
                 'ref_schema': 'profiles',
                 'ref_table':  'leagues',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'code',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -252,13 +267,12 @@ TABLES: Dict[str, TableDef] = {
             },
         ],
         'unique_constraints': None,
-        'indexes': [],
-        'source_ids': False,
+        'indexes': None
     },
     'countries_players': {
         'entity': 'country',
         'schema': 'rosters',
-        'primary_key': ['player_id', 'country_id'],
+        'primary_key': ['player_id', 'country_code'],
         'foreign_keys': [
             {
                 'column':     'player_id',
@@ -270,18 +284,25 @@ TABLES: Dict[str, TableDef] = {
                 'on_delete':  'CASCADE',
             },
             {
-                'column':     'country_id',
+                'column':     'country_code',
                 'ref_schema': 'profiles',
                 'ref_table':  'countries',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'code',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
             },
         ],
         'unique_constraints': None,
-        'indexes': [],
-        'source_ids': False,
+        'indexes': None
+    },
+    'identities_entities': {
+        'entity': 'identity',
+        'schema': 'rosters',
+        'primary_key': ['identity', 'code', 'entity'],
+        'foreign_keys': None,
+        'unique_constraints': None,
+        'indexes': None
     },
     # ------------------------------------------------------------------
     # STATS SCHEMA
@@ -289,7 +310,7 @@ TABLES: Dict[str, TableDef] = {
     'player_seasons': {
         'entity': 'player',
         'schema': 'stats',
-        'primary_key': ['league_id', 'player_id', 'team_id', 'season', 'season_type'],
+        'primary_key': ['league_code', 'player_id', 'team_id', 'season', 'season_type'],
         'foreign_keys': [
             {
                 'column':     'player_id',
@@ -310,10 +331,10 @@ TABLES: Dict[str, TableDef] = {
                 'on_delete':  'CASCADE',
             },
             {
-                'column':     'league_id',
+                'column':     'league_code',
                 'ref_schema': 'profiles',
                 'ref_table':  'leagues',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'code',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -322,13 +343,12 @@ TABLES: Dict[str, TableDef] = {
         'unique_constraints': None,
         'indexes': [
             {'name': 'season_type_season', 'columns': ['season_type', 'season']},
-            ],
-        'source_ids': False,
+        ],
     },
     'team_seasons': {
         'entity': 'team',
         'schema': 'stats',
-        'primary_key': ['league_id', 'team_id', 'season', 'season_type'],
+        'primary_key': ['league_code', 'team_id', 'season', 'season_type'],
         'foreign_keys': [
             {
                 'column':     'team_id',
@@ -340,10 +360,10 @@ TABLES: Dict[str, TableDef] = {
                 'on_delete':  'CASCADE',
             },
             {
-                'column':     'league_id',
+                'column':     'league_code',
                 'ref_schema': 'profiles',
                 'ref_table':  'leagues',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'code',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -352,8 +372,7 @@ TABLES: Dict[str, TableDef] = {
         'unique_constraints': None,
         'indexes': [
             {'name': 'season_type_season', 'columns': ['season_type', 'season']},
-        ],
-        'source_ids': False,
+        ]
     },
     # ------------------------------------------------------------------
     # OPS SCHEMA
@@ -362,12 +381,11 @@ TABLES: Dict[str, TableDef] = {
         'entity': 'run',
         'schema': 'ops',
         'primary_key': ['process_id'],
-        'foreign_keys': [],
+        'foreign_keys': None,
         'unique_constraints': None,
         'indexes': [
             {'name': 'pipeline_status', 'columns': ['pipeline', 'status']},
         ],
-        'source_ids': False,
     },
     'tasks': {
         'entity': 'task',
@@ -384,10 +402,10 @@ TABLES: Dict[str, TableDef] = {
                 'on_delete':  'CASCADE',
             },
             {
-                'column':     'league_id',
+                'column':     'league_code',
                 'ref_schema': 'profiles',
                 'ref_table':  'leagues',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'code',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -397,27 +415,25 @@ TABLES: Dict[str, TableDef] = {
         'indexes': [
             {'name': 'run_id_status', 'columns': ['run_id', 'status']},
         ],
-        'source_ids': False,
     },
     'coverages': {
         'entity': 'coverage',
         'schema': 'ops',
-        'primary_key': ['league_id', 'entity_type', 'season', 'season_type', 'source', 'dataset', 'field'],
+        'primary_key': ['league_code', 'entity', 'season', 'season_type', 'identity', 'source_params', 'col_name', 'dataset', 'dataset_params', 'field'],
         'foreign_keys': [
             {
-                'column':     'league_id',
+                'column':     'league_code',
                 'ref_schema': 'profiles',
                 'ref_table':  'leagues',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'code',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
             },
         ],
         'unique_constraints': None,
-        'indexes': [],
-        'source_ids': False,
-    },
+        'indexes': None,
+    }
 }
 
 # table_name -> entity (e.g. 'players' -> 'player')

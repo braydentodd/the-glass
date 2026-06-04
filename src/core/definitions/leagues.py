@@ -29,14 +29,18 @@ class LeagueDef(TypedDict):
     regular_season_types: List[str]
     postseason_types: List[str]
     calendar_flip: str
+    stat_rates: List[str]
+    retention_seasons: int
 
 LEAGUES: Dict[str, LeagueDef] = {
     'NBA': {
-        'name':                   'National Basketball Association',
-        'gender':                 'M',
-        'season_format':          'split_year',
-        'regular_season_types':   ['rs'],
-        'postseason_types':       ['po', 'pi'],
-        'calendar_flip':          '08/01',
+        'name': 'National Basketball Association',
+        'gender': 'M',
+        'season_format': 'split_year',
+        'regular_season_types': ['rs'],
+        'postseason_types': ['po', 'pi'],
+        'calendar_flip': '08/01',
+        'stat_rates': ['per_poss', 'per_min'],
+        'retention_seasons': 6
     },
 }

@@ -31,7 +31,6 @@ SOURCES: Dict[str, SourceDef] = {
 
     'nba_api': {
         'leagues':              {'NBA': '00'},
-        'external_id':          'nba_id',
         'id_type':              'BIGINT',
         'rate_limits': {
             'requests_per_second': 0.8,
@@ -43,7 +42,6 @@ SOURCES: Dict[str, SourceDef] = {
     },
     'pbp_stats': {
         'leagues':              {'NBA': 'nba'},
-        'external_id':          'nba_id',
         'id_type':              'BIGINT',
         'rate_limits': {
             'requests_per_second': 0.5,
@@ -56,7 +54,6 @@ SOURCES: Dict[str, SourceDef] = {
     },
     'the_glass_sheets': {
         'leagues':              {'NBA': 'nba'},
-        'external_id':          None,
         'id_type':              'BIGINT',
         'rate_limits': {
             'requests_per_second': 1.0,

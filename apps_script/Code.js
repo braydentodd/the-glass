@@ -70,7 +70,7 @@ function _checkEpochReset(config, props) {
     var currentEpoch = props.getProperty('PUBLISH_EPOCH');
     var publishEpochStr = String(config.publish_epoch);
     if (currentEpoch !== publishEpochStr) {
-      props.deleteProperty('STATS_RATE');
+      props.deleteProperty('STAT_RATE');
       props.deleteProperty('SHOW_ADVANCED');
       props.deleteProperty('HISTORICAL_TIMEFRAME');
       
@@ -98,7 +98,7 @@ function _buildDisplayMenu(ui, config) {
     menu.addSubMenu(timeframeMenu);
   }
 
-  var rateConfig = menuConfig.stats_rate || {};
+  var rateConfig = menuConfig.stat_rate || {};
   var ratesKeys = Object.keys(config.stat_rates || {});
   if (ratesKeys.length) {
     var rateMenu = ui.createMenu(rateConfig.display_name || 'Stats Rate');
@@ -148,7 +148,7 @@ function _switchStatRate(newRate) {
   var config = _getConfig();
   var props = PropertiesService.getDocumentProperties();
   _checkEpochReset(config, props);
-  var currentRate = props.getProperty('STATS_RATE') || config.default_stat_rate;
+  var currentRate = props.getProperty('STAT_RATE') || config.default_stat_rate;
 
   var rObj = config.stat_rates[newRate];
   var rateLabel = newRate;
@@ -160,7 +160,7 @@ function _switchStatRate(newRate) {
     return;
   }
 
-  props.setProperty('STATS_RATE', newRate);
+  props.setProperty('STAT_RATE', newRate);
   var predicate = function(b) { return b.is_stats_section && b.rate !== ""; };
   _applyToAllSheets(function(sheet, sheetType) {
     _reapplyToggles(sheet, sheetType, predicate);
@@ -450,7 +450,7 @@ function _reapplyToggles(sheet, sheetType, predicate) {
 function _buildVisibilityRanges(metadata, props, config, predicate) {
   var visible = [];
   var hidden = [];
-  var currentRate = props['STATS_RATE'] || config.default_stat_rate;
+  var currentRate = props['STAT_RATE'] || config.default_stat_rate;
   var showAdvanced = props['SHOW_ADVANCED'] === 'true';
   var timeframe = parseInt(props['HISTORICAL_TIMEFRAME'], 10);
   if (isNaN(timeframe) || timeframe <= 0) {

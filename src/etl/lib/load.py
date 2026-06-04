@@ -23,7 +23,7 @@ from psycopg2.extras import execute_values
 
 from src.core.lib.postgres import db_connection, quote_col
 from src.core.definitions.schema import TABLES
-from src.etl.lib.sources_resolver import get_default_external_source, get_source_id_column
+from src.etl.lib.source_resolver import get_default_external_source, get_source_id_column
 from src.etl.lib.fk_resolver import load_fk_mapping, resolve_fk_value_columns
 from src.etl.definitions.execution import DEFAULT_BATCH_SIZE
 
@@ -250,7 +250,7 @@ def write_staged_entity_rows(
     source_key: str,
 ) -> int:
     """Replace the staged snapshot for ``league_key``/``source_key``."""
-    _STAGING_TABLES = {'player': 'staging.unmatched_players', 'team': 'staging.unmatched_teams'}
+    _STAGING_TABLES = {'player': 'profiles.players_staging', 'team': 'profiles.teams_staging'}
     table = _STAGING_TABLES[entity]
 
     data_cols: Set[str] = set()
@@ -299,7 +299,7 @@ def merge_staged_entity_rows(
     source_key: str,
 ) -> int:
     """Merge roster or overlay fields into an existing staged snapshot."""
-    _STAGING_TABLES = {'player': 'staging.unmatched_players', 'team': 'staging.unmatched_teams'}
+    _STAGING_TABLES = {'player': 'profiles.players_staging', 'team': 'profiles.teams_staging'}
     table = _STAGING_TABLES[entity]
 
     data_cols: Set[str] = set()

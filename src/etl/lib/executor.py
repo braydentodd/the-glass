@@ -18,7 +18,7 @@ from functools import partial
 from typing import Any, Callable, Dict, List, Union
 
 from src.core.lib.postgres import db_connection, quote_col
-from src.etl.lib.sources_resolver import get_source_id_column
+from src.etl.lib.source_resolver import get_source_id_column
 from src.etl.definitions.datasets import DATASETS
 from src.etl.lib.extract import (
     extract_columns_from_result,

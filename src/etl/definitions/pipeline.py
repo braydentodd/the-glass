@@ -8,24 +8,21 @@ in declarative step metadata.
 
 from typing import Dict, List
 
-VALID_ETL_PHASES = frozenset({'full', 'upsert', 'prune'})
+VALID_ETL_PHASES = frozenset({'full'})
 
 PIPELINE_PHASES: Dict[str, List[str]] = {
-    'upsert': [
-        'stage_and_match_entities',
-        'backfill_stats',
-        'update_current_stats',
-        'normalize_stats_domains',
-    ],
-    'prune': [
+    'full': [
+        'build_schema',
+        'update_internal',
+        'backfill_external',
+        'maintain_external',
+        'match_entities',
+        'upsert_entities',
         'prune_stats_retention',
         'prune_entities',
         'prune_coverages',
     ],
 }
-
-# The 'full' phase executes both 'upsert' and 'prune' phases in sequence
-PIPELINE_PHASES['full'] = PIPELINE_PHASES['upsert'] + PIPELINE_PHASES['prune']
 
 VALID_ETL_STEP_HANDLERS = frozenset(
     handler for handlers in PIPELINE_PHASES.values() for handler in handlers

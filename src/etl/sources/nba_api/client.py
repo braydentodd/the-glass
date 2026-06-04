@@ -16,9 +16,9 @@ from typing import Any, Callable, Dict, Union
 
 from src.core.definitions.leagues import LEAGUES
 from src.core.lib.rate_limiter import get_rate_limiter
-from src.core.lib.seasons_resolver import format_season_param, parse_season_end_year
+from src.core.lib.season_resolver import format_season_param, parse_season_end_year
 from src.etl.definitions.datasets import DATASETS
-from src.etl.lib.sources_resolver import get_source_league_id
+from src.etl.lib.source_resolver import get_source_league_id
 from src.etl.sources.nba_api.config import (
     API_CONFIG,
     REQUEST_HEADERS,
@@ -256,7 +256,7 @@ def fetch_roster_memberships(
     """Return ``[(team_source_id, player_source_id, jersey_num, seasons_exp), ...]``
     for every active roster slot in the league for the given season.
 
-    ``dataset`` is the roster_maintainer dataset name (e.g. ``player_info``).
+    ``dataset`` is the dataset name that provides roster data (e.g. ``player_info``).
     Team and player ID fields are discovered from the response headers.
     Additional rosters-scoped fields (jersey_num, seasons_exp, etc.) are
     dynamically discovered from the column registry.
@@ -264,9 +264,9 @@ def fetch_roster_memberships(
     Players whose team ID is null or zero (free agents / inactive) are dropped.
     """
     if not dataset:
-        raise ValueError('dataset is required for roster_maintainer role')
+        raise ValueError('dataset is required for roster fetch')
 
-    from src.etl.lib.sources_resolver import get_rosters_fields
+    from src.etl.lib.source_resolver import get_rosters_fields
 
     rosters_fields = get_rosters_fields(league_key, 'nba_api')
 

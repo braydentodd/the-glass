@@ -1,5 +1,5 @@
 """
-The Glass - ETL Extraction Engine
+Shoot the Sheet - ETL Extraction Engine
 
 Source-agnostic field extraction from API responses using config-driven
 source mappings.  Reads a provider's SOURCES dict and an API result dict,

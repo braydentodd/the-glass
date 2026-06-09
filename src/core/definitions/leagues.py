@@ -1,5 +1,5 @@
 """
-The Glass - League Definitions
+Shoot the Sheet - League Definitions
 
 Per-league operational settings: calendar window, retention, season grammar.
 Dataset-level role assignments and source wiring have moved to

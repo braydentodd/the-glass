@@ -1,5 +1,5 @@
 """
-The Glass - PBP Stats Source Configuration
+Shoot the Sheet - PBP Stats Source Configuration
 
 Pure data definitions for the ``pbp_stats`` source: season-type mapping,
 rate limits, and field-name mappings.

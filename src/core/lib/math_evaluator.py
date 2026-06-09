@@ -1,5 +1,5 @@
 """
-The Glass - Math Evaluator
+Shoot the Sheet - Math Evaluator
 
 Restricted AST-based evaluator for runtime mathematical string expressions.
 Only whitelisted arithmetic nodes are permitted; any attempt to access

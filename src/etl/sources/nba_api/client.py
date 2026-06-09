@@ -1,5 +1,5 @@
 """
-The Glass - NBA API Client
+Shoot the Sheet - NBA API Client
 
 Wraps the nba_api library with browser header patching, dynamic dataset
 loading, retry logic, and parameter building.  Abstracts NBA-specific

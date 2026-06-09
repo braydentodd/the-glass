@@ -1,5 +1,5 @@
 """
-The Glass - Unified Dataset Registry
+Shoot the Sheet - Unified Dataset Registry
 
 Single source of truth for all dataset definitions across every identity.
 
@@ -11,7 +11,7 @@ dict that holds source-specific wire parameters.
 Shape:
 
     DATASETS[identity_key][dataset_name] -> DatasetDef
-    DatasetDef['source'] -> source_module_key (e.g. 'nba_api', 'the_glass_sheets')
+    DatasetDef['source'] -> source_module_key (e.g. 'nba_api', 'shoot_the_sheet')
     DatasetDef['source_mapping'] -> SourceMappingDef
 
 This mirrors the ``dataset_mapping`` pattern in ``db_columns.py``.
@@ -254,20 +254,20 @@ DATASETS: Dict[str, Dict[str, DatasetDef]] = {
     },
 
     # ========================================================================
-    # The Glass Sheets
+    # Shoot the Sheet
     # ========================================================================
 
-    'internal': {
+    'sts_id': {
         'players': {
             'min_season': None,
             'execution_tier': 'per_league',
-            'source': 'the_glass_sheets',
+            'source': 'shoot_the_sheet',
             'source_mapping': {},
         },
         'teams': {
             'min_season': None,
             'execution_tier': 'per_league',
-            'source': 'the_glass_sheets',
+            'source': 'shoot_the_sheet',
             'source_mapping': {},
         }
     }

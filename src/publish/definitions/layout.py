@@ -1,7 +1,7 @@
 """
-The Glass - Sheet Layout Definitions
+Shoot the Sheet - Sheet Layout Definitions
 
-Tab, section, and subsection definitions that drive the publish layout
+Sheet, section, and subsection definitions that drive the publish layout
 engine, plus the summary-threshold rows displayed at the bottom of
 players/teams sheets.
 """
@@ -10,16 +10,16 @@ from typing import TypedDict, Dict, List, Tuple, Union
 
 
 # ============================================================================
-# VIEWS
+# SHEETS
 # ============================================================================
 
-# Ordered list of aggregate (non-team) views that are published after all
-# individual team views.  The orchestrator iterates this sequence directly;
-# any priority-view reordering is applied on top.
-AGGREGATE_VIEWS: List[str] = ['all_players', 'all_teams']
+# Ordered list of aggregate (non-team) sheets that are published after all
+# individual team sheets.  The orchestrator iterates this sequence directly;
+# any priority-sheet reordering is applied on top.
+AGGREGATE_SHEETS: List[str] = ['all_players', 'all_teams']
 
-class ViewConfigDef(TypedDict):
-    view_name: Union[str, None]
+class SheetConfigDef(TypedDict):
+    sheet_name: Union[str, None]
     move_to_front: bool
     footer: Union[str, None]
     footer_divider_row_height: Union[int, None]
@@ -36,16 +36,16 @@ class SubsectionDef(TypedDict):
     title: str
     columns: List[str]
 
-VIEWS_CONFIG: Dict[str, ViewConfigDef] = {
+SHEETS_CONFIG: Dict[str, SheetConfigDef] = {
 
     'all_players': {
-        'view_name':                  'Players',
+        'sheet_name':                  'Players',
         'move_to_front':             True,
         'footer':                    'percentiles',
         'footer_divider_row_height': 4,
     },
     'all_teams': {
-        'view_name':                  'Teams',
+        'sheet_name':                  'Teams',
         'move_to_front':             True,
         'footer':                    'percentiles',
         'footer_divider_row_height': 4,
@@ -119,52 +119,52 @@ SUBSECTIONS: Dict[str, SectionDef] = {
     'league': {
         'display_name': 'League',
         'sections':     ['profile'],
-        'views':         ['all_players', 'all_teams', 'individual_team'],
+        'sheets':         ['all_players', 'all_teams', 'individual_team'],
     },
     'player': {
         'display_name': 'Player',
         'sections':     ['profile'],
-        'views':         ['all_players', 'all_teams', 'individual_team'],
+        'sheets':         ['all_players', 'all_teams', 'individual_team'],
     },
     'rates': {
         'display_name': 'Rates',
         'sections':     ['current_stats', 'historical_stats', 'postseason_stats'],
-        'views':         ['all_players', 'all_teams', 'individual_team'],
+        'sheets':         ['all_players', 'all_teams', 'individual_team'],
     },
     'scoring': {
         'display_name': 'Scoring',
         'sections':     ['current_stats', 'historical_stats', 'postseason_stats'],
-        'views':         ['all_players', 'all_teams', 'individual_team'],
+        'sheets':         ['all_players', 'all_teams', 'individual_team'],
     },
     'ball_management': {
         'display_name': 'Ball Management',
         'sections':     ['current_stats', 'historical_stats', 'postseason_stats'],
-        'views':         ['all_players', 'all_teams', 'individual_team'],
+        'sheets':         ['all_players', 'all_teams', 'individual_team'],
     },
     'rebounding': {
         'display_name': 'Rebounding',
         'sections':     ['current_stats', 'historical_stats', 'postseason_stats'],
-        'views':         ['all_players', 'all_teams', 'individual_team'],
+        'sheets':         ['all_players', 'all_teams', 'individual_team'],
     },
     'distance': {
         'display_name': 'Distance',
         'sections':     ['current_stats', 'historical_stats', 'postseason_stats'],
-        'views':         ['all_players', 'all_teams', 'individual_team'],
+        'sheets':         ['all_players', 'all_teams', 'individual_team'],
     },
     'defense': {
         'display_name': 'Defense',
         'sections':     ['current_stats', 'historical_stats', 'postseason_stats'],
-        'views':         ['all_players', 'all_teams', 'individual_team'],
+        'sheets':         ['all_players', 'all_teams', 'individual_team'],
     },
     'opponent': {
         'display_name': 'Opponent',
         'sections':     ['current_stats', 'historical_stats', 'postseason_stats'],
-        'views':         ['all_teams'],
+        'sheets':         ['all_teams'],
     },
     'team_ratings': {
         'display_name': 'Team Ratings',
         'sections':     ['current_stats', 'historical_stats', 'postseason_stats'],
-        'views':         ['all_players', 'all_teams', 'individual_team'],
+        'sheets':         ['all_players', 'all_teams', 'individual_team'],
     },
 }
 

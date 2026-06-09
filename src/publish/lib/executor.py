@@ -1,7 +1,7 @@
 """
-The Glass - Publish View-Level Executor
+Shoot the Sheet - Publish Sheet-Level Executor
 
-Workhorse for one publish destination view.  Each view-sync function pulls
+Workhorse for one publish destination sheet.  Each sheet-sync function pulls
 the data it needs (or reuses the orchestrator's precomputed cache),
 builds the column structure, computes percentiles, and writes to the
 Google Sheets destination.
@@ -18,10 +18,10 @@ from dataclasses import dataclass, field
 from typing import Callable, Set
 
 from src.core.lib.postgres import get_db_connection
-from src.publish.definitions.layout import VIEWS_CONFIG
+from src.publish.definitions.layout import SHEETS_CONFIG
 from src.publish.definitions.stats import STAT_RATES
-from src.publish.destinations.sheets.request_builders import build_formatting_requests
-from src.publish.destinations.sheets.client import (
+from src.publish.destinations.google_sheets.request_builders import build_formatting_requests
+from src.publish.destinations.google_sheets.client import (
     get_or_create_worksheet,
     move_sheet_to_position,
     write_and_format,
@@ -33,7 +33,7 @@ from src.publish.lib.row_builder import (
     build_merged_entity_row,
     build_summary_rows,
 )
-from src.publish.lib.column_structure import build_view_columns
+from src.publish.lib.column_structure import build_sheet_columns
 from src.publish.lib.row_structure import build_headers
 from src.publish.lib.queries import (
     fetch_all_players,
@@ -113,16 +113,16 @@ def _build_merged_pops(pct_by_rate):
 
 
 # ============================================================================
-# TEAM VIEW SYNC
+# TEAM SHEET SYNC
 # ============================================================================
 
-def sync_team_view(ctx, client, spreadsheet, team_abbr,
+def sync_team_sheet(ctx, client, spreadsheet, team_abbr,
                     team_name='', mode='per_possession',
                     show_advanced=False,
                     historical_config=None,
                     data_only=False, precomputed=None,
                     sync_section=None):
-    """Sync a single team view with merged row layout.
+    """Sync a single team sheet with merged row layout.
 
     All 3 stat modes are written simultaneously. The `mode` parameter controls
     which mode's columns are visible by default.
@@ -234,9 +234,9 @@ def sync_team_view(ctx, client, spreadsheet, team_abbr,
             }, 'opponents')
 
         # ---- Column structure (tripled stats sections) ----
-        columns = build_view_columns(
+        columns = build_sheet_columns(
             entity='player', stats_mode='both',
-            view_type='individual_team', default_mode=mode,
+            sheet_type='individual_team', default_mode=mode,
             league=ctx.league)
 
         # ---- Headers ----
@@ -355,11 +355,11 @@ def sync_team_view(ctx, client, spreadsheet, team_abbr,
         conn.close()
 
 # ============================================================================
-# TEAMS VIEW SYNC (ALL TEAMS, WITH OPPONENT SUBSECTIONS)
+# TEAMS SHEET SYNC (ALL TEAMS, WITH OPPONENT SUBSECTIONS)
 # ============================================================================
 
 def _combine_team_opp(teams_dict):
-    """Merge team and opponent dicts into combined rows for the Teams view.
+    """Merge team and opponent dicts into combined rows for the Teams sheet.
 
     If no separate opponent rows exist (opp_ fields already on the team rows),
     return the team dicts as-is.
@@ -377,14 +377,14 @@ def _combine_team_opp(teams_dict):
         full.append(combined)
     return full
 
-def sync_teams_view(ctx, client, spreadsheet, mode='per_possession',
+def sync_teams_sheet(ctx, client, spreadsheet, mode='per_possession',
                      show_advanced=False,
                      historical_config=None,
                      data_only=False,
                      sync_section=None,
                      precomputed=None, team_gids=None):
-    """Sync the league-wide Teams view with all stat modes."""
-    logger.info('  Syncing Teams view...')
+    """Sync the league-wide Teams sheet with all stat modes."""
+    logger.info('  Syncing Teams sheet...')
     current_season = ctx.league_config[ctx.season_key]
     current_season_year = ctx.league_config['current_season_year']
     season_type_val = ctx.league_config.get('season_type', 'rs')
@@ -467,9 +467,9 @@ def sync_teams_view(ctx, client, spreadsheet, mode='per_possession',
             team_pct_by_rate = compute_pct_by_rate(team_dict, 'team', context_fn=_team_context_fn)
 
         # ---- Column structure (tripled stats sections) ----
-        columns = build_view_columns(
+        columns = build_sheet_columns(
             entity='team', stats_mode='both',
-            view_type='all_teams', default_mode=mode,
+            sheet_type='all_teams', default_mode=mode,
             league=ctx.league)
 
         # ---- Opponent percentile populations (base-section-keyed) ----
@@ -588,27 +588,27 @@ def sync_teams_view(ctx, client, spreadsheet, mode='per_possession',
             link_cells=all_link_cells,
         )
 
-        if VIEWS_CONFIG['all_teams'].get('move_to_front'):
+        if SHEETS_CONFIG['all_teams'].get('move_to_front'):
             move_sheet_to_position(worksheet, 1)
 
         logger.info(
-            'Teams view done: %d teams, %d percentile cells',
+            'Teams sheet done: %d teams, %d percentile cells',
             n_team_rows, len(all_percentile_cells),
         )
     finally:
         conn.close()
 
 # ============================================================================
-# PLAYERS VIEW SYNC (ALL PLAYERS, NO TEAM/OPP AGGREGATE ROWS)
+# PLAYERS SHEET SYNC (ALL PLAYERS, NO TEAM/OPP AGGREGATE ROWS)
 # ============================================================================
 
-def sync_players_view(ctx, client, spreadsheet, mode='per_possession',
+def sync_players_sheet(ctx, client, spreadsheet, mode='per_possession',
                        show_advanced=False,
                        historical_config=None,
                        data_only=False,
                        sync_section=None, precomputed=None, team_gids=None):
-    """Sync the league-wide Players view with all stat modes."""
-    logger.info('  Syncing Players view...')
+    """Sync the league-wide Players sheet with all stat modes."""
+    logger.info('  Syncing Players sheet...')
     current_season = ctx.league_config[ctx.season_key]
     current_season_year = ctx.league_config['current_season_year']
     season_type_val = ctx.league_config.get('season_type', 'rs')
@@ -656,9 +656,9 @@ def sync_players_view(ctx, client, spreadsheet, mode='per_possession',
             player_pct_by_rate = compute_pct_by_rate(player_dict, 'player')
 
         # ---- Column structure (tripled stats sections) ----
-        columns = build_view_columns(
+        columns = build_sheet_columns(
             entity='player', stats_mode='both',
-            view_type='all_players', default_mode=mode,
+            sheet_type='all_players', default_mode=mode,
             league=ctx.league)
 
         # ---- Headers ----
@@ -746,11 +746,11 @@ def sync_players_view(ctx, client, spreadsheet, mode='per_possession',
             link_cells=all_link_cells,
         )
 
-        if VIEWS_CONFIG['all_players'].get('move_to_front'):
+        if SHEETS_CONFIG['all_players'].get('move_to_front'):
             move_sheet_to_position(worksheet, 0)
 
         logger.info(
-            'Players view done: %d players, %d percentile cells',
+            'Players sheet done: %d players, %d percentile cells',
             n_player_rows, len(all_percentile_cells),
         )
     finally:

@@ -1,5 +1,5 @@
 """
-The Glass - Source Resolvers
+Shoot the Sheet - Source Resolvers
 
 Pure resolvers over :data:`src.etl.definitions.sources.SOURCES`,
 :data:`src.etl.definitions.datasets.DATASETS`, and
@@ -63,7 +63,7 @@ def get_external_identities_for_league(league_key: str) -> list[str]:
     """Return sorted external identity keys available for a league.
 
     An identity is external if any of its datasets use a source other than
-    the internal ``the_glass_sheets`` source.
+    the internal ``shoot_the_sheet`` source.
     """
     from src.etl.definitions.datasets import DATASETS
 
@@ -74,7 +74,7 @@ def get_external_identities_for_league(league_key: str) -> list[str]:
     for identity_key, datasets in DATASETS.items():
         for ds_name, ds_def in datasets.items():
             source = ds_def.get('source')
-            if source and source != 'the_glass_sheets':
+            if source and source != 'shoot_the_sheet':
                 identities.append(identity_key)
                 break
     return sorted(set(identities))
@@ -91,7 +91,7 @@ def get_external_sources_for_league(league_key: str) -> list[str]:
     for identity_key, datasets in DATASETS.items():
         for ds_name, ds_def in datasets.items():
             source = ds_def.get('source')
-            if source and source != 'the_glass_sheets':
+            if source and source != 'shoot_the_sheet':
                 source_keys.add(source)
     return sorted(source_keys)
 

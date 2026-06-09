@@ -64,7 +64,7 @@ def _filter_staged_rows_by_table(
     """Filter staged rows down to columns defined for the given table.
 
     The returned mapping is keyed by ``source_id`` so that downstream writers
-    can resolve each row to a ``the_glass_id``.
+    can resolve each row to a ``sts_id``.
     """
     table_cols = _get_table_columns(table_name)
     result: Dict[Any, Dict[str, Any]] = {}
@@ -81,7 +81,7 @@ def _filter_staged_rows_by_table(
     return result
 
 
-def _league_glass_id(conn: Any, league_key: str) -> int:
+def _league_sts_id(conn: Any, league_key: str) -> int:
     with conn.cursor() as cur:
         cur.execute(
             f"""
@@ -164,7 +164,7 @@ def _upsert_roster_rows(conn: Any, rows: Iterable[Dict[str, Any]]) -> int:
 def promote_staged_entities(league_key: str, source_key: str) -> Dict[str, int]:
     """Promote staged entity rows into core tables and materialize roster links."""
     with db_connection() as conn:
-        league_id = _league_glass_id(conn, league_key)
+        league_id = _league_sts_id(conn, league_key)
         team_rows = _fetch_staged_rows(conn, 'team', league_id, source_key)
         player_rows = _fetch_staged_rows(conn, 'player', league_id, source_key)
 

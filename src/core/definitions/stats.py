@@ -1,5 +1,5 @@
 """
-The Glass - Stat Domain & Season-Type Definitions
+Shoot the Sheet - Stat Domain & Season-Type Definitions
 
 Cross-cutting stats constants used by both ETL cleanup and Publish scaling.
 

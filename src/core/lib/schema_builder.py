@@ -1,5 +1,5 @@
 """
-The Glass - Schema Builder
+Shoot the Sheet - Schema Builder
 
 Idempotent schema synchronization driven entirely by the central config dicts.
 The generator is purely additive: it CREATEs missing tables and ADDs

@@ -1,5 +1,5 @@
 """
-The Glass - Database Schema Registry
+Shoot the Sheet - Database Schema Registry
 
 Unified registry of every table and shared sequence in the database:
 profiles, stats, rosters, and operational (run-tracking) tables.
@@ -27,7 +27,7 @@ VALID_PG_TYPES = frozenset({
 VALID_FK_ACTIONS = frozenset({'CASCADE', 'RESTRICT', 'SET NULL', 'NO ACTION'})
 VALID_FK_STRATEGIES = frozenset({'direct', 'profile_lookup'})
 
-THE_GLASS_ID = 'the_glass_id'
+THE_GLASS_ID = 'sts_id'
 
 # Default transform per PostgreSQL base type, applied when a source does not
 # declare its own ``transform`` and is not a pipeline / multi-call shape.
@@ -58,9 +58,9 @@ SEQUENCES: Dict[str, SequenceDef] = {
         'schema': 'ops',
         'owner_columns': ['process_id'],
     },
-    'profiles.the_glass_id_seq': {
+    'profiles.sts_id_seq': {
         'schema': 'profiles',
-        'owner_columns': ['the_glass_id'],
+        'owner_columns': ['sts_id'],
     },
 }
 
@@ -129,7 +129,7 @@ TABLES: Dict[str, TableDef] = {
     'teams': {
         'entity': 'team',
         'schema': 'profiles',
-        'primary_key': ['the_glass_id'],
+        'primary_key': ['sts_id'],
         'foreign_keys': [
             {
                 'column': 'country_code',
@@ -147,13 +147,13 @@ TABLES: Dict[str, TableDef] = {
     'players': {
         'entity': 'player',
         'schema': 'profiles',
-        'primary_key': ['the_glass_id'],
+        'primary_key': ['sts_id'],
         'foreign_keys': None,
         'unique_constraints': None,
         'indexes': None
     },
     # ------------------------------------------------------------------
-    # STAGING TABLES (carbon copies of parent tables, minus the_glass_id & FKs)
+    # STAGING TABLES (carbon copies of parent tables, minus sts_id & FKs)
     # ------------------------------------------------------------------
     'teams_staging': {
         'entity': 'team',
@@ -224,7 +224,7 @@ TABLES: Dict[str, TableDef] = {
                 'column':     'team_id',
                 'ref_schema': 'profiles',
                 'ref_table':  'teams',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'sts_id',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -251,7 +251,7 @@ TABLES: Dict[str, TableDef] = {
                 'column':     'team_id',
                 'ref_schema': 'profiles',
                 'ref_table':  'teams',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'sts_id',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -260,7 +260,7 @@ TABLES: Dict[str, TableDef] = {
                 'column':     'player_id',
                 'ref_schema': 'profiles',
                 'ref_table':  'players',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'sts_id',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -278,7 +278,7 @@ TABLES: Dict[str, TableDef] = {
                 'column':     'player_id',
                 'ref_schema': 'profiles',
                 'ref_table':  'players',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'sts_id',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -316,7 +316,7 @@ TABLES: Dict[str, TableDef] = {
                 'column':     'player_id',
                 'ref_schema': 'profiles',
                 'ref_table':  'players',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'sts_id',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -325,7 +325,7 @@ TABLES: Dict[str, TableDef] = {
                 'column':     'team_id',
                 'ref_schema': 'profiles',
                 'ref_table':  'teams',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'sts_id',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',
@@ -354,7 +354,7 @@ TABLES: Dict[str, TableDef] = {
                 'column':     'team_id',
                 'ref_schema': 'profiles',
                 'ref_table':  'teams',
-                'ref_column': 'the_glass_id',
+                'ref_column': 'sts_id',
                 'strategy':   'profile_lookup',
                 'on_update':  'CASCADE',
                 'on_delete':  'CASCADE',

@@ -1,7 +1,7 @@
 /**
  * apps_script/Code.js
  *
- * Config-driven UI and edit propagation for The Glass Sheets workbook.
+ * Config-driven UI and edit propagation for Shoot the Sheet workbook.
  * The generated config is the source of truth for menu entries, sheet names,
  * editable fields, and column visibility metadata.
  */

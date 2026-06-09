@@ -1,5 +1,5 @@
 """
-The Glass - Publish CLI Argument Definitions
+Shoot the Sheet - Publish CLI Argument Definitions
 
 Defines the argparse subparser for the publish pipeline.  This module owns
 publish-specific argument definitions so that adding a new pipeline never requires
@@ -34,8 +34,8 @@ def add_subparser(subparsers) -> None:
         help='League to sync.',
     )
     p.add_argument(
-        '--view', metavar='NAME', default=None,
-        help='Sync this view first (team abbr like "BOS", or "all_players" / "all_teams").',
+        '--sheet', metavar='NAME', default=None,
+        help='Sync this sheet first (team abbr like "BOS", or "all_players" / "all_teams").',
     )
     p.add_argument(
         '--stat-rate', choices=sorted(STAT_RATES), default=DEFAULT_STAT_RATE,

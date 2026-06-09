@@ -1,5 +1,5 @@
 """
-The Glass - ETL Transform Module
+Shoot the Sheet - ETL Transform Module
 
 Source-agnostic type converters and transformation pipeline engine.
 Type converters turn raw API values into DB-ready values.

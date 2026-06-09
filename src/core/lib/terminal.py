@@ -1,5 +1,5 @@
 """
-The Glass - Centralized CLI Helpers
+Shoot the Sheet - Centralized CLI Helpers
 
 Shared argparse pieces and stdout-formatting helpers used by every CLI entry
 point.  Goal: identical look-and-feel across ETL and Publish runs.

@@ -1,5 +1,5 @@
 """
-The Glass - ETL Orchestrator
+Shoot the Sheet - ETL Orchestrator
 
 Sequences the ordered ETL phases for a single league run.  Knows nothing
 about HTTP, argparse, or the destination of stdout -- just which phase
@@ -101,9 +101,9 @@ def _get_active_team_source_ids(league_key: str, source_key: str) -> Dict[str, i
         SELECT t.abbr, t.{quote_col(src_col)}
           FROM profiles.teams t
           JOIN rosters.leagues_teams lr
-            ON lr.team_id = t.{quote_col('the_glass_id')}
+            ON lr.team_id = t.{quote_col('sts_id')}
           JOIN profiles.leagues lp
-            ON lp.{quote_col('the_glass_id')} = lr.league_id
+            ON lp.{quote_col('sts_id')} = lr.league_id
          WHERE lp.code = %s
          ORDER BY t.abbr
     """
@@ -307,11 +307,11 @@ def _match_entities(
     league_key: str,
     failed: List[Dict[str, Any]],
 ) -> int:
-    """Match staged entities (countries, teams, players) to the_glass_id."""
+    """Match staged entities (countries, teams, players) to sts_id."""
     total_rows = 0
     for source_key in _get_external_sources(league_key):
         logger.info(phase_marker('match_entities', f'source={source_key}'))
-        # TODO: resolve staged rows to the_glass_id
+        # TODO: resolve staged rows to sts_id
     return total_rows
 
 

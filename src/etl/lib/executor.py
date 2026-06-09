@@ -1,5 +1,5 @@
 """
-The Glass - ETL Execution Engine
+Shoot the Sheet - ETL Execution Engine
 
 Executes a single call group against a configured source, routing to the
 correct strategy based on the group's execution tier:
@@ -118,7 +118,7 @@ def _fetch_null_entity_ids(
                 f"WHERE {null_checks}"
             )
         else:
-            tg_id = quote_col('the_glass_id')
+            tg_id = quote_col('sts_id')
             null_checks = ' OR '.join(f't.{quote_col(c)} IS NULL' for c in columns)
             cur.execute(
                 f"SELECT e.{quote_col(source_id_col)} FROM {entity_table} e "

@@ -1,5 +1,5 @@
 """
-The Glass - Tabular Layout Definitions
+Shoot the Sheet - Tabular Layout Definitions
 
 Tabular-specific layout logic for grid-based destinations (Google Sheets,
 Excel, HTML tables). Contains row-class formatting, row index computation,

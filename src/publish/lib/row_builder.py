@@ -1,5 +1,5 @@
 """
-The Glass - Row Builder
+Shoot the Sheet - Row Builder
 
 Assembles entity data rows and summary rows for sheet destinations.
 Evaluates formulas, applies scaling, calculates percentile ranks,

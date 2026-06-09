@@ -1,10 +1,10 @@
 """
-The Glass - Presentation Configuration
+Shoot the Sheet - Presentation Configuration
 
 Cross-destination presentation configuration: fonts, colors, alignment,
 wrap strategy, visual assets, and column width classes used by the publish
 layout and formatting engines. Destination-specific config (spreadsheet IDs,
-OAuth scopes, frozen panes) lives in :mod:`src.publish.destinations.sheets.config`.
+OAuth scopes, frozen panes) lives in :mod:`src.publish.destinations.google_sheets.config`.
 """
 
 from typing import Dict, Union

@@ -1,5 +1,5 @@
 """
-The Glass - Rate Limiting Configuration
+Shoot the Sheet - Rate Limiting Configuration
 
 Default rate limiting configuration for all sources and destinations.
 Sources/destinations can override these defaults by providing their own

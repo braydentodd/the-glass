@@ -1,5 +1,5 @@
 """
-The Glass - League Resolvers
+Shoot the Sheet - League Resolvers
 
 Pure resolvers over :data:`src.core.definitions.leagues.LEAGUES`.  Season
 label *formatting* is delegated to :mod:`src.core.lib.seasons` so the same

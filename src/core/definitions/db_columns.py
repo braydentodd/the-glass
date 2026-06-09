@@ -1,6 +1,6 @@
 """
 
-The Glass - Column Registry
+Shoot the Sheet - Column Registry
 
 Single source of truth for database column definitions and provider source
 mappings.  Column names match the actual PostgreSQL schema exactly.
@@ -11,7 +11,7 @@ Each column entry carries a ``sources`` attribute using this shape:
 
 Columns with no external source (system columns) have ``dataset_mapping: None``.
 
-The synthetic identity column ``the_glass_id`` and per-source identity
+The synthetic identity column ``sts_id`` and per-source identity
 columns (e.g. ``nba_id_id``) are emitted directly by the DDL generator
 (see src/core/lib/ddl.py); they are intentionally not represented here.
 """
@@ -63,11 +63,11 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'comment': None,
         'dataset_mapping': None,
     },
-    'the_glass_id': {
+    'sts_id': {
         'type': 'BIGINT',
         'tables': ['teams', 'players'],
         'nullable': False,
-        'default': "nextval('profiles.the_glass_id_seq')",
+        'default': "nextval('profiles.sts_id_seq')",
         'comment': None,
         'dataset_mapping': None,
     },
@@ -166,7 +166,7 @@ DB_COLUMNS: Dict[str, ColumnDef] = {
         'comment': None,
         'dataset_mapping': None,
     },
-    'matched_glass_id': {
+    'matched_sts_id': {
         'type': 'BIGINT',
         'tables': ['teams_staging', 'players_staging'],
         'nullable': True,

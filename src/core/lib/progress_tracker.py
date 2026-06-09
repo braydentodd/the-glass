@@ -1,5 +1,5 @@
 """
-The Glass - Generic Progress Tracking
+Shoot the Sheet - Generic Progress Tracking
 
 Database operations for tracking pipeline run state and per-item progress.
 Uses the unified ``runs`` and ``tasks`` tables.

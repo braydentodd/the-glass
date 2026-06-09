@@ -1,5 +1,5 @@
 """
-The Glass - Global ETL Pipeline Policy
+Shoot the Sheet - Global ETL Pipeline Policy
 
 Phases are ordered lists of handler names.  The orchestrator dispatches each
 handler directly; season/season-type scoping lives in the orchestrator, not

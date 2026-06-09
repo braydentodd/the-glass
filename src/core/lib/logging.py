@@ -1,5 +1,5 @@
 """
-The Glass - Centralized Logging Setup
+Shoot the Sheet - Centralized Logging Setup
 
 Provides a single, opinionated logging configuration used by every CLI entry
 point in the codebase.  Goal: identical log shape across ETL and Publish so

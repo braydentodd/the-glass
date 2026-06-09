@@ -1,5 +1,5 @@
 """
-The Glass - Google Sheets API Format Builders
+Shoot the Sheet - Google Sheets API Format Builders
 
 Helpers that build Google Sheets API format objects (textFormat, cellFormat,
 border descriptions). These are Sheets-specific and convert presentation

@@ -1,5 +1,5 @@
 """
-The Glass - Shared Database Primitives
+Shoot the Sheet - Shared Database Primitives
 
 Lightweight connection acquisition + identifier quoting used everywhere in
 the codebase:

@@ -1,5 +1,5 @@
 """
-The Glass - Source Registry
+Shoot the Sheet - Source Registry
 
 Declarative registry of every external data source.
 
@@ -30,8 +30,8 @@ class SourceDef(TypedDict):
 SOURCES: Dict[str, SourceDef] = {
 
     'nba_api': {
-        'leagues':              {'NBA': '00'},
-        'id_type':              'BIGINT',
+        'leagues': {'NBA': '00'},
+        'id_type': 'BIGINT',
         'rate_limits': {
             'requests_per_second': 0.8,
             'max_retries': 3,
@@ -41,8 +41,8 @@ SOURCES: Dict[str, SourceDef] = {
         },
     },
     'pbp_stats': {
-        'leagues':              {'NBA': 'nba'},
-        'id_type':              'BIGINT',
+        'leagues': {'NBA': 'nba'},
+        'id_type': 'BIGINT',
         'rate_limits': {
             'requests_per_second': 0.5,
             'max_retries': 3,
@@ -52,9 +52,9 @@ SOURCES: Dict[str, SourceDef] = {
             'max_consecutive_failures': 5,
         },
     },
-    'the_glass_sheets': {
-        'leagues':              {'NBA': 'nba'},
-        'id_type':              'BIGINT',
+    'shoot_the_sheet': {
+        'leagues': {'NBA': 'nba'},
+        'id_type': 'BIGINT',
         'rate_limits': {
             'requests_per_second': 1.0,
             'max_retries': 3,

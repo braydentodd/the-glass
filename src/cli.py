@@ -1,6 +1,6 @@
 # ruff: noqa: E402  -- load_dotenv() must run before src.* imports that read os.getenv at module load.
 """
-The Glass - Unified CLI
+Shoot the Sheet - Unified CLI
 
 Single entry point for all pipeline commands.  Dispatches to ETL or
 publish via subcommands so that both share the same base flags
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 def _build_parser():
     root = make_base_parser(
         prog='python -m src.cli',
-        description='The Glass -- data pipeline CLI.',
+        description='Shoot the Sheet -- data pipeline CLI.',
     )
     root.formatter_class = HelpFormatter
     subparsers = root.add_subparsers(dest='pipeline', metavar='PIPELINE')
@@ -67,7 +67,7 @@ def _build_parser():
 def _run_etl(args) -> int:
     from src.etl.lib.config_validation import validate_all
 
-    print_banner('The Glass -- ETL', f'phase={args.phase}  league={args.league or "all"}')
+    print_banner('Shoot the Sheet -- ETL', f'phase={args.phase}  league={args.league or "all"}')
     print_summary(
         {
             'phase':       args.phase,
@@ -98,21 +98,21 @@ def _run_etl(args) -> int:
 
 def _run_publish(args) -> int:
     from src.publish.lib.config_validation import validate_all
-    from src.publish.destinations.sheets.config_exporter import export_config
+    from src.publish.destinations.google_sheets.config_exporter import export_config
 
     league = args.league.lower()
     historical_config = {'mode': 'seasons', 'value': args.historical_timeframe}
     destination = args.destination
 
     print_banner(
-        'The Glass -- Publish',
+        'Shoot the Sheet -- Publish',
         f'league={league}  stat_rate={args.stat_rate}  data_only={args.data_only}  destination={destination}',
     )
     print_summary(
         {
             'league':             league,
             'stat_rate':          args.stat_rate,
-            'priority_view':       args.view or '(none)',
+            'priority_sheet':       args.sheet or '(none)',
             'historical_seasons': args.historical_timeframe,
             'data_only':          args.data_only,
             'show_advanced':      args.show_advanced,
@@ -144,7 +144,7 @@ def _run_publish(args) -> int:
             show_advanced=args.show_advanced,
             historical_config=historical_config,
             data_only=args.data_only,
-            priority_view=args.view,
+            priority_sheet=args.sheet,
             config_export=not args.skip_config_export,
             destination=destination,
         )

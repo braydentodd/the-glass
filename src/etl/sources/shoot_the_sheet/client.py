@@ -1,18 +1,18 @@
 # ruff: noqa: E402  -- load_dotenv() must run before src.* imports that read os.getenv at module load.
 """
-The Glass - Sheets-to-DB Editable Sync
+Shoot the Sheet - Sheets-to-DB Editable Sync
 
 The Players and Teams Google Sheets are the authoritative source for
 user-edited values (wingspan, hand, notes, ...).  This module reads those
 sheets and writes the values back to the corresponding ``core.{entity}_profiles``
-row, keyed by the synthetic ``the_glass_id`` column.
+row, keyed by the synthetic ``sts_id`` column.
 
-The Glass Sheets is registered in ``SOURCES`` as a ``writer`` source -- it
+Shoot the Sheet is registered in ``SOURCES`` as a ``writer`` source -- it
 holds no source-id columns of its own; it edits canonical profile data
-through the_glass_id.
+through sts_id.
 
 Usage:
-    python -m src.etl.sources.the_glass_sheets.client --league nba [--dry-run]
+    python -m src.etl.sources.shoot_the_sheet.client --league nba [--dry-run]
 """
 
 import argparse
@@ -24,12 +24,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.core.lib.postgres import db_connection, quote_col
-from src.etl.sources.the_glass_sheets.config import SOURCE_CONFIG
+from src.etl.sources.shoot_the_sheet.config import SOURCE_CONFIG
 from src.publish.definitions.view_columns import VIEW_COLUMNS
-from src.publish.destinations.sheets.config import SHEETS_FORMATTING
-from src.publish.destinations.sheets.client import get_sheets_client
-from src.publish.destinations.sheets.config import GOOGLE_SHEETS_CONFIG
-from src.publish.lib.column_structure import build_view_columns, get_column_index
+from src.publish.destinations.google_sheets.config import SHEETS_FORMATTING
+from src.publish.destinations.google_sheets.client import get_sheets_client
+from src.publish.destinations.google_sheets.config import GOOGLE_SHEETS_CONFIG
+from src.publish.lib.column_structure import build_sheet_columns, get_column_index
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +140,7 @@ def _open_first_worksheet(spreadsheet, names: List[str]):
 
 
 # ---------------------------------------------------------------------------
-# DB WRITES (keyed by the_glass_id)
+# DB WRITES (keyed by sts_id)
 # ---------------------------------------------------------------------------
 
 def _apply_updates(
@@ -148,21 +148,21 @@ def _apply_updates(
     updates: List[Tuple[int, Dict[str, Any]]],
     dry_run: bool,
 ) -> int:
-    """UPDATE each ``the_glass_id`` row with the supplied field map."""
+    """UPDATE each ``sts_id`` row with the supplied field map."""
     if not updates:
         return 0
     count = 0
     with db_connection() as conn:
         with conn.cursor() as cur:
-            for glass_id, fields in updates:
+            for sts_id, fields in updates:
                 if not fields:
                     continue
                 set_clause = ', '.join(f'{quote_col(f)} = %s' for f in fields)
-                values = list(fields.values()) + [glass_id]
+                values = list(fields.values()) + [sts_id]
                 sql = (
                     f'UPDATE {profile_table} '
                     f'SET {set_clause}, updated_at = NOW() '
-                    f'WHERE {quote_col("the_glass_id")} = %s'
+                    f'WHERE {quote_col("sts_id")} = %s'
                 )
                 if dry_run:
                     logger.info('[DRY RUN] %s | params=%s', sql, values)
@@ -180,19 +180,19 @@ def _apply_updates(
 
 def _extract_rows(
     data_rows: List[List[Any]],
-    glass_id_idx: int,
+    sts_id_idx: int,
     field_map: Dict[str, Dict[str, Any]],
 ) -> List[Tuple[int, Dict[str, Any]]]:
-    """Pull (the_glass_id, {db_field: value}) tuples from a data-row block."""
+    """Pull (sts_id, {db_field: value}) tuples from a data-row block."""
     out: List[Tuple[int, Dict[str, Any]]] = []
     for row in data_rows:
-        if len(row) <= glass_id_idx:
+        if len(row) <= sts_id_idx:
             continue
-        raw = row[glass_id_idx]
+        raw = row[sts_id_idx]
         if not raw:
             continue
         try:
-            glass_id = int(raw)
+            sts_id = int(raw)
         except (TypeError, ValueError):
             continue
         fields: Dict[str, Any] = {}
@@ -202,7 +202,7 @@ def _extract_rows(
                 continue
             fields[mapping['db_field']] = _coerce_cell(row[idx], mapping['format'])
         if fields:
-            out.append((glass_id, fields))
+            out.append((sts_id, fields))
     return out
 
 
@@ -214,8 +214,8 @@ def sync_edits(league_key: str, dry_run: bool = False) -> Dict[str, int]:
     """Read editable fields from the league's sheets and write to core profiles.
 
     Sheets layout assumption (handled by the publish layer):
-        - Player view has a ``the_glass_id`` column.
-        - Team view has a ``the_glass_id`` column.
+        - Player view has a ``sts_id`` column.
+        - Team view has a ``sts_id`` column.
 
     Returns ``{'players_updated': N, 'teams_updated': N}``.
     """
@@ -228,27 +228,27 @@ def sync_edits(league_key: str, dry_run: bool = False) -> Dict[str, int]:
         logger.info('No editable fields defined; nothing to sync')
         return {'players_updated': 0, 'teams_updated': 0}
 
-    players_columns = build_view_columns(
-        entity='player', stats_mode='both', view_type='players', league=league_key,
+    players_columns = build_sheet_columns(
+        entity='player', stats_mode='both', sheet_type='players', league=league_key,
     )
-    teams_columns = build_view_columns(
-        entity='team', stats_mode='both', view_type='teams', league=league_key,
+    teams_columns = build_sheet_columns(
+        entity='team', stats_mode='both', sheet_type='teams', league=league_key,
     )
 
     player_field_map = _resolve_column_indices(specs, players_columns, 'player')
     team_field_map = _resolve_column_indices(specs, teams_columns, 'team')
 
-    glass_id_key = SOURCE_CONFIG['glass_id_column_key']
-    pid_idx = get_column_index(glass_id_key, players_columns)
-    tid_idx = get_column_index(glass_id_key, teams_columns)
+    sts_id_key = SOURCE_CONFIG['sts_id_column_key']
+    pid_idx = get_column_index(sts_id_key, players_columns)
+    tid_idx = get_column_index(sts_id_key, teams_columns)
     if pid_idx is None and player_field_map:
         raise RuntimeError(
-            f"Player sheet has no '{glass_id_key}' column -- update the publish "
+            f"Player sheet has no '{sts_id_key}' column -- update the publish "
             f"layout to emit it before syncing edits."
         )
     if tid_idx is None and team_field_map:
         raise RuntimeError(
-            f"Team sheet has no '{glass_id_key}' column -- update the publish "
+            f"Team sheet has no '{sts_id_key}' column -- update the publish "
             f"layout to emit it before syncing edits."
         )
 

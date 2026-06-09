@@ -1,5 +1,5 @@
 """
-The Glass - ETL Cleanup
+Shoot the Sheet - ETL Cleanup
 
 Two-phase data hygiene:
 
@@ -155,7 +155,7 @@ def prune_stats_retention(league_key: str, current_season: str) -> int:
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f'SELECT the_glass_id FROM profiles.leagues WHERE code = %s',
+                f'SELECT sts_id FROM profiles.leagues WHERE code = %s',
                 (league_key,),
             )
             row = cur.fetchone()
@@ -189,7 +189,7 @@ def prune_stats_retention(league_key: str, current_season: str) -> int:
 def _profile_has_stats_predicate(entity: str) -> str:
     """Build a SQL EXISTS predicate that's TRUE if a profile has stats in any league.
 
-    The predicate references ``p.{the_glass_id}`` and assumes the outer query
+    The predicate references ``p.{sts_id}`` and assumes the outer query
     aliases the profile table as ``p``.
     """
     sub_selects: List[str] = []
@@ -201,7 +201,7 @@ def _profile_has_stats_predicate(entity: str) -> str:
             continue
         sub_selects.append(
             f"SELECT 1 FROM stats.{table_name} s "
-            f"WHERE s.{quote_col(entity_id_col)} = p.{quote_col('the_glass_id')}"
+            f"WHERE s.{quote_col(entity_id_col)} = p.{quote_col('sts_id')}"
         )
     if not sub_selects:
         return 'FALSE'
@@ -217,7 +217,7 @@ def _delete_pruned_players(cur) -> int:
         WHERE NOT EXISTS ({stats_pred})
           AND NOT EXISTS (
               SELECT 1 FROM rosters.teams_players tr
-              WHERE tr.player_id = p.{quote_col('the_glass_id')}
+              WHERE tr.player_id = p.{quote_col('sts_id')}
           )
         """
     )
@@ -233,11 +233,11 @@ def _delete_pruned_teams(cur) -> int:
         WHERE NOT EXISTS ({stats_pred})
           AND NOT EXISTS (
               SELECT 1 FROM rosters.leagues_teams lr
-              WHERE lr.team_id = p.{quote_col('the_glass_id')}
+              WHERE lr.team_id = p.{quote_col('sts_id')}
           )
           AND NOT EXISTS (
               SELECT 1 FROM rosters.teams_players tr
-              WHERE tr.team_id = p.{quote_col('the_glass_id')}
+              WHERE tr.team_id = p.{quote_col('sts_id')}
           )
         """
     )

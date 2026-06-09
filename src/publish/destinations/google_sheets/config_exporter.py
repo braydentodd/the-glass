@@ -7,13 +7,13 @@ from pathlib import Path
 from src.publish.definitions.view_columns import VIEW_COLUMNS
 from src.publish.definitions.layout import SECTIONS_CONFIG
 from src.publish.lib.row_structure import HEADER_ROWS
-from src.publish.lib.column_structure import build_view_columns, get_column_index
+from src.publish.lib.column_structure import build_sheet_columns, get_column_index
 from src.publish.definitions.stats import (
     DEFAULT_STAT_RATE,
     HISTORICAL_TIMEFRAMES,
     STAT_RATES,
 )
-from src.publish.destinations.sheets.config import GOOGLE_SHEETS_CONFIG
+from src.publish.destinations.google_sheets.config import GOOGLE_SHEETS_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def get_config_for_export(
         Exports:
             - column_metadata:          normalized per-column visibility metadata
             - column_indices:           edit-detection indices (player_id, team, stats_start)
-            - editable_lookup:          view-specific editable column lookup
+            - editable_lookup:          sheet-specific editable column lookup
             - sheet_names:              sheet-name aliases for Apps Script routing
             - stat_rates:               available stat rates with display labels
             - sections:                 section config (display names, toggleability)
@@ -60,17 +60,17 @@ def get_config_for_export(
     stat_columns = [k for k, v in VIEW_COLUMNS.items()
                     if any(SECTIONS_CONFIG.get(s, {}).get('stats_timeframe') for s in v.get('sections', []))]
 
-    # --- Build full column lists for all view types --------------------
-    individual_team_columns = build_view_columns(
-        entity='player', stats_mode='both', view_type='individual_team',
+    # --- Build full column lists for all sheet types --------------------
+    individual_team_columns = build_sheet_columns(
+        entity='player', stats_mode='both', sheet_type='individual_team',
         league=league
     )
-    all_players_columns = build_view_columns(
-        entity='player', stats_mode='both', view_type='all_players',
+    all_players_columns = build_sheet_columns(
+        entity='player', stats_mode='both', sheet_type='all_players',
         league=league
     )
-    all_teams_columns = build_view_columns(
-        entity='team', stats_mode='both', view_type='all_teams',
+    all_teams_columns = build_sheet_columns(
+        entity='team', stats_mode='both', sheet_type='all_teams',
         league=league
     )
 
@@ -145,9 +145,9 @@ def get_config_for_export(
         return flattened
 
     column_metadata = {
-        'team_view':  _column_metadata(individual_team_columns),
-        'all_players_view':  _column_metadata(all_players_columns),
-        'all_teams_view': _column_metadata(all_teams_columns),
+        'team_sheet':  _column_metadata(individual_team_columns),
+        'all_players_sheet':  _column_metadata(all_players_columns),
+        'all_teams_sheet': _column_metadata(all_teams_columns),
     }
 
     # --- Column indices for edit detection (1-indexed) ---
@@ -161,7 +161,7 @@ def get_config_for_export(
             break
 
     # --- Editable Lookup (combining player and team editable configs) ---
-    def _build_editable_lookup(columns_by_view):
+    def _build_editable_lookup(columns_by_sheet):
         lookup = {}
 
         for col_key, col_def in VIEW_COLUMNS.items():
@@ -169,25 +169,25 @@ def get_config_for_export(
             if not editable_config:
                 continue
 
-            allowed_views = set(editable_config) if isinstance(editable_config, list) else {'player', 'all_teams'}
+            allowed_sheets = set(editable_config) if isinstance(editable_config, list) else {'player', 'all_teams'}
             values = col_def.get('values', {})
             entry = {
                 'format': col_def.get('format', 'text'),
                 'indices': {}
             }
 
-            if 'player' in allowed_views and isinstance(values.get('player'), str):
-                team_idx = get_column_index(col_key, columns_by_view['team_view'])
-                players_idx = get_column_index(col_key, columns_by_view['all_players_view'])
+            if 'player' in allowed_sheets and isinstance(values.get('player'), str):
+                team_idx = get_column_index(col_key, columns_by_sheet['team_sheet'])
+                players_idx = get_column_index(col_key, columns_by_sheet['all_players_sheet'])
                 if team_idx is not None:
-                    entry['indices']['team_view'] = team_idx + 1
+                    entry['indices']['team_sheet'] = team_idx + 1
                 if players_idx is not None:
-                    entry['indices']['all_players_view'] = players_idx + 1
+                    entry['indices']['all_players_sheet'] = players_idx + 1
 
-            if 'all_teams' in allowed_views and isinstance(values.get('team'), str):
-                teams_idx = get_column_index(col_key, columns_by_view['all_teams_view'])
+            if 'all_teams' in allowed_sheets and isinstance(values.get('team'), str):
+                teams_idx = get_column_index(col_key, columns_by_sheet['all_teams_sheet'])
                 if teams_idx is not None:
-                    entry['indices']['all_teams_view'] = teams_idx + 1
+                    entry['indices']['all_teams_sheet'] = teams_idx + 1
 
             if entry['indices']:
                 lookup[col_key] = entry
@@ -195,9 +195,9 @@ def get_config_for_export(
         return lookup
 
     editable_lookup = _build_editable_lookup({
-        'individual_team_view': individual_team_columns,
-        'all_players_view': all_players_columns,
-        'all_teams_view': all_teams_columns,
+        'individual_team_sheet': individual_team_columns,
+        'all_players_sheet': all_players_columns,
+        'all_teams_sheet': all_teams_columns,
     })
 
     sections_export = {}

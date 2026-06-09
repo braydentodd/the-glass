@@ -1,5 +1,5 @@
 """
-The Glass - Destination Registry
+Shoot the Sheet - Destination Registry
 
 Declarative registry of every publish destination. Destinations are where
 data is output (e.g., Google Sheets, database exports, etc.).
@@ -48,6 +48,23 @@ DESTINATIONS: Dict[str, DestinationDef] = {
         'apps_script': {
             'enabled':   True,
             'directory': 'apps_script',
+        },
+    },
+
+    'microsoft_excel': {
+        'leagues': list(LEAGUES.keys()),
+        'role': 'backup',
+        'rate_limits': {
+            'requests_per_second': 10.0,
+            'max_retries': 3,
+            'backoff_base': 5,
+            'timeout_default': 30,
+            'timeout_bulk': 60,
+            'max_consecutive_failures': 5,
+        },
+        'apps_script': {
+            'enabled':   False,
+            'directory': None,
         },
     },
 }

@@ -1,4 +1,4 @@
-"""The Glass - Roster Stager
+"""Shoot the Sheet - Roster Stager
 
 Roster snapshots are merged into the transient staging schema. Promotion into
 core profile and roster tables happens in the entity matching phase.

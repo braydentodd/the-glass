@@ -1,6 +1,6 @@
 """
 
-The Glass - Google Sheets Destination Configuration
+Shoot the Sheet - Google Sheets Destination Configuration
 
 Sheets-API-only configuration: per-league spreadsheet identifiers, OAuth
 scopes, credentials file path, and Sheets-specific presentation settings.

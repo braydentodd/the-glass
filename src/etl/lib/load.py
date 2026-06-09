@@ -1,17 +1,17 @@
 """
-The Glass - ETL Database Loader
+Shoot the Sheet - ETL Database Loader
 
 Bulk-write primitives and high-level row writers used by the executor.
 
 ID model:
     Profile tables (``profiles.{entity}s`` — e.g. ``profiles.players``)
-        - PK: ``the_glass_id`` (auto-allocated by ``profiles.the_glass_id_seq``)
+        - PK: ``sts_id`` (auto-allocated by ``profiles.sts_id_seq``)
         - Per-source identity columns: ``{source}_id`` (UNIQUE)
         - Conflict key on upsert is the per-source identity column
 
     Stats tables (``stats.{entity}_seasons`` — e.g. ``stats.player_seasons``)
-        - PK: composite, includes ``the_glass_id`` and (for player) ``team_id``
-        - Source IDs are resolved to the_glass_id values before write
+        - PK: composite, includes ``sts_id`` and (for player) ``team_id``
+        - Source IDs are resolved to sts_id values before write
         - Rows that cannot resolve all FK references are dropped with a warning
 """
 
@@ -264,7 +264,7 @@ def write_staged_entity_rows(
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT the_glass_id FROM profiles.leagues WHERE code = %s",
+                f"SELECT sts_id FROM profiles.leagues WHERE code = %s",
                 (league_key,),
             )
             row = cur.fetchone()
@@ -313,7 +313,7 @@ def merge_staged_entity_rows(
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT the_glass_id FROM profiles.leagues WHERE code = %s",
+                f"SELECT sts_id FROM profiles.leagues WHERE code = %s",
                 (league_key,),
             )
             row = cur.fetchone()
@@ -350,7 +350,7 @@ def write_core_profile_rows(
 ) -> int:
     """Upsert ``{source_id: {col: val}}`` rows into ``profiles.{entity}s``.
 
-    Conflict key: per-source identity column (UNIQUE).  ``the_glass_id`` is allocated
+    Conflict key: per-source identity column (UNIQUE).  ``sts_id`` is allocated
     automatically by the sequence.
     """
     _PROFILE_TABLES = {'player': 'profiles.players', 'team': 'profiles.teams'}
@@ -392,8 +392,8 @@ def _write_stats_rows(
     """Upsert source-id-keyed stats rows into ``stats.{entity}_seasons``.
 
     Resolves the row key (entity source_id) to ``{entity}_id`` (the internal
-    ``the_glass_id``) and translates every FK-bearing data column from source-id
-    to ``the_glass_id`` form.  Rows that cannot be fully resolved are skipped.
+    ``sts_id``) and translates every FK-bearing data column from source-id
+    to ``sts_id`` form.  Rows that cannot be fully resolved are skipped.
     """
     _STATS_TABLES = {'player': 'stats.player_seasons', 'team': 'stats.team_seasons'}
     table = _STATS_TABLES[entity]
@@ -404,23 +404,23 @@ def _write_stats_rows(
     entity_id_col = f'{entity}_id'
 
     with db_connection() as conn:
-        # Resolve the row-key source ids -> the_glass_id via the profile table
+        # Resolve the row-key source ids -> sts_id via the profile table
         _PROFILE_TABLES = {'player': 'profiles.players', 'team': 'profiles.teams'}
         entity_table = _PROFILE_TABLES[entity]
         _, entity_bare = entity_table.split('.', 1)
-        glass_ids = load_fk_mapping(
-            conn, 'profiles', entity_bare, 'the_glass_id', source_key, list(rows.keys()),
+        sts_ids = load_fk_mapping(
+            conn, 'profiles', entity_bare, 'sts_id', source_key, list(rows.keys()),
         )
 
         translated: Dict[Any, Dict[str, Any]] = {}
         unresolved_keys = 0
         for source_id, vals in rows.items():
-            glass_id = glass_ids.get(str(source_id))
-            if glass_id is None:
+            sts_id = sts_ids.get(str(source_id))
+            if sts_id is None:
                 unresolved_keys += 1
                 continue
             row = dict(vals)
-            row[entity_id_col] = glass_id
+            row[entity_id_col] = sts_id
             row['season'] = season
             row['season_type'] = season_type
             translated[source_id] = row
@@ -431,7 +431,7 @@ def _write_stats_rows(
                 unresolved_keys, entity,
             )
 
-        # Translate any remaining source-id columns to the_glass_id (e.g. team_id)
+        # Translate any remaining source-id columns to sts_id (e.g. team_id)
         translated, dropped = resolve_fk_value_columns(
             translated, conn, league_key, source_key, qualified_key,
         )
@@ -448,7 +448,7 @@ def _write_stats_rows(
         # Leagues are keyed by league_key, not by source_id.
         with conn.cursor() as cur:
             cur.execute(
-                f'SELECT the_glass_id FROM profiles.leagues WHERE code = %s',
+                f'SELECT sts_id FROM profiles.leagues WHERE code = %s',
                 (league_key,),
             )
             row = cur.fetchone()

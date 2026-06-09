@@ -1,10 +1,10 @@
 """
-The Glass - Shared Data Access Layer (DAL)
+Shoot the Sheet - Shared Data Access Layer (DAL)
 
 Read-only SQL helpers used by the publish pipeline.
 
 ID model:
-    Profile tables  -> profiles.{entity}s  (PK: the_glass_id)
+    Profile tables  -> profiles.{entity}s  (PK: sts_id)
     Stats tables    -> stats.{entity}_seasons
                        PK includes league_id, {entity}_id (and team_id for players)
     Membership      -> rosters.leagues_teams (league/team), rosters.teams_players (team/player)
@@ -103,16 +103,16 @@ def _split_team_opponent(row: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str,
 # ---------------------------------------------------------------------------
 
 def get_teams_from_db(league_key: str) -> Dict[int, Tuple[str, str]]:
-    """Return ``{the_glass_id: (abbr, name)}`` for teams currently active in
+    """Return ``{sts_id: (abbr, name)}`` for teams currently active in
     the league-team roster table for ``league_key``.
     """
     sql = f"""
-        SELECT t.{_quote_col('the_glass_id')}, t.abbr, t.name
+        SELECT t.{_quote_col('sts_id')}, t.abbr, t.name
           FROM profiles.teams t
           JOIN rosters.leagues_teams lr
-            ON lr.team_id = t.{_quote_col('the_glass_id')}
+            ON lr.team_id = t.{_quote_col('sts_id')}
           JOIN profiles.leagues lp
-            ON lp.{_quote_col('the_glass_id')} = lr.league_id
+            ON lp.{_quote_col('sts_id')} = lr.league_id
          WHERE lp.code = %s
           ORDER BY t.abbr
     """
@@ -153,7 +153,7 @@ def fetch_players_for_team(
     teams_tbl = ctx.team_entity_table
     stats_tbl = ctx.player_stats_table
     abbr_col = _quote_col(ctx.team_abbr_col)
-    glass_id = _quote_col('the_glass_id')
+    sts_id = _quote_col('sts_id')
 
     p_select, p_group = _build_entity_fields(ctx.player_entity_fields, 'p')
     team_abbr_select = f"t.{abbr_col} AS team_abbr"
@@ -166,12 +166,12 @@ def fetch_players_for_team(
             SELECT {', '.join(all_fields)}
               FROM {players_tbl} p
               JOIN rosters.teams_players tr
-                                ON tr.player_id = p.{glass_id}
+                                ON tr.player_id = p.{sts_id}
               JOIN {teams_tbl} t
-                ON t.{glass_id} = tr.team_id
+                ON t.{sts_id} = tr.team_id
               LEFT JOIN {stats_tbl} s
-                ON s.{glass_id} = p.{glass_id}
-               AND s.team_id = t.{glass_id}
+                ON s.{sts_id} = p.{sts_id}
+               AND s.team_id = t.{sts_id}
                AND s.{season_col_name} = %s
                AND s.season_type = %s
              WHERE t.{abbr_col} = %s
@@ -198,9 +198,9 @@ def fetch_players_for_team(
         SELECT {', '.join(all_aggregates)}
           FROM {players_tbl} p
           JOIN {stats_tbl} s
-            ON s.{glass_id} = p.{glass_id}
+            ON s.{sts_id} = p.{sts_id}
           JOIN {teams_tbl} t
-            ON t.{glass_id} = s.team_id
+            ON t.{sts_id} = s.team_id
          WHERE t.{abbr_col} = %s
            AND s.season_type IN %s
            {season_filter}
@@ -227,7 +227,7 @@ def fetch_all_players(
     teams_tbl = ctx.team_entity_table
     stats_tbl = ctx.player_stats_table
     abbr_col = _quote_col(ctx.team_abbr_col)
-    glass_id = _quote_col('the_glass_id')
+    sts_id = _quote_col('sts_id')
 
     ent_select, ent_group = _build_entity_fields(ctx.player_entity_fields, 'p')
     team_abbr_select = f"t.{abbr_col} AS team_abbr"
@@ -239,10 +239,10 @@ def fetch_all_players(
         query = f"""
             SELECT {', '.join(all_f)}
               FROM {stats_tbl} s
-              JOIN {players_tbl} p ON p.{glass_id} = s.{glass_id}
-              JOIN {teams_tbl}   t ON t.{glass_id} = s.team_id
+              JOIN {players_tbl} p ON p.{sts_id} = s.{sts_id}
+              JOIN {teams_tbl}   t ON t.{sts_id} = s.team_id
                             LEFT JOIN rosters.teams_players tr
-                                ON tr.player_id = s.{glass_id}
+                                ON tr.player_id = s.{sts_id}
                              AND tr.team_id = s.team_id
              WHERE s.{season_col_name} = %s AND s.season_type = %s
         """
@@ -263,8 +263,8 @@ def fetch_all_players(
     query = f"""
         SELECT {', '.join(all_aggregates)}
           FROM {stats_tbl} s
-          JOIN {players_tbl} p ON p.{glass_id} = s.{glass_id}
-          JOIN {teams_tbl}   t ON t.{glass_id} = s.team_id
+          JOIN {players_tbl} p ON p.{sts_id} = s.{sts_id}
+          JOIN {teams_tbl}   t ON t.{sts_id} = s.team_id
          WHERE s.season_type IN %s {season_filter}
          GROUP BY {', '.join(group_f)}
     """
@@ -296,7 +296,7 @@ def fetch_team_stats(
     teams_tbl = ctx.team_entity_table
     stats_tbl = ctx.team_stats_table
     abbr_col = _quote_col(ctx.team_abbr_col)
-    glass_id = _quote_col('the_glass_id')
+    sts_id = _quote_col('sts_id')
 
     entity_fields = [f for f in sorted(ctx.team_entity_fields) if f != 'updated_at']
     t_select, t_group = _build_entity_fields(entity_fields, 't')
@@ -308,7 +308,7 @@ def fetch_team_stats(
             SELECT {', '.join(all_fields)}
               FROM {teams_tbl} t
               LEFT JOIN {stats_tbl} s
-                ON s.{glass_id} = t.{glass_id}
+                ON s.{sts_id} = t.{sts_id}
                AND s.{season_col_name} = %s
                AND s.season_type = %s
              WHERE t.{abbr_col} = %s
@@ -329,7 +329,7 @@ def fetch_team_stats(
             SELECT {', '.join(all_aggregates)}
               FROM {teams_tbl} t
               LEFT JOIN {stats_tbl} s
-                ON s.{glass_id} = t.{glass_id}
+                ON s.{sts_id} = t.{sts_id}
                AND s.season_type IN %s
                {season_filter}
              WHERE t.{abbr_col} = %s
@@ -363,7 +363,7 @@ def fetch_all_teams(
     teams_tbl = ctx.team_entity_table
     stats_tbl = ctx.team_stats_table
     abbr_col = _quote_col(ctx.team_abbr_col)
-    glass_id = _quote_col('the_glass_id')
+    sts_id = _quote_col('sts_id')
 
     entity_fields = [f for f in sorted(ctx.team_entity_fields) if f != 'updated_at']
     t_select, t_group = _build_entity_fields(entity_fields, 't')
@@ -374,7 +374,7 @@ def fetch_all_teams(
         query = f"""
             SELECT {', '.join(all_fields)}
               FROM {stats_tbl} s
-              JOIN {teams_tbl} t ON t.{glass_id} = s.{glass_id}
+              JOIN {teams_tbl} t ON t.{sts_id} = s.{sts_id}
              WHERE s.{season_col_name} = %s AND s.season_type = %s
         """
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -392,7 +392,7 @@ def fetch_all_teams(
         query = f"""
             SELECT {', '.join(all_aggregates)}
               FROM {stats_tbl} s
-              JOIN {teams_tbl} t ON t.{glass_id} = s.{glass_id}
+              JOIN {teams_tbl} t ON t.{sts_id} = s.{sts_id}
              WHERE s.season_type IN %s {season_filter}
              GROUP BY {', '.join(group_fields)}
         """

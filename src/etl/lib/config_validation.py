@@ -1,5 +1,5 @@
 """
-The Glass - ETL Config Validation
+Shoot the Sheet - ETL Config Validation
 
 ETL-specific validation: cross-reference checks, PostgreSQL type validation,
 and source structure checks.  Uses the generic validation engine from
@@ -175,7 +175,7 @@ def _validate_table_definitions(
             errors.append(f"{prefix}: primary_key must be a list")
         else:
             for col in pk_cols:
-                if col == 'the_glass_id':
+                if col == 'sts_id':
                     continue
                 if col in surrogate_pks:
                     continue

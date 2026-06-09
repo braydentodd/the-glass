@@ -1,5 +1,5 @@
 """
-The Glass - ETL Progress Tracking
+Shoot the Sheet - ETL Progress Tracking
 
 Wrapper around core progress tracker with ETL-specific API.
 """

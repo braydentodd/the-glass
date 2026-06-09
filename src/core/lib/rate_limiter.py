@@ -1,5 +1,5 @@
 """
-The Glass - Centralized Rate Limiter
+Shoot the Sheet - Centralized Rate Limiter
 
 Source-agnostic rate limiting engine with configurable limits per source/destination.
 Implements token bucket algorithm for request throttling and exponential backoff

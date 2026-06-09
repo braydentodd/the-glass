@@ -1,5 +1,5 @@
 """
-The Glass - ETL Execution Configuration
+Shoot the Sheet - ETL Execution Configuration
 
 Tuning parameters for ETL execution engine performance and resource management.
 

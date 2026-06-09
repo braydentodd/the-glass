@@ -1,5 +1,5 @@
 """
-The Glass - Coverage Tracker
+Shoot the Sheet - Coverage Tracker
 
 Tracks stats coverage completeness by persisting per-field params
 for each (entity_type, season, season_type, source, dataset, field)
@@ -42,7 +42,7 @@ def _resolve_league_id(conn: Any, league_key: str) -> int:
     """Resolve league_id for a league_key by looking it up in profiles.leagues."""
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT the_glass_id FROM profiles.leagues WHERE code = %s",
+            "SELECT sts_id FROM profiles.leagues WHERE code = %s",
             (league_key,),
         )
         row = cur.fetchone()

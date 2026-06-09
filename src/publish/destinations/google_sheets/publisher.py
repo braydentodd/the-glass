@@ -1,5 +1,5 @@
 """
-The Glass - Google Sheets Destination Publisher
+Shoot the Sheet - Google Sheets Destination Publisher
 
 Takes pre-calculated, structured Intermediate Representation (IR) dictionaries
 from the core Executor and translates them into Google Sheets batch API requests.
@@ -7,16 +7,16 @@ from the core Executor and translates them into Google Sheets batch API requests
 
 import logging
 
-from src.publish.destinations.sheets.request_builders import build_formatting_requests
-from src.publish.destinations.sheets.client import get_or_create_worksheet, write_and_format
+from src.publish.destinations.google_sheets.request_builders import build_formatting_requests
+from src.publish.destinations.google_sheets.client import get_or_create_worksheet, write_and_format
 
 logger = logging.getLogger(__name__)
 
 
-def publish_view(
+def publish_sheet(
     client,
     spreadsheet,
-    view_name: str,
+    sheet_name: str,
     ir_payload: dict,
     data_only: bool = False,
     show_advanced: bool = False,
@@ -31,13 +31,13 @@ def publish_view(
         "data_rows": [...],
         "percentile_cells": [...],
         "n_player_rows": int,
-        "view_type": str,
+        "sheet_type": str,
         "display_name": str
     }
     """
-    logger.info('Publishing IR payload to Sheet tab: %s', view_name)
+    logger.info('Publishing IR payload to sheet: %s', sheet_name)
     
-    worksheet = get_or_create_worksheet(spreadsheet, view_name, clear=not data_only)
+    worksheet = get_or_create_worksheet(spreadsheet, sheet_name, clear=not data_only)
     
     write_and_format(
         worksheet=worksheet,
@@ -47,7 +47,7 @@ def publish_view(
         percentile_cells=ir_payload['percentile_cells'],
         n_player_rows=ir_payload['n_player_rows'],
         team_name=ir_payload['display_name'],
-        view_type=ir_payload['view_type'],
+        sheet_type=ir_payload['sheet_type'],
         show_advanced=show_advanced,
         data_only=data_only,
         build_fn=build_formatting_requests,

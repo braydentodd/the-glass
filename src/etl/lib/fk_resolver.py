@@ -1,5 +1,5 @@
 """
-The Glass - FK Resolver Helpers
+Shoot the Sheet - FK Resolver Helpers
 
 Shared helpers for resolving source IDs to internal database keys using the 
 table registry metadata.

@@ -1,5 +1,5 @@
 """
-The Glass - PBP Stats Client
+Shoot the Sheet - PBP Stats Client
 
 Wraps pbpstats.com public API endpoints behind the same fetcher contract used
 by the ETL execution engine.

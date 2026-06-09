@@ -1,5 +1,5 @@
 """
-The Glass - Country Registry
+Shoot the Sheet - Country Registry
 
 Canonical country metadata derived from countries.json.
 """

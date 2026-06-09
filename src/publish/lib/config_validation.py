@@ -1,5 +1,5 @@
 """
-The Glass - Publish Config Validation
+Shoot the Sheet - Publish Config Validation
 
 Publish-specific validation: checks every declarative config in
 ``src.publish.definitions`` against its schema, and runs cross-reference
@@ -44,7 +44,7 @@ def _validate_section_subsection(sheets_columns: dict) -> List[str]:
     return errors
 
 
-def _validate_view_column_schema_uniformity(sheets_columns: dict) -> List[str]:
+def _validate_sheet_column_schema_uniformity(sheets_columns: dict) -> List[str]:
     """All VIEW_COLUMNS entries must expose the same top-level keys."""
     errors: List[str] = []
     expected_keys = None
@@ -182,7 +182,7 @@ def validate_config(league_key: str = None) -> List[str]:
     from src.publish.definitions.view_columns import VIEW_COLUMNS
     from src.publish.definitions.stats import STAT_RATES
     errors: List[str] = []
-    errors.extend(_validate_view_column_schema_uniformity(VIEW_COLUMNS))
+    errors.extend(_validate_sheet_column_schema_uniformity(VIEW_COLUMNS))
     errors.extend(_validate_section_subsection(VIEW_COLUMNS))
     errors.extend(_validate_width_classes(VIEW_COLUMNS))
     errors.extend(_validate_column_section_refs(VIEW_COLUMNS))

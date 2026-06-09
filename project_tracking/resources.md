@@ -1,0 +1,2 @@
+- Official FIBA country codes: https://about.fiba.basketball/en/national-federations
+- Country aliases: https://github.com/mledoze/countries/blob/master/countries.json

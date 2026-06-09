@@ -1,5 +1,5 @@
 """
-The Glass - ETL CLI Argument Definitions
+Shoot the Sheet - ETL CLI Argument Definitions
 
 Defines the argparse subparser for the ETL pipeline.  This module owns
 ETL-specific argument definitions so that adding a new pipeline never requires

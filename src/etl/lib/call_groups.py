@@ -1,5 +1,5 @@
 """
-The Glass - Call Group Builder
+Shoot the Sheet - Call Group Builder
 
 Transforms column configuration into executable API call groups for any
 data source.  A "call group" is a batch of columns that can be satisfied

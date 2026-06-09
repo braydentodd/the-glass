@@ -89,7 +89,7 @@ class PublishRow(TypedDict, total=False):
     sec_assists: Any
     steals: Any
     team_id: Any
-    the_glass_id: Any
+    sts_id: Any
     time_on_ball: Any
     touches: Any
     turnovers: Any

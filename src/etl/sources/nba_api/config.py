@@ -1,5 +1,5 @@
 """
-The Glass - NBA API Source Configuration
+Shoot the Sheet - NBA API Source Configuration
 
 Pure data definitions for the ``nba_api`` source: season-type mapping,
 rate limits, and field-name mappings.

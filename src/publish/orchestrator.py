@@ -1,20 +1,20 @@
 """
-The Glass - Publish Orchestrator
+Shoot the Sheet - Publish Orchestrator
 
 Top-level orchestration for the publish layer.  Mirrors :mod:`src.etl.orchestrator`:
 
     src.publish.cli           (argparse + dispatch)
         |
         v
-    src.publish.orchestrator  (this module: build SyncContext, drive views)
+    src.publish.orchestrator  (this module: build SyncContext, drive sheets)
         |
-        +--> src.publish.lib.executor    (one view at a time)
+        +--> src.publish.lib.executor    (one sheet at a time)
         +--> src.publish.lib.calculations (percentile populations)
         +--> src.publish.lib.queries      (reads from the warehouse)
 
 Knows nothing about HTTP transports or argparse -- just builds the run
 context, precomputes shared percentile populations once, and dispatches
-to the per-view workers in :mod:`src.publish.lib.executor`.
+to the per-sheet workers in :mod:`src.publish.lib.executor`.
 """
 
 from __future__ import annotations
@@ -37,29 +37,29 @@ from src.core.lib.league_resolver import (
     get_current_season_year,
 )
 from src.publish.definitions.destinations import DESTINATIONS
-from src.publish.definitions.layout import AGGREGATE_VIEWS, SECTIONS_CONFIG
+from src.publish.definitions.layout import AGGREGATE_SHEETS, SECTIONS_CONFIG
 from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
-from src.publish.destinations.sheets.config import (
+from src.publish.destinations.google_sheets.config import (
     GOOGLE_SHEETS_CONFIG,
     SHEETS_FORMATTING,
 )
-from src.publish.destinations.sheets.client import get_sheets_client
+from src.publish.destinations.google_sheets.client import get_sheets_client
 from src.publish.lib.calculations import compute_pct_by_rate, derive_db_fields
 from src.publish.lib.executor import (
     SyncContext,
-    sync_players_view,
-    sync_team_view,
-    sync_teams_view,
+    sync_players_sheet,
+    sync_team_sheet,
+    sync_teams_sheet,
 )
-from src.publish.destinations.sheets.config_exporter import export_config
+from src.publish.destinations.google_sheets.config_exporter import export_config
 from src.publish.lib.progress_tracker import (
     complete_run,
     fail_run,
-    mark_view_completed,
-    mark_view_failed,
-    mark_view_started,
+    mark_sheet_completed,
+    mark_sheet_failed,
+    mark_sheet_started,
     resolve_work,
-    update_run_completed_views,
+    update_run_completed_sheets,
 )
 from src.publish.lib.queries import (
     fetch_all_players,
@@ -107,7 +107,7 @@ def _push_apps_script_config(league: str, destination: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Percentile pre-computation  (one-shot, used by every view below)
+# Percentile pre-computation  (one-shot, used by every sheet below)
 # ---------------------------------------------------------------------------
 
 def _precompute_percentiles(
@@ -116,7 +116,7 @@ def _precompute_percentiles(
 ) -> dict:
     """Pre-compute league-wide percentile populations for every stat rate.
 
-    Called once per orchestrator run so every team and aggregate view share
+    Called once per orchestrator run so every team and aggregate sheet share
     the same population baselines (consistency + speed).
     """
     current_season = ctx.league_config[ctx.season_key]
@@ -216,84 +216,84 @@ def _precompute_percentiles(
 
 
 # ---------------------------------------------------------------------------
-# view-loop helper
+# sheet-loop helper
 # ---------------------------------------------------------------------------
 
-def _sync_all_views(
+def _sync_all_sheets(
     ctx,
     client,
     spreadsheet,
     conn,
     run_id: int,
     *,
-    team_views,
-    aggregate_views,
+    team_sheets,
+    aggregate_sheets,
     pending_lookup: dict,
     team_names: dict,
     precomputed: dict,
     delay: float,
     sync_kwargs: dict,
 ) -> list:
-    """Iterate team views then aggregate views, tracking progress per view.
+    """Iterate team sheets then aggregate sheets, tracking progress per sheet.
 
-    Returns a list of view names that failed.
+    Returns a list of sheet names that failed.
     """
     db_schema = ctx.db_schema
     total_pending = sum(
-        1 for t in list(team_views) + list(aggregate_views) if t in pending_lookup
+        1 for t in list(team_sheets) + list(aggregate_sheets) if t in pending_lookup
     )
-    failed_views = []
+    failed_sheets = []
 
-    with progress(total=total_pending, desc='publish', unit='view', leave=False) as bar:
-        for view in team_views:
-            if view not in pending_lookup:
+    with progress(total=total_pending, desc='publish', unit='sheet', leave=False) as bar:
+        for sheet in team_sheets:
+            if sheet not in pending_lookup:
                 continue
-            pid = pending_lookup[view]
-            bar.set_postfix_str(view, refresh=False)
-            mark_view_started(conn, db_schema, pid)
+            pid = pending_lookup[sheet]
+            bar.set_postfix_str(sheet, refresh=False)
+            mark_sheet_started(conn, db_schema, pid)
             try:
-                sync_team_view(
-                    ctx, client, spreadsheet, view,
-                    team_name=team_names.get(view, view),
+                sync_team_sheet(
+                    ctx, client, spreadsheet, sheet,
+                    team_name=team_names.get(sheet, sheet),
                     precomputed=precomputed,
                     **sync_kwargs,
                 )
-                mark_view_completed(conn, db_schema, pid)
-                update_run_completed_views(conn, db_schema, run_id)
+                mark_sheet_completed(conn, db_schema, pid)
+                update_run_completed_sheets(conn, db_schema, run_id)
             except Exception as exc:
-                logger.error('%s failed: %s', view, exc, exc_info=True)
-                failed_views.append(view)
-                mark_view_failed(conn, db_schema, pid, str(exc))
+                logger.error('%s sheet failed: %s', sheet, exc, exc_info=True)
+                failed_sheets.append(sheet)
+                mark_sheet_failed(conn, db_schema, pid, str(exc))
             bar.update(1)
             time.sleep(delay)
 
-        for view in aggregate_views:
-            if view not in pending_lookup:
+        for sheet in aggregate_sheets:
+            if sheet not in pending_lookup:
                 continue
-            pid = pending_lookup[view]
-            bar.set_postfix_str(view, refresh=False)
-            mark_view_started(conn, db_schema, pid)
+            pid = pending_lookup[sheet]
+            bar.set_postfix_str(sheet, refresh=False)
+            mark_sheet_started(conn, db_schema, pid)
             try:
-                if view == 'all_players':
-                    sync_players_view(
+                if sheet == 'all_players':
+                    sync_players_sheet(
                         ctx, client, spreadsheet,
                         precomputed=precomputed, **sync_kwargs,
                     )
                 else:
-                    sync_teams_view(
+                    sync_teams_sheet(
                         ctx, client, spreadsheet,
                         precomputed=precomputed, **sync_kwargs,
                     )
-                mark_view_completed(conn, db_schema, pid)
-                update_run_completed_views(conn, db_schema, run_id)
+                mark_sheet_completed(conn, db_schema, pid)
+                update_run_completed_sheets(conn, db_schema, run_id)
             except Exception as exc:
-                logger.error('%s view failed: %s', view, exc, exc_info=True)
-                failed_views.append(view)
-                mark_view_failed(conn, db_schema, pid, str(exc))
+                logger.error('%s sheet failed: %s', sheet, exc, exc_info=True)
+                failed_sheets.append(sheet)
+                mark_sheet_failed(conn, db_schema, pid, str(exc))
             bar.update(1)
             time.sleep(delay)
 
-    return failed_views
+    return failed_sheets
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +306,7 @@ def run_publish(
     show_advanced: bool,
     historical_config: dict,
     data_only: bool,
-    priority_view: Union[str, None],
+    priority_sheet: Union[str, None],
     config_export: bool = True,
     destination: str = 'google_sheets',
 ) -> None:
@@ -383,51 +383,51 @@ def run_publish(
     team_names = {abbr: name for _, (abbr, name) in teams_db.items()}
     abbrs = sorted(team_names.keys())
 
-    if priority_view:
-        pt = priority_view.upper()
+    if priority_sheet:
+        pt = priority_sheet.upper()
         if pt in abbrs:
             abbrs = [pt] + [a for a in abbrs if a != pt]
 
-    aggregate_order = list(AGGREGATE_VIEWS)
-    if priority_view and priority_view.lower() in aggregate_order:
-        first = priority_view.lower()
+    aggregate_order = list(AGGREGATE_SHEETS)
+    if priority_sheet and priority_sheet.lower() in aggregate_order:
+        first = priority_sheet.lower()
         aggregate_order = [first] + [s for s in aggregate_order if s != first]
 
-    all_views = abbrs + aggregate_order
+    all_sheets = abbrs + aggregate_order
 
     # Auto-resume: resolve pending work (may be subset if resuming)
     conn = get_db_connection()
     try:
         run_process_id, pending_items = resolve_work(
-            conn, db_schema, league, all_views, auto_resume=_AUTO_RESUME,
+            conn, db_schema, league, all_sheets, auto_resume=_AUTO_RESUME,
         )
     except Exception:
         conn.close()
         raise
 
-    pending_lookup = {view: pid for view, pid in pending_items}
+    pending_lookup = {sheet: pid for sheet, pid in pending_items}
     total_pending = len(pending_items)
     logger.info(
-        phase_marker('publish_views', f'{total_pending} pending of {len(all_views)} total'),
+        phase_marker('publish_sheets', f'{total_pending} pending of {len(all_sheets)} total'),
     )
 
-    # Build team_gids for aggregate views (needed for hyperlink resolution)
+    # Build team_gids for aggregate sheets (needed for hyperlink resolution)
     team_gids = {ws.title: ws.id for ws in spreadsheet.worksheets()}
     sync_kwargs['team_gids'] = team_gids
 
-    failed_views = _sync_all_views(
+    failed_sheets = _sync_all_sheets(
         ctx, client, spreadsheet, conn, run_process_id,
-        team_views=abbrs, aggregate_views=aggregate_order,
+        team_sheets=abbrs, aggregate_sheets=aggregate_order,
         pending_lookup=pending_lookup, team_names=team_names,
         precomputed=precomputed, delay=delay, sync_kwargs=sync_kwargs,
     )
 
-    if failed_views:
-        failed_list = ', '.join(failed_views)
+    if failed_sheets:
+        failed_list = ', '.join(failed_sheets)
         logger.error('Sync finished with failures: %s', failed_list)
-        fail_run(conn, db_schema, run_process_id, f'Sync failed for view(s): {failed_list}')
+        fail_run(conn, db_schema, run_process_id, f'Sync failed for sheet(s): {failed_list}')
         conn.close()
-        raise RuntimeError(f'Sync failed for view(s): {failed_list}')
+        raise RuntimeError(f'Sync failed for sheet(s): {failed_list}')
 
     logger.info('Sync complete')
     complete_run(conn, db_schema, run_process_id)

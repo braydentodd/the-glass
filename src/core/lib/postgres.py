@@ -43,14 +43,14 @@ def quote_col(col: str) -> str:
 # ---------------------------------------------------------------------------
 
 def get_db_connection():
-    """Create a new psycopg2 connection from ``DATABASE_URL``.
+    """Create a new psycopg2 connection from ``DB_URL``.
 
     Caller is responsible for closing.  Prefer :func:`db_connection` for
     short-lived operations.
     """
-    db_url = os.getenv('DATABASE_URL')
+    db_url = os.getenv('DB_URL')
     if not db_url:
-        raise RuntimeError("DATABASE_URL environment variable is missing.")
+        raise RuntimeError("DB_URL environment variable is missing.")
     return psycopg2.connect(db_url)
 
 

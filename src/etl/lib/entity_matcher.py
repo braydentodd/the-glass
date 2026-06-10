@@ -9,7 +9,7 @@ from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
 from psycopg2.extras import RealDictCursor
 
-from src.core.definitions.schema import TABLES, THE_GLASS_ID
+from src.core.definitions.schema import TABLES
 from src.etl.lib.fk_resolver import load_fk_mapping
 from src.core.lib.postgres import db_connection, quote_col
 from src.core.definitions.db_columns import DB_COLUMNS
@@ -84,8 +84,8 @@ def _filter_staged_rows_by_table(
 def _league_sts_id(conn: Any, league_key: str) -> int:
     with conn.cursor() as cur:
         cur.execute(
-            f"""
-            SELECT {quote_col(THE_GLASS_ID)}
+            """
+            SELECT "sts_id"
             FROM profiles.leagues
             WHERE code = %s
             """,
@@ -186,7 +186,7 @@ def promote_staged_entities(league_key: str, source_key: str) -> Dict[str, int]:
             conn,
             'profiles',
             'teams',
-            THE_GLASS_ID,
+            'sts_id',
             source_key,
             team_source_ids,
         )
@@ -194,7 +194,7 @@ def promote_staged_entities(league_key: str, source_key: str) -> Dict[str, int]:
             conn,
             'profiles',
             'players',
-            THE_GLASS_ID,
+            'sts_id',
             source_key,
             player_source_ids,
         )

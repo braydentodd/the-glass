@@ -27,8 +27,6 @@ VALID_PG_TYPES = frozenset({
 VALID_FK_ACTIONS = frozenset({'CASCADE', 'RESTRICT', 'SET NULL', 'NO ACTION'})
 VALID_FK_STRATEGIES = frozenset({'direct', 'profile_lookup'})
 
-THE_GLASS_ID = 'sts_id'
-
 # Default transform per PostgreSQL base type, applied when a source does not
 # declare its own ``transform`` and is not a pipeline / multi-call shape.
 DEFAULT_TYPE_TRANSFORMS: Dict[str, str] = {

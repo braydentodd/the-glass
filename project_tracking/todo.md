@@ -1,5 +1,4 @@
 Short term:
-- [ ] set up postgres database
 - [ ] add wnba and g league as leagues
 - [ ] move season format to sources, ensure does not conflict with league season format naming conventions
 - [ ] add roster_maintainer and season_detector datasets (do we need roles for datasets?)

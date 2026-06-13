@@ -1,10 +1,10 @@
 import logging
-from typing import Dict, Any, List, Union
+from typing import Any, Dict, List, Union
 
-from src.core.definitions.stats import STAT_DOMAINS
-from src.publish.definitions.view_columns import VIEW_COLUMNS
+from src.core.definitions.db_columns import DB_COLUMNS
+from src.core.definitions.stats import STAT_RATES
 from src.publish.definitions.layout import SECTIONS_CONFIG, VALUES_KEY_ENTITY
-from src.publish.definitions.stats import STAT_RATES
+from src.publish.definitions.view_columns import VIEW_COLUMNS
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +13,14 @@ logger = logging.getLogger(__name__)
 # FORMULA EVALUATION
 # ============================================================================
 
-def evaluate_formula(col_key: str, entity_data: dict,
-                     entity_type: str = 'player', mode: str = 'per_possession',
-                     context: Union[dict, None] = None) -> Any:
+
+def evaluate_formula(
+    col_key: str,
+    entity_data: dict,
+    entity_type: str = "player",
+    mode: str = "per_possession",
+    context: Union[dict, None] = None,
+) -> Any:
     """Evaluate a column's value expression against entity data.
 
     Expression must be a callable: ``lambda row, ctx: ...``
@@ -26,14 +31,16 @@ def evaluate_formula(col_key: str, entity_data: dict,
     if not col_def:
         return None
 
-    expr = col_def.get('values', {}).get(entity_type, {}).get('fn')
+    expr = col_def.get("values", {}).get(entity_type, {}).get("fn")
     if expr is None:
         return None
 
     if not callable(expr):
         logger.warning(
-            'Column %s.%s has non-callable expression: %r',
-            col_key, entity_type, type(expr),
+            "Column %s.%s has non-callable expression: %r",
+            col_key,
+            entity_type,
+            type(expr),
         )
         return None
 
@@ -41,8 +48,11 @@ def evaluate_formula(col_key: str, entity_data: dict,
         return expr(entity_data, context)
     except (TypeError, ZeroDivisionError, KeyError) as exc:
         logger.debug(
-            'Formula %s.%s returned None (%s: %s)',
-            col_key, entity_type, type(exc).__name__, exc,
+            "Formula %s.%s returned None (%s: %s)",
+            col_key,
+            entity_type,
+            type(exc).__name__,
+            exc,
         )
         return None
 
@@ -68,8 +78,10 @@ def _apply_scaling(
     raw_value: Any,
     mode: str,
     *,
-    domain_minutes: Union[float, None], base_minutes: Union[float, None],
-    domain_possessions: Union[float, None], base_possessions: Union[float, None],
+    domain_minutes: Union[float, None],
+    base_minutes: Union[float, None],
+    domain_possessions: Union[float, None],
+    base_possessions: Union[float, None],
 ) -> Any:
     """Apply mode-based scaling with a strict domain -> base fallback chain.
 
@@ -84,24 +96,27 @@ def _apply_scaling(
     if raw_value == 0:
         return 0
 
-    if mode == 'per_minute':
+    if mode == "per_minute":
         denom = _coerce_positive(domain_minutes, base_minutes)
         if denom is None:
             return None
-        return raw_value * STAT_RATES['per_minute']['rate'] / denom
+        return raw_value * STAT_RATES["per_minute"]["rate"] / denom
 
-    if mode == 'per_possession':
+    if mode == "per_possession":
         denom = _coerce_positive(domain_possessions, base_possessions)
         if denom is None:
             return None
-        return raw_value * STAT_RATES['per_possession']['rate'] / denom
+        return raw_value * STAT_RATES["per_possession"]["rate"] / denom
 
     return raw_value
 
 
-def calculate_entity_stats(entity_data: dict, entity_type: str = 'player',
-                           mode: str = 'per_possession',
-                           context: Union[dict, None] = None) -> dict:
+def calculate_entity_stats(
+    entity_data: dict,
+    entity_type: str = "player",
+    mode: str = "per_possession",
+    context: Union[dict, None] = None,
+) -> dict:
     """
     Calculate all stat values for an entity in a given mode.
 
@@ -113,74 +128,54 @@ def calculate_entity_stats(entity_data: dict, entity_type: str = 'player',
         local_context = {}
     else:
         local_context = context.copy()
-        
-    if 'seasons_in_query' not in local_context:
-        season_val = entity_data.get('season')
+
+    if "seasons_in_query" not in local_context:
+        season_val = entity_data.get("season")
         if isinstance(season_val, int):
-            local_context['seasons_in_query'] = season_val
+            local_context["seasons_in_query"] = season_val
         elif isinstance(season_val, str):
             # E.g. '2025-26'
-            local_context['seasons_in_query'] = 1
+            local_context["seasons_in_query"] = 1
         else:
             # None or empty dict
-            local_context['seasons_in_query'] = 1
+            local_context["seasons_in_query"] = 1
 
     results = {}
 
     # Base denominators -- always available on the fact row.
-    base_mins_x10 = entity_data.get('mins_x10')
+    base_mins_x10 = entity_data.get("mins_x10")
     base_minutes = (base_mins_x10 or 0) / 10.0 if base_mins_x10 is not None else None
-    base_possessions = entity_data.get('possessions')
+    base_possessions = entity_data.get("possessions")
 
     for col_key, col_def in VIEW_COLUMNS.items():
-        values = col_def.get('values', {})
+        values = col_def.get("values", {})
         if entity_type not in values:
             continue
 
-        raw_value = evaluate_formula(col_key, entity_data, entity_type, mode, local_context)
+        raw_value = evaluate_formula(
+            col_key, entity_data, entity_type, mode, local_context
+        )
 
         if raw_value is None:
             results[col_key] = None
             continue
 
-        rate_domain = col_def.get('rate_domain')
+        rate_domain = col_def.get("rate_domain")
 
         if rate_domain is None:
             results[col_key] = raw_value
         else:
-            domain_cfg = STAT_DOMAINS.get(rate_domain)
-            if domain_cfg and not domain_cfg.get('primary', False):
-                # Non-base domain: pull its own denominators from config.
-                d_min_col = domain_cfg['minutes_col']
-                d_min_x10 = entity_data.get(d_min_col)
-                domain_minutes = (
-                    (d_min_x10 or 0) / 10.0 if d_min_x10 is not None else None
-                )
+            # We don't have STAT_DOMAINS anymore, fallback to base
+            results[col_key] = _apply_scaling(
+                raw_value,
+                mode,
+                domain_minutes=None,
+                base_minutes=base_minutes,
+                domain_possessions=None,
+                base_possessions=base_possessions,
+            )
 
-                # Scale possessions proportionally to the domain's share of
-                # base minutes, when both denominators are observable.
-                if domain_minutes and base_minutes and base_minutes > 0:
-                    domain_possessions = (
-                        (base_possessions or 0) * (domain_minutes / base_minutes)
-                    )
-                else:
-                    domain_possessions = None
-
-                results[col_key] = _apply_scaling(
-                    raw_value, mode,
-                    domain_minutes=domain_minutes, base_minutes=base_minutes,
-                    domain_possessions=domain_possessions,
-                    base_possessions=base_possessions,
-                )
-            else:
-                # 'base' or unknown domain -> base denominators only.
-                results[col_key] = _apply_scaling(
-                    raw_value, mode,
-                    domain_minutes=None, base_minutes=base_minutes,
-                    domain_possessions=None, base_possessions=base_possessions,
-                )
-
-        if col_def.get('format') == 'percentage' and isinstance(
+        if col_def.get("format") == "percentage" and isinstance(
             results[col_key], (int, float)
         ):
             results[col_key] = results[col_key] * 100
@@ -194,10 +189,13 @@ def calculate_entity_stats(entity_data: dict, entity_type: str = 'player',
 # ============================================================================
 
 
-def calculate_all_percentiles(all_entities: List[dict], entity_type: str,
-                              mode: str = 'per_possession',
-                              context: Union[dict, None] = None,
-                              context_fn=None) -> dict:
+def calculate_all_percentiles(
+    all_entities: List[dict],
+    entity_type: str,
+    mode: str = "per_possession",
+    context: Union[dict, None] = None,
+    context_fn=None,
+) -> dict:
     """
     Calculate minute-weighted percentile populations for all stat columns.
 
@@ -220,12 +218,12 @@ def calculate_all_percentiles(all_entities: List[dict], entity_type: str,
 
     percentiles = {}
     for col_key, col_def in VIEW_COLUMNS.items():
-        if not col_def.get('percentile'):
+        if not col_def.get("percentile"):
             continue
 
         is_stats = any(
-            SECTIONS_CONFIG.get(s, {}).get('stats_timeframe')
-            for s in col_def.get('sections', [])
+            SECTIONS_CONFIG.get(s, {}).get("stats_timeframe")
+            for s in col_def.get("sections", [])
         )
 
         entries = []
@@ -235,7 +233,7 @@ def calculate_all_percentiles(all_entities: List[dict], entity_type: str,
                 continue
 
             if is_stats:
-                raw_minutes = (entity.get('mins_x10', 0) or 0) / 10.0
+                raw_minutes = (entity.get("mins_x10", 0) or 0) / 10.0
                 if raw_minutes <= 0:
                     continue
                 entries.append((val, raw_minutes))
@@ -248,7 +246,9 @@ def calculate_all_percentiles(all_entities: List[dict], entity_type: str,
     return percentiles
 
 
-def get_percentile_rank(value: Any, sorted_weighted: List, reverse: bool = False) -> float:
+def get_percentile_rank(
+    value: Any, sorted_weighted: List, reverse: bool = False
+) -> float:
     """
     Calculate minute-weighted percentile rank.
 
@@ -298,9 +298,9 @@ def get_percentile_rank(value: Any, sorted_weighted: List, reverse: bool = False
 # ============================================================================
 
 
-
-def derive_db_fields(league: str = None, stats_sections: frozenset = None,
-                     computed_fields: set = None) -> Dict[str, set]:
+def derive_db_fields(
+    league: str = None, stats_sections: frozenset = None, computed_fields: set = None
+) -> Dict[str, set]:
     """Derive the DB column sets needed by publish queries from VIEW_COLUMNS.
 
     Dependency resolution looks at the ``fields`` tuple in each ``values`` declaration.
@@ -319,57 +319,56 @@ def derive_db_fields(league: str = None, stats_sections: frozenset = None,
     team_stats = set()
 
     for col_def in VIEW_COLUMNS.values():
-        if league and league not in col_def.get('leagues', []):
+        if league and league not in col_def.get("leagues", []):
             continue
 
-        inputs = col_def.get('values')
+        inputs = col_def.get("values")
         if inputs is not None:
             for values_key, spec in inputs.items():
                 default_entity_type = VALUES_KEY_ENTITY.get(values_key)
                 if default_entity_type is None:
                     continue
-                fields = set(spec.get('fields', ()))
-                
+                fields = set(spec.get("fields", ()))
+
                 for raw_field in fields:
-                    if '.' not in raw_field:
+                    if "." not in raw_field:
                         # Fallback for any unprefixed fields (should be none)
                         prefix, field = None, raw_field
                     else:
-                        prefix, field = raw_field.split('.', 1)
-                        
-                    if prefix == 'p':
+                        prefix, field = raw_field.split(".", 1)
+
+                    if prefix == "p":
                         player_entity.add(field)
-                    elif prefix == 't':
+                    elif prefix == "t":
                         team_entity.add(field)
-                    elif prefix == 'tr':
+                    elif prefix == "tr":
                         player_entity.add(field)
-                    elif prefix == 's':
-                        if default_entity_type == 'player':
+                    elif prefix == "s":
+                        if default_entity_type == "player":
                             player_stats.add(field)
                         else:
                             team_stats.add(field)
                     else:
                         # Fallback for untagged fields
-                        if default_entity_type == 'player':
+                        if default_entity_type == "player":
                             player_entity.add(field)
                         else:
                             team_entity.add(field)
 
     return {
-        'player_entity_fields': player_entity - computed_fields,
-        'team_entity_fields': team_entity - computed_fields,
-        'stat_fields': player_stats,
-        'team_stat_fields': team_stats,
+        "player_entity_fields": player_entity - computed_fields,
+        "team_entity_fields": team_entity - computed_fields,
+        "stat_fields": player_stats,
+        "team_stat_fields": team_stats,
     }
-
 
 
 # ============================================================================
 # PERCENTILE POPULATION BUILDER
 # ============================================================================
 
-def compute_pct_by_rate(section_data: dict, entity_type: str,
-                        context_fn=None) -> dict:
+
+def compute_pct_by_rate(section_data: dict, entity_type: str, context_fn=None) -> dict:
     """Compute percentile populations for all stat rates.
 
     Args:
@@ -389,7 +388,10 @@ def compute_pct_by_rate(section_data: dict, entity_type: str,
         for section, data_list in section_data.items():
             if data_list:
                 result[rate][section] = calculate_all_percentiles(
-                    data_list, entity_type, rate, context_fn=context_fn,
+                    data_list,
+                    entity_type,
+                    rate,
+                    context_fn=context_fn,
                 )
             else:
                 result[rate][section] = {}

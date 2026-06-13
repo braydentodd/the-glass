@@ -22,6 +22,7 @@ from typing import Dict, List, TypedDict, Union
 
 class SourceMappingDef(TypedDict, total=False):
     """Source-specific wire parameters.  Optional fields vary by source type."""
+
     class_name: str
     result_set: Union[str, None]
     season_param_format: Union[str, None]
@@ -35,6 +36,7 @@ class SourceMappingDef(TypedDict, total=False):
 
 class DatasetDef(TypedDict):
     """Generic dataset metadata, uniform across every identity."""
+
     min_season: Union[str, None]
     execution_tier: str
     source: str
@@ -42,235 +44,234 @@ class DatasetDef(TypedDict):
 
 
 DATASETS: Dict[str, Dict[str, DatasetDef]] = {
-
     # ========================================================================
     # NBA API
     # ========================================================================
-
-    'nba_id': {
-
+    "nba_id": {
         # --- Basic stats (since 2003-04) ---
-
-        'player_stats': {
-            'min_season': '2003-04',
-            'execution_tier': 'per_team',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'leaguedashplayerstats',
-                'result_set': 'LeagueDashPlayerStats',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
-                'per_mode_param': 'per_mode_detailed',
+        "player_stats": {
+            "min_season": "2003-04",
+            "execution_tier": "per_team",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "leaguedashplayerstats",
+                "result_set": "LeagueDashPlayerStats",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_detailed",
             },
         },
-        'team_stats': {
-            'min_season': '2003-04',
-            'execution_tier': 'per_league',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'leaguedashteamstats',
-                'result_set': 'LeagueDashTeamStats',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
-                'per_mode_param': 'per_mode_detailed',
+        "team_stats": {
+            "min_season": "2003-04",
+            "execution_tier": "per_league",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "leaguedashteamstats",
+                "result_set": "LeagueDashTeamStats",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_detailed",
             },
         },
-
         # --- Player tracking (since 2013-14) ---
-
-        'player_tracking': {
-            'min_season': '2013-14',
-            'execution_tier': 'per_team',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'leaguedashptstats',
-                'result_set': 'LeagueDashPtStats',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
-                'per_mode_param': 'per_mode_simple',
-                'requires_params': ['pt_measure_type'],
+        "player_tracking": {
+            "min_season": "2013-14",
+            "execution_tier": "per_team",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "leaguedashptstats",
+                "result_set": "LeagueDashPtStats",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_simple",
+                "requires_params": ["pt_measure_type"],
             },
         },
-        'team_tracking': {
-            'min_season': '2013-14',
-            'execution_tier': 'per_league',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'leaguedashptstats',
-                'result_set': 'LeagueDashPtStats',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
-                'per_mode_param': 'per_mode_simple',
-                'requires_params': ['pt_measure_type'],
+        "team_tracking": {
+            "min_season": "2013-14",
+            "execution_tier": "per_league",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "leaguedashptstats",
+                "result_set": "LeagueDashPtStats",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_simple",
+                "requires_params": ["pt_measure_type"],
             },
         },
-
         # --- Hustle stats (since 2015-16) ---
-
-        'player_hustle': {
-            'min_season': '2015-16',
-            'execution_tier': 'per_team',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'leaguehustlestatsplayer',
-                'result_set': 'HustleStatsPlayer',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
-                'per_mode_param': 'per_mode_time',
+        "player_hustle": {
+            "min_season": "2015-16",
+            "execution_tier": "per_team",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "leaguehustlestatsplayer",
+                "result_set": "HustleStatsPlayer",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_time",
             },
         },
-        'team_hustle': {
-            'min_season': '2015-16',
-            'execution_tier': 'per_league',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'leaguehustlestatsteam',
-                'result_set': 'HustleStatsTeam',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
-                'per_mode_param': 'per_mode_time',
+        "team_hustle": {
+            "min_season": "2015-16",
+            "execution_tier": "per_league",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "leaguehustlestatsteam",
+                "result_set": "HustleStatsTeam",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_time",
             },
         },
-
         # --- Defensive matchup (since 2013-14) ---
-
-        'player_defense': {
-            'min_season': '2013-14',
-            'execution_tier': 'per_team',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'leaguedashptdefend',
-                'result_set': 'LeagueDashPtDefend',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param':  'season_type_all_star',
-                'per_mode_param': 'per_mode_simple',
-                'requires_params': ['defense_category'],
+        "player_defense": {
+            "min_season": "2013-14",
+            "execution_tier": "per_team",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "leaguedashptdefend",
+                "result_set": "LeagueDashPtDefend",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_simple",
+                "requires_params": ["defense_category"],
             },
         },
-        'team_defense': {
-            'min_season': '2013-14',
-            'execution_tier': 'per_league',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'leaguedashptteamdefend',
-                'result_set': 'LeagueDashPtTeamDefend',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
-                'per_mode_param': 'per_mode_simple',
-                'requires_params': ['defense_category'],
+        "team_defense": {
+            "min_season": "2013-14",
+            "execution_tier": "per_league",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "leaguedashptteamdefend",
+                "result_set": "LeagueDashPtTeamDefend",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_simple",
+                "requires_params": ["defense_category"],
             },
         },
-
-        # --- Player info (all time) ---
-
-        'player_info': {
-            'min_season': None,
-            'execution_tier': 'per_league',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'commonallplayers',
-                'result_set': 'CommonAllPlayers',
-                'season_param_format': 'SSSS-EE',
+        # --- Player roster / profiles (per-team, current season) ---
+        "team_roster": {
+            "min_season": None,
+            "execution_tier": "per_team",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "commonteamroster",
+                "result_set": "CommonTeamRoster",
+                "season_param_format": "SSSS-EE",
             },
         },
-
+        # --- Team discovery (all active teams, 1 call) ---
+        "team_years": {
+            "min_season": None,
+            "execution_tier": "per_league",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "commonteamyears",
+                "result_set": "TeamYears",
+            },
+        },
         # --- Draft combine (since 2000-01) ---
-
-        'combine_anthro': {
-            'min_season': '2000-01',
-            'execution_tier': 'per_league',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'draftcombineplayeranthro',
-                'result_set': 'DraftCombinePlayerAnthro',
-                'season_param_format': 'SSSS-EE',
-                'season_param': 'season_year',
+        "combine_anthro": {
+            "min_season": "2000-01",
+            "execution_tier": "per_league",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "draftcombineplayeranthro",
+                "result_set": "DraftCombinePlayerAnthro",
+                "season_param_format": "SSSS-EE",
+                "season_param": "season_year",
             },
         },
-
         # --- On/Off court (since 2007-08) ---
-
-        'player_on_court': {
-            'min_season': '2007-08',
-            'execution_tier': 'per_team',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'teamplayeronoffdetails',
-                'result_set': 'PlayersOnCourtTeamPlayerOnOffDetails',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
-                'per_mode_param': 'per_mode_detailed',
+        "player_on_court": {
+            "min_season": "2007-08",
+            "execution_tier": "per_team",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "teamplayeronoffdetails",
+                "result_set": "PlayersOnCourtTeamPlayerOnOffDetails",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_detailed",
             },
         },
-        'player_off_court': {
-            'min_season': '2007-08',
-            'execution_tier': 'per_team',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'teamplayeronoffdetails',
-                'result_set': 'PlayersOffCourtTeamPlayerOnOffDetails',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
-                'per_mode_param': 'per_mode_detailed',
+        "player_off_court": {
+            "min_season": "2007-08",
+            "execution_tier": "per_team",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "teamplayeronoffdetails",
+                "result_set": "PlayersOffCourtTeamPlayerOnOffDetails",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+                "per_mode_param": "per_mode_detailed",
             },
         },
-
         # --- Team info (all time) ---
-
-        'team_info': {
-            'min_season': None,
-            'execution_tier': 'per_team',
-            'source': 'nba_api',
-            'source_mapping': {
-                'class_name': 'teaminfocommon',
-                'result_set': 'TeamInfoCommon',
-                'season_param_format': 'SSSS-EE',
-                'season_type_param': 'season_type_all_star',
+        "team_info": {
+            "min_season": None,
+            "execution_tier": "per_team",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "teaminfocommon",
+                "result_set": "TeamInfoCommon",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
             },
         },
-
-        'team_totals': {
-            'min_season': '2000-01',
-            'execution_tier': 'per_league',
-            'source': 'pbp_stats',
-            'source_mapping': {
-                'result_set': 'PbpTotals',
-                'season_param_format': 'SSSS-EE',
-                'endpoint': 'get-totals',
-                'url_suffix': None,
+        "team_totals": {
+            "min_season": "2000-01",
+            "execution_tier": "per_league",
+            "source": "pbp_stats",
+            "source_mapping": {
+                "result_set": "PbpTotals",
+                "season_param_format": "SSSS-EE",
+                "endpoint": "get-totals",
+                "url_suffix": None,
             },
         },
-        'player_totals': {
-            'min_season': '2000-01',
-            'execution_tier': 'per_team',
-            'source': 'pbp_stats',
-            'source_mapping': {
-                'result_set': 'PbpTotals',
-                'season_param_format': 'SSSS-EE',
-                'endpoint': 'get-totals',
-                'url_suffix': None,
+        "player_totals": {
+            "min_season": "2000-01",
+            "execution_tier": "per_team",
+            "source": "pbp_stats",
+            "source_mapping": {
+                "result_set": "PbpTotals",
+                "season_param_format": "SSSS-EE",
+                "endpoint": "get-totals",
+                "url_suffix": None,
             },
-        }
+        },
+        # --- Activity / game detection (all seasons) ---
+        "league_game_finder": {
+            "min_season": None,
+            "execution_tier": "per_league",
+            "source": "nba_api",
+            "source_mapping": {
+                "class_name": "leaguegamefinder",
+                "result_set": "LeagueGameFinderResults",
+                "season_param_format": "SSSS-EE",
+                "season_type_param": "season_type_all_star",
+            },
+        },
     },
-
     # ========================================================================
     # Shoot the Sheet
     # ========================================================================
-
-    'sts_id': {
-        'players': {
-            'min_season': None,
-            'execution_tier': 'per_league',
-            'source': 'shoot_the_sheet',
-            'source_mapping': {},
+    "sts_id": {
+        "players": {
+            "min_season": None,
+            "execution_tier": "per_league",
+            "source": "shoot_the_sheet",
+            "source_mapping": {},
         },
-        'teams': {
-            'min_season': None,
-            'execution_tier': 'per_league',
-            'source': 'shoot_the_sheet',
-            'source_mapping': {},
-        }
-    }
+        "teams": {
+            "min_season": None,
+            "execution_tier": "per_league",
+            "source": "shoot_the_sheet",
+            "source_mapping": {},
+        },
+    },
 }
-
-

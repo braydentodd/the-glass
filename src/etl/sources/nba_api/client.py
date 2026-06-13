@@ -46,8 +46,8 @@ def _patch_nba_api_headers() -> None:
     if _session_patched:
         return
     try:
-        from nba_api.stats.library import http as _stats_http
         from nba_api.library import http as _base_http
+        from nba_api.stats.library import http as _stats_http
 
         _stats_http.STATS_HEADERS = REQUEST_HEADERS
         _stats_http.NBAStatsHTTP.headers = REQUEST_HEADERS
@@ -101,10 +101,11 @@ def load_dataset_class(dataset_name: str) -> Union[Any, None]:
 # API CALL FACTORY
 # ============================================================================
 
+
 def create_api_call(
     dataset_class: Any,
     params: Dict[str, Any],
-    dataset_name: str = '',
+    dataset_name: str = "",
     timeout: Union[int, None] = None,
     rate_limiter: Union[Any, None] = None,
 ) -> Callable:
@@ -116,14 +117,13 @@ def create_api_call(
     """
     _patch_nba_api_headers()
 
-    clean_params = {k: v for k, v in params.items() if not k.startswith('_')}
+    clean_params = {k: v for k, v in params.items() if not k.startswith("_")}
 
     # Filter to only params the dataset actually accepts
     sig = inspect.signature(dataset_class.__init__)
-    accepted = set(sig.parameters.keys()) - {'self'}
+    accepted = set(sig.parameters.keys()) - {"self"}
     has_kwargs = any(
-        p.kind == inspect.Parameter.VAR_KEYWORD
-        for p in sig.parameters.values()
+        p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
     )
     if not has_kwargs:
         clean_params = {k: v for k, v in clean_params.items() if k in accepted}
@@ -144,7 +144,10 @@ def create_api_call(
 # RETRY WRAPPER
 # ============================================================================
 
-def with_retry(func: Callable, rate_limiter: Any, max_retries: Union[int, None] = None) -> Any:
+
+def with_retry(
+    func: Callable, rate_limiter: Any, max_retries: Union[int, None] = None
+) -> Any:
     """Execute *func* with exponential back-off on failure using rate limiter.
 
     Args:
@@ -162,6 +165,7 @@ def with_retry(func: Callable, rate_limiter: Any, max_retries: Union[int, None] 
 # PARAMETER BUILDER
 # ============================================================================
 
+
 def build_dataset_params(
     dataset_name: str,
     league_key: str,
@@ -175,40 +179,48 @@ def build_dataset_params(
     Merges standard parameters (season, league_id, per_mode, season_type)
     with dataset-specific defaults and caller-supplied overrides.
     """
-    ds_cfg = DATASETS.get('nba_api', {}).get(dataset_name, {})
-    wire = ds_cfg.get('source_mapping', {})
+    ds_cfg = DATASETS.get("nba_api", {}).get(dataset_name, {})
+    wire = ds_cfg.get("source_mapping", {})
     league_cfg = LEAGUES[league_key]
-    source_league_id = get_source_league_id('nba_api', league_key)
-    param_format = wire.get('season_param_format', 'SSSS-EE')
+    source_league_id = get_source_league_id("nba_api", league_key)
+    param_format = wire.get("season_param_format", "SSSS-EE")
 
     # Season parameter — format according to source's token spec
-    season_param = wire.get('season_param', 'season')
-    if season_param == 'season_year':
+    season_param = wire.get("season_param", "season")
+    if season_param == "season_year":
         # Start year (season year) for datasets that need an integer
-        start_year = season_end_year - 1 if league_cfg['season_format'] == 'split_year' else season_end_year
+        start_year = (
+            season_end_year - 1
+            if league_cfg["season_format"] == "split_year"
+            else season_end_year
+        )
         params: Dict[str, Any] = {season_param: start_year}
     else:
-        params: Dict[str, Any] = {season_param: format_season_param(season_end_year, param_format, league_cfg['season_format'])}
+        params: Dict[str, Any] = {
+            season_param: format_season_param(
+                season_end_year, param_format, league_cfg["season_format"]
+            )
+        }
 
     # Season type
-    st_param = wire.get('season_type_param')
+    st_param = wire.get("season_type_param")
     if st_param:
         params[st_param] = season_type_name
 
     # Per-mode
-    pm_param = wire.get('per_mode_param')
+    pm_param = wire.get("per_mode_param")
     if pm_param and pm_param in API_CONFIG:
         params[pm_param] = API_CONFIG[pm_param]
 
     # Context measure (e.g. for shot charts)
-    cm_param = wire.get('context_measure_param')
+    cm_param = wire.get("context_measure_param")
     if cm_param and cm_param in API_CONFIG:
         params[cm_param] = API_CONFIG[cm_param]
 
     # League ID — add both variants; signature filtering in create_api_call
     # will keep only the one the dataset accepts.
-    params['league_id'] = source_league_id
-    params['league_id_nullable'] = source_league_id
+    params["league_id"] = source_league_id
+    params["league_id_nullable"] = source_league_id
 
     # Caller overrides win
     if extra_params:
@@ -221,25 +233,38 @@ def build_dataset_params(
 # FETCHER FACTORY
 # ============================================================================
 
-def make_fetcher(league_key: str, season_end_year: int, season_type_name: str, entity: str) -> Callable:
+
+def make_fetcher(
+    league_key: str, season_end_year: int, season_type_name: str, entity: str
+) -> Callable:
     """Create an api_fetcher closure for the given league, season, type, and entity.
 
     Returns a function that accepts (dataset, extra_params) and executes
     a fully parameterized NBA API call with retry logic.
     """
-    rate_limiter = get_rate_limiter('nba_api')
+    rate_limiter = get_rate_limiter("nba_api")
 
-    def fetch(dataset: str, extra_params: Union[Dict[str, Any], None] = None) -> Union[Dict, None]:
-        ds_cfg = DATASETS.get('nba_api', {}).get(dataset, {})
-        class_name = ds_cfg.get('source_mapping', {}).get('class_name', dataset)
+    def fetch(
+        dataset: str, extra_params: Union[Dict[str, Any], None] = None
+    ) -> Union[Dict, None]:
+        ds_cfg = DATASETS.get("nba_api", {}).get(dataset, {})
+        class_name = ds_cfg.get("source_mapping", {}).get("class_name", dataset)
         DatasetClass = load_dataset_class(class_name)
         if DatasetClass is None:
             return None
         full_params = build_dataset_params(
-            dataset, league_key, season_end_year, season_type_name, entity, extra_params or {},
+            dataset,
+            league_key,
+            season_end_year,
+            season_type_name,
+            entity,
+            extra_params or {},
         )
-        api_call = create_api_call(DatasetClass, full_params, dataset_name=dataset, rate_limiter=rate_limiter)
+        api_call = create_api_call(
+            DatasetClass, full_params, dataset_name=dataset, rate_limiter=rate_limiter
+        )
         return with_retry(api_call, rate_limiter)
+
     return fetch
 
 
@@ -247,16 +272,17 @@ def make_fetcher(league_key: str, season_end_year: int, season_type_name: str, e
 # ROSTER SNAPSHOT  (consumed by the runner's `rosters` phase)
 # ============================================================================
 
+
 def fetch_roster_memberships(
     league_key: str,
     season: str,
-    season_type_name: str = 'Regular Season',
+    season_type_name: str = "Regular Season",
     dataset: Union[str, None] = None,
 ) -> list:
     """Return ``[(team_source_id, player_source_id, jersey_num, seasons_exp), ...]``
     for every active roster slot in the league for the given season.
 
-    ``dataset`` is the dataset name that provides roster data (e.g. ``player_info``).
+    ``dataset`` defaults to ``'team_roster'`` (CommonTeamRoster endpoint).
     Team and player ID fields are discovered from the response headers.
     Additional rosters-scoped fields (jersey_num, seasons_exp, etc.) are
     dynamically discovered from the column registry.
@@ -264,30 +290,32 @@ def fetch_roster_memberships(
     Players whose team ID is null or zero (free agents / inactive) are dropped.
     """
     if not dataset:
-        raise ValueError('dataset is required for roster fetch')
+        dataset = "team_roster"
 
     from src.etl.lib.source_resolver import get_rosters_fields
 
-    rosters_fields = get_rosters_fields(league_key, 'nba_api')
+    rosters_fields = get_rosters_fields(league_key, "nba_api")
 
-    end_year = parse_season_end_year(season, LEAGUES[league_key]['season_format'])
-    fetcher = make_fetcher(league_key, end_year, season_type_name, 'player')
+    end_year = parse_season_end_year(season, LEAGUES[league_key]["season_format"])
+    fetcher = make_fetcher(league_key, end_year, season_type_name, "player")
     result = fetcher(dataset)
     if result is None:
         logger.warning(
-            'Roster snapshot %s/%s returned no result from %s',
-            league_key, season, dataset,
+            "Roster snapshot %s/%s returned no result from %s",
+            league_key,
+            season,
+            dataset,
         )
         return []
 
-    id_aliases = API_CONFIG.get('id_aliases', {})
-    player_aliases = id_aliases.get('PLAYER_ID', ['PLAYER_ID'])
+    id_aliases = API_CONFIG.get("id_aliases", {})
+    player_aliases = id_aliases.get("PLAYER_ID", ["PLAYER_ID"])
 
     pairs: list = []
-    for rs in result.get('resultSets', []):
-        headers = rs.get('headers', [])
+    for rs in result.get("resultSets", []):
+        headers = rs.get("headers", [])
 
-        team_id_field = 'TEAM_ID'
+        team_id_field = "TEAM_ID"
         if team_id_field not in headers:
             continue
 
@@ -306,7 +334,7 @@ def fetch_roster_memberships(
             if api_field_name in headers:
                 field_indices[col_name] = headers.index(api_field_name)
 
-        for row in rs['rowSet']:
+        for row in rs["rowSet"]:
             tid = row[tid_idx]
             pid = row[pid_idx]
             if tid is None or pid is None:
@@ -326,9 +354,11 @@ def fetch_roster_memberships(
             pairs.append((tid_val, pid, *extra_fields))
 
     logger.info(
-        'Roster snapshot %s/%s: %d active rows from %s (fields: %s)',
-        league_key, season, len(pairs), dataset, sorted(rosters_fields.keys()),
+        "Roster snapshot %s/%s: %d active rows from %s (fields: %s)",
+        league_key,
+        season,
+        len(pairs),
+        dataset,
+        sorted(rosters_fields.keys()),
     )
     return pairs
-
-

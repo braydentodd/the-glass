@@ -27,22 +27,24 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-from src.core.lib.terminal import progress
-from src.core.lib.schema_builder import bootstrap_schema
+from src.core.definitions.leagues import LEAGUES
+from src.core.lib.leagues_resolver import (
+    get_all_canonical_season_types,
+    get_current_season,
+    get_regular_season_types,
+    get_retained_seasons,
+)
 from src.core.lib.logging import phase_marker
 from src.core.lib.postgres import db_connection, quote_col
+from src.core.lib.schema_builder import bootstrap_schema
 from src.core.lib.season_resolver import parse_season_end_year
-from src.etl.lib.source_resolver import (
-    build_source_id_columns,
-    get_source_id_column,
-)
-from src.core.definitions.leagues import LEAGUES
+from src.core.lib.terminal import progress
 from src.etl.definitions.pipeline import (
     PIPELINE_PHASES,
     VALID_ETL_PHASES,
 )
 from src.etl.definitions.sources import SOURCES
-from src.core.lib.league_resolver import get_current_season, get_retained_seasons
+from src.etl.lib.call_groups import build_call_groups
 from src.etl.lib.cleanup import (
     prune_entities,
     prune_stats_retention,
@@ -52,7 +54,6 @@ from src.etl.lib.coverage_tracker import (
     prune_coverages,
 )
 from src.etl.lib.executor import ExecutionContext, execute_group
-from src.etl.lib.call_groups import build_call_groups
 from src.etl.lib.progress_tracker import (
     complete_run,
     fail_run,
@@ -62,6 +63,11 @@ from src.etl.lib.progress_tracker import (
     resolve_work,
     update_run_completed_groups,
 )
+from src.etl.lib.season_detector import detect_active_season_types, is_league_in_season
+from src.etl.lib.source_resolver import (
+    build_source_id_columns,
+    get_source_id_column,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,12 +75,13 @@ logger = logging.getLogger(__name__)
 VALID_PHASES = set(VALID_ETL_PHASES)
 
 
-OPS_SCHEMA = 'ops'
+OPS_SCHEMA = "ops"
 
 
 # ============================================================================
 # DYNAMIC SOURCE LOADING
 # ============================================================================
+
 
 def _load_source(source_key: str):
     """Dynamically import a source's config and client modules."""
@@ -89,6 +96,7 @@ def _load_source(source_key: str):
 # CORE-AWARE LOOKUPS
 # ============================================================================
 
+
 def _get_active_team_source_ids(league_key: str, source_key: str) -> Dict[str, int]:
     """Return ``{team_abbr: team_source_id}`` for teams currently active in
     the league-team roster table for the given league.
@@ -101,9 +109,9 @@ def _get_active_team_source_ids(league_key: str, source_key: str) -> Dict[str, i
         SELECT t.abbr, t.{quote_col(src_col)}
           FROM profiles.teams t
           JOIN rosters.leagues_teams lr
-            ON lr.team_id = t.{quote_col('sts_id')}
+            ON lr.team_id = t.{quote_col("sts_id")}
           JOIN profiles.leagues lp
-            ON lp.{quote_col('sts_id')} = lr.league_id
+            ON lp.{quote_col("sts_id")} = lr.league_id
          WHERE lp.code = %s
          ORDER BY t.abbr
     """
@@ -121,6 +129,7 @@ def _get_active_team_source_ids(league_key: str, source_key: str) -> Dict[str, i
 # SHARED EXECUTION ENGINE  (drives src.etl.lib.executor for one phase)
 # ============================================================================
 
+
 def _run_groups(
     scope: str,
     entities: List[str],
@@ -137,8 +146,8 @@ def _run_groups(
     make_fetcher: Callable,
     groups_override: Union[Dict[Tuple[str, str], List[Dict[str, Any]]], None] = None,
     on_entity_finished: Union[
-        Callable[[str, str, List[Dict[str, Any]], int, bool, Any], None]
-    , None] = None,
+        Callable[[str, str, List[Dict[str, Any]], int, bool, Any], None], None
+    ] = None,
     in_season: bool = True,
 ) -> int:
     """Execute call groups for a given scope across entities and seasons."""
@@ -150,70 +159,98 @@ def _run_groups(
                 groups = groups_override.get((entity, season), [])
             else:
                 groups = build_call_groups(
-                    entity, season, source_key, scope=scope,
-                    league_key=league_key, in_season=in_season,
+                    entity,
+                    season,
+                    source_key,
+                    scope=scope,
+                    league_key=league_key,
+                    in_season=in_season,
                 )
             if not groups:
                 continue
 
             logger.info(
-                '%s: %s %s -- %d call groups', scope, entity, season, len(groups),
+                "%s: %s %s -- %d call groups",
+                scope,
+                entity,
+                season,
+                len(groups),
             )
 
-            season_end_year = parse_season_end_year(season, LEAGUES[league_key]['season_format'])
+            season_end_year = parse_season_end_year(
+                season, LEAGUES[league_key]["season_format"]
+            )
             ctx = ExecutionContext(
                 entity=entity,
                 scope=scope,
                 season=season,
                 season_type=season_type,
                 season_type_name=season_type_name,
-                entity_id_field=api_field_names['entity_id'][entity],
+                entity_id_field=api_field_names["entity_id"][entity],
                 db_schema=league_key,
                 source_key=source_key,
-                api_fetcher=make_fetcher(league_key, season_end_year, season_type_name, entity),
+                api_fetcher=make_fetcher(
+                    league_key, season_end_year, season_type_name, entity
+                ),
                 team_ids=team_ids,
-                max_consecutive_failures=api_config.get('max_consecutive_failures', 5),
-                id_aliases=api_field_names.get('id_aliases', {}),
+                max_consecutive_failures=api_config.get("max_consecutive_failures", 5),
+                id_aliases=api_field_names.get("id_aliases", {}),
             )
 
             with db_connection() as conn:
                 league_id = _resolve_league_id(conn, league_key)
                 run_process_id, work_items = resolve_work(
-                    conn, OPS_SCHEMA, entity, season, season_type, groups,
-                    True, league_id=league_id,
+                    conn,
+                    OPS_SCHEMA,
+                    entity,
+                    season,
+                    season_type,
+                    groups,
+                    True,
+                    league_id=league_id,
                 )
 
                 entity_rows = 0
                 failed_before = len(failed)
                 succeeded_groups: List[Dict[str, Any]] = []
-                bar_desc = f'{scope}/{entity}/{season}'
+                bar_desc = f"{scope}/{entity}/{season}"
                 try:
                     with progress(
                         total=len(work_items),
                         desc=bar_desc,
-                        unit='group',
+                        unit="group",
                         leave=False,
                     ) as bar:
                         for group, progress_id in work_items:
-                            bar.set_postfix_str(group['dataset'], refresh=False)
+                            bar.set_postfix_str(group["dataset"], refresh=False)
                             mark_group_started(conn, OPS_SCHEMA, progress_id)
                             try:
                                 rows = execute_group(group, ctx, failed, conn=conn)
                                 entity_rows += rows
                                 mark_group_completed(
-                                    conn, OPS_SCHEMA, progress_id, rows,
-                                    dataset=group.get('dataset'),
-                                    tier=group.get('tier'),
+                                    conn,
+                                    OPS_SCHEMA,
+                                    progress_id,
+                                    rows,
+                                    dataset=group.get("dataset"),
+                                    tier=group.get("tier"),
                                 )
                                 succeeded_groups.append(group)
                             except Exception as exc:
                                 logger.exception(
-                                    'Group %s failed: %s', group['dataset'], exc,
+                                    "Group %s failed: %s",
+                                    group["dataset"],
+                                    exc,
                                 )
-                                mark_group_failed(conn, OPS_SCHEMA, progress_id, str(exc))
-                                failed.append({
-                                    'dataset': group['dataset'], 'error': str(exc),
-                                })
+                                mark_group_failed(
+                                    conn, OPS_SCHEMA, progress_id, str(exc)
+                                )
+                                failed.append(
+                                    {
+                                        "dataset": group["dataset"],
+                                        "error": str(exc),
+                                    }
+                                )
                             bar.update(1)
 
                     total_rows += entity_rows
@@ -239,16 +276,18 @@ def _run_groups(
 # ETL PHASE HANDLERS
 # ============================================================================
 
+
 def _get_internal_sources() -> List[str]:
     """Return source keys with no external_id (internal/product-of-system sources)."""
-    return [sk for sk, meta in SOURCES.items() if meta.get('external_id') is None]
+    return [sk for sk, meta in SOURCES.items() if meta.get("external_id") is None]
 
 
 def _get_external_sources(league_key: str) -> List[str]:
     """Return external source keys for a league, in SOURCES dict order."""
     return [
-        sk for sk, meta in SOURCES.items()
-        if meta.get('external_id') is not None and league_key in meta.get('leagues', {})
+        sk
+        for sk, meta in SOURCES.items()
+        if meta.get("external_id") is not None and league_key in meta.get("leagues", {})
     ]
 
 
@@ -261,7 +300,7 @@ def _update_internal(
     """Update production profiles from internal sources (direct write, no staging)."""
     total_rows = 0
     for source_key in _get_internal_sources():
-        logger.info(phase_marker('update_internal', f'source={source_key}'))
+        logger.info(phase_marker("update_internal", f"source={source_key}"))
         # TODO: iterate datasets in DATASETS order, write directly to profiles tables
     return total_rows
 
@@ -273,6 +312,7 @@ def _backfill_external(
     season_type: str,
     season_type_name: str,
     failed: List[Dict[str, Any]],
+    in_season: bool = True,
 ) -> int:
     """Backfill historical stats to staging tables for uncovered combinations."""
     total_rows = 0
@@ -281,7 +321,12 @@ def _backfill_external(
         return 0
 
     for source_key in _get_external_sources(league_key):
-        logger.info(phase_marker('backfill_external', f'source={source_key} seasons={len(previous_seasons)}'))
+        logger.info(
+            phase_marker(
+                "backfill_external",
+                f"source={source_key} seasons={len(previous_seasons)}",
+            )
+        )
         # TODO: iterate datasets in DATASETS order, write to *_staging tables
     return total_rows
 
@@ -292,11 +337,12 @@ def _maintain_external(
     season_type: str,
     season_type_name: str,
     failed: List[Dict[str, Any]],
+    in_season: bool = True,
 ) -> int:
     """Fetch current profiles, stats, and rosters to staging tables."""
     total_rows = 0
     for source_key in _get_external_sources(league_key):
-        logger.info(phase_marker('maintain_external', f'source={source_key}'))
+        logger.info(phase_marker("maintain_external", f"source={source_key}"))
         # TODO: fetch profiles -> teams_staging, players_staging
         # TODO: fetch rosters -> leagues_teams_staging, teams_players_staging
         # TODO: fetch stats -> player_seasons_staging, team_seasons_staging
@@ -310,7 +356,7 @@ def _match_entities(
     """Match staged entities (countries, teams, players) to sts_id."""
     total_rows = 0
     for source_key in _get_external_sources(league_key):
-        logger.info(phase_marker('match_entities', f'source={source_key}'))
+        logger.info(phase_marker("match_entities", f"source={source_key}"))
         # TODO: resolve staged rows to sts_id
     return total_rows
 
@@ -322,22 +368,21 @@ def _upsert_entities(
     """Upsert matched staged data into production tables."""
     total_rows = 0
     for source_key in _get_external_sources(league_key):
-        logger.info(phase_marker('upsert_entities', f'source={source_key}'))
+        logger.info(phase_marker("upsert_entities", f"source={source_key}"))
         # TODO: upsert from staging to production
     return total_rows
 
 
 def _resolve_source_season_type_names(
-    source_bundle: Dict[str, Any],
-    regular_st: str,
-    requested_st: str,
+    source_key: str,
+    regular_canonical: str,
+    requested_canonical: str,
 ) -> Tuple[str, str]:
-    """Resolve regular/requested season type names for a specific source."""
-    season_types = source_bundle['config_mod'].SEASON_TYPES
-    regular_info = season_types.get(regular_st, season_types.get('rs', {}))
-    requested_info = season_types.get(requested_st, season_types.get('rs', {}))
-    regular_name = regular_info.get('name', regular_st)
-    requested_name = requested_info.get('name', requested_st)
+    """Resolve canonical season type keys to source-specific wire names."""
+    from src.etl.lib.source_resolver import get_season_type_wire_name
+
+    regular_name = get_season_type_wire_name(source_key, regular_canonical)
+    requested_name = get_season_type_wire_name(source_key, requested_canonical)
     return regular_name, requested_name
 
 
@@ -345,9 +390,10 @@ def _resolve_source_season_type_names(
 # PUBLIC ENTRY
 # ============================================================================
 
+
 def run_etl(
     league_key: Union[str, None] = None,
-    phase: str = 'full',
+    phase: str = "full",
 ) -> None:
     """Run one or more ETL phases for a league or all leagues.
 
@@ -372,32 +418,32 @@ def run_etl(
         failures = []
 
         for lkey in leagues_to_run:
-            logger.info('=' * 80)
-            logger.info('Executing ETL for league: %s', lkey)
-            logger.info('=' * 80)
+            logger.info("=" * 80)
+            logger.info("Executing ETL for league: %s", lkey)
+            logger.info("=" * 80)
             try:
                 run_etl(league_key=lkey, phase=phase)
                 success_count += 1
             except KeyboardInterrupt:
-                logger.warning('Interrupted by user.')
+                logger.warning("Interrupted by user.")
                 raise
             except Exception as exc:
-                logger.exception('ETL run failed for league %s.', lkey)
+                logger.exception("ETL run failed for league %s.", lkey)
                 fail_count += 1
                 failures.append((lkey, str(exc)))
 
         if len(leagues_to_run) > 1:
-            logger.info('=' * 80)
-            logger.info('Multi-League Run Summary:')
-            logger.info('  Total leagues: %d', len(leagues_to_run))
-            logger.info('  Successes:     %d', success_count)
-            logger.info('  Failures:      %d', fail_count)
+            logger.info("=" * 80)
+            logger.info("Multi-League Run Summary:")
+            logger.info("  Total leagues: %d", len(leagues_to_run))
+            logger.info("  Successes:     %d", success_count)
+            logger.info("  Failures:      %d", fail_count)
             if failures:
                 for league_key_failed, err in failures:
-                    logger.error('    - %s: %s', league_key_failed, err)
-            logger.info('=' * 80)
+                    logger.error("    - %s: %s", league_key_failed, err)
+            logger.info("=" * 80)
             if fail_count > 0:
-                raise RuntimeError(f'{fail_count} league(s) failed')
+                raise RuntimeError(f"{fail_count} league(s) failed")
         return
     if league_key not in LEAGUES:
         raise ValueError(
@@ -406,14 +452,25 @@ def run_etl(
 
     league_cfg = LEAGUES[league_key]
     season = get_current_season(league_key)
-    regular_st = league_cfg['regular_season_types'][0]
+    season_types = get_all_canonical_season_types(league_key)
+    regular_st = get_regular_season_types(league_key)[0]
     regular_st_name = regular_st
-    all_season_types = league_cfg['regular_season_types'] + league_cfg['postseason_types']
     season_range = get_retained_seasons(league_key, season)
 
+    # Detect which season types have had recent game activity.
+    # When none are active, the pipeline skips stats columns and only
+    # refreshes profiles / rosters.
+    active_types = detect_active_season_types(league_key, season)
+    in_season = bool(active_types)
+
     logger.info(
-        'ETL starting: league=%s phase=%s season=%s types=%s',
-        league_key, phase, season, ','.join(all_season_types),
+        "ETL starting: league=%s phase=%s season=%s types=%s active_types=%s in_season=%s",
+        league_key,
+        phase,
+        season,
+        ",".join(season_types),
+        ",".join(active_types),
+        in_season,
     )
 
     failed: List[Dict[str, Any]] = []
@@ -422,39 +479,52 @@ def run_etl(
     configured_handlers = PIPELINE_PHASES.get(phase, [])
 
     for handler in configured_handlers:
-        if handler == 'build_schema':
-            logger.info(phase_marker('build_schema'))
+        if handler == "build_schema":
+            logger.info(phase_marker("build_schema"))
             with db_connection() as conn:
-                bootstrap_schema(league_key, conn=conn, source_id_columns=build_source_id_columns())
+                bootstrap_schema(
+                    league_key, conn=conn, source_id_columns=build_source_id_columns()
+                )
 
-        elif handler == 'update_internal':
+        elif handler == "update_internal":
             total_rows += _update_internal(league_key, season, regular_st_name, failed)
 
-        elif handler == 'backfill_external':
+        elif handler == "backfill_external":
             total_rows += _backfill_external(
-                league_key, season_range, season, regular_st, regular_st_name, failed,
+                league_key,
+                season_range,
+                season,
+                regular_st,
+                regular_st_name,
+                failed,
+                in_season=in_season,
             )
 
-        elif handler == 'maintain_external':
+        elif handler == "maintain_external":
             total_rows += _maintain_external(
-                league_key, season, regular_st, regular_st_name, failed,
+                league_key,
+                season,
+                regular_st,
+                regular_st_name,
+                failed,
+                in_season=in_season,
             )
 
-        elif handler == 'match_entities':
+        elif handler == "match_entities":
             total_rows += _match_entities(league_key, failed)
 
-        elif handler == 'upsert_entities':
+        elif handler == "upsert_entities":
             total_rows += _upsert_entities(league_key, failed)
 
-        elif handler == 'prune_stats_retention':
+        elif handler == "prune_stats_retention":
             logger.info(phase_marker(handler))
             total_rows += prune_stats_retention(league_key, season)
 
-        elif handler == 'prune_entities':
+        elif handler == "prune_entities":
             logger.info(phase_marker(handler))
             total_rows += prune_entities()
 
-        elif handler == 'prune_coverages':
+        elif handler == "prune_coverages":
             logger.info(phase_marker(handler))
             total_rows += prune_coverages(league_key)
 
@@ -463,9 +533,9 @@ def run_etl(
                 f"Unknown ETL stage handler {handler!r} for league {league_key!r}"
             )
 
-    logger.info('ETL complete: %d total rows written/pruned', total_rows)
+    logger.info("ETL complete: %d total rows written/pruned", total_rows)
 
     if failed:
-        logger.warning('%d failures:', len(failed))
+        logger.warning("%d failures:", len(failed))
         for f in failed:
-            logger.warning('  %s', f)
+            logger.warning("  %s", f)

@@ -4,6 +4,10 @@ Shoot the Sheet - PBP Stats Source Configuration
 Pure data definitions for the ``pbp_stats`` source: season-type mapping,
 rate limits, and field-name mappings.
 
+Season types use canonical keys (e.g. ``regular_season``, ``playoffs``)
+that are shared across sources.  Each entry carries a ``wire_name``
+(what the API expects as the parameter value).
+
 Dataset metadata lives in the unified registry
 (:mod:`src.etl.definitions.datasets`).  This module is purely about
 how to talk to the source itself.
@@ -18,22 +22,26 @@ class ApiConfigDef(TypedDict):
 
 
 class SeasonTypeDef(TypedDict):
-    name: str
+    wire_name: str
     min_season: Union[str, None]
 
 
 SEASON_TYPES: Dict[str, SeasonTypeDef] = {
-    'rs': {
-        'name': 'Regular Season',
-        'min_season': None,
+    "regular_season": {
+        "wire_name": "Regular Season",
+        "min_season": None,
     },
-    'po': {
-        'name': 'Playoffs',
-        'min_season': None,
+    "playoffs": {
+        "wire_name": "Playoffs",
+        "min_season": None,
     },
-    'pi': {
-        'name': 'PlayIn',
-        'min_season': '2020-21',
+    "play_in": {
+        "wire_name": "Play In Tournament",
+        "min_season": "2020-21",
+    },
+    "showcase_cup": {
+        "wire_name": "Showcase Cup",
+        "min_season": "2022-23",
     },
 }
 
@@ -43,8 +51,8 @@ SEASON_TYPES: Dict[str, SeasonTypeDef] = {
 # ==========================================================================
 
 API_CONFIG: ApiConfigDef = {
-    'base_url': 'https://api.pbpstats.com',
-    'max_consecutive_failures': 5,
+    "base_url": "https://api.pbpstats.com",
+    "max_consecutive_failures": 5,
 }
 
 
@@ -53,8 +61,8 @@ API_CONFIG: ApiConfigDef = {
 # ==========================================================================
 
 API_FIELD_NAMES: Dict[str, Dict[str, Any]] = {
-    'entity_id': {'player': 'EntityId', 'team': 'TeamId'},
-    'entity_name': {'player': 'Name', 'team': 'Name'},
-    'special_ids': {},
-    'id_aliases': {'TeamId': ['EntityId'], 'EntityId': ['TeamId']},
+    "entity_id": {"player": "EntityId", "team": "TeamId"},
+    "entity_name": {"player": "Name", "team": "Name"},
+    "special_ids": {},
+    "id_aliases": {"TeamId": ["EntityId"], "EntityId": ["TeamId"]},
 }

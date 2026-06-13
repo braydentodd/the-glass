@@ -4,12 +4,18 @@ Shoot the Sheet - NBA API Source Configuration
 Pure data definitions for the ``nba_api`` source: season-type mapping,
 rate limits, and field-name mappings.
 
+Season types use canonical keys (e.g. ``regular_season``, ``playoffs``,
+``play_in``) that are shared across sources.  Each entry carries a
+``wire_name`` (what the API expects as the parameter value) and an
+optional ``min_season`` (earliest season this type is valid for).
+
 Dataset metadata lives in the unified registry
 (:mod:`src.etl.definitions.datasets`).  This module is purely about
 how to talk to the source itself.
 """
 
 from typing import Any, Dict, TypedDict, Union
+
 
 class ApiConfigDef(TypedDict):
     per_mode_simple: str
@@ -20,23 +26,28 @@ class ApiConfigDef(TypedDict):
     opponent_team_id: str
     period: str
 
+
 class SeasonTypeDef(TypedDict):
-    name: str
+    wire_name: str
     min_season: Union[str, None]
 
-SEASON_TYPES: Dict[str, SeasonTypeDef] = {
 
-    'rs': {
-        'name':       'Regular Season',
-        'min_season': None,
+SEASON_TYPES: Dict[str, SeasonTypeDef] = {
+    "regular_season": {
+        "wire_name": "Regular Season",
+        "min_season": None,
     },
-    'po': {
-        'name':       'Playoffs',
-        'min_season': None,
+    "playoffs": {
+        "wire_name": "Playoffs",
+        "min_season": None,
     },
-    'pi': {
-        'name':       'PlayIn',
-        'min_season': '2020-21',
+    "play_in": {
+        "wire_name": "PlayIn",
+        "min_season": "2020-21",
+    },
+    "showcase_cup": {
+        "wire_name": "Showcase Cup",
+        "min_season": "2022-23",
     },
 }
 
@@ -72,14 +83,14 @@ REQUEST_HEADERS: Dict[str, str] = {
 
 # NBA-specific API parameters
 API_CONFIG: ApiConfigDef = {
-    'league_id': '00',
-    'per_mode_simple': 'Totals',
-    'per_mode_time': 'Totals',
-    'per_mode_detailed': 'Totals',
-    'last_n_games': '0',
-    'month': '0',
-    'opponent_team_id': '0',
-    'period': '0',
+    "league_id": "00",
+    "per_mode_simple": "Totals",
+    "per_mode_time": "Totals",
+    "per_mode_detailed": "Totals",
+    "last_n_games": "0",
+    "month": "0",
+    "opponent_team_id": "0",
+    "period": "0",
 }
 
 
@@ -88,8 +99,8 @@ API_CONFIG: ApiConfigDef = {
 # ============================================================================
 
 API_FIELD_NAMES: Dict[str, Dict[str, Any]] = {
-    'entity_id':   {'player': 'PLAYER_ID', 'team': 'TEAM_ID'},
-    'entity_name': {'player': 'PLAYER_NAME', 'team': 'TEAM_NAME'},
-    'special_ids': {'person': 'PERSON_ID'},
-    'id_aliases':  {'PLAYER_ID': ['PERSON_ID', 'VS_PLAYER_ID']},
+    "entity_id": {"player": "PLAYER_ID", "team": "TEAM_ID"},
+    "entity_name": {"player": "PLAYER_NAME", "team": "TEAM_NAME"},
+    "special_ids": {"person": "PERSON_ID"},
+    "id_aliases": {"PLAYER_ID": ["PERSON_ID", "VS_PLAYER_ID"]},
 }

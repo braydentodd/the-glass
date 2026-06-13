@@ -20,15 +20,14 @@ risks deleting an entity that's about to be referenced.
 """
 
 import logging
-from typing import Dict, List
+from typing import Dict, List, Union
 
-from src.core.lib.postgres import db_connection, get_db_connection, quote_col
-from src.core.definitions.leagues import LEAGUES
-from src.core.definitions.schema import TABLES, TABLE_ENTITY
-from src.core.definitions.stats import STAT_DOMAINS
-from src.core.lib.league_resolver import get_oldest_retained_season
 from src.core.definitions.db_columns import DB_COLUMNS
-from typing import Union
+from src.core.definitions.leagues import LEAGUES
+from src.core.definitions.schema import TABLE_ENTITY, TABLES
+from src.core.definitions.stats import STAT_RATES
+from src.core.lib.leagues_resolver import get_oldest_retained_season
+from src.core.lib.postgres import db_connection, get_db_connection, quote_col
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ logger = logging.getLogger(__name__)
 def _stats_table_for_entity(entity: str) -> Union[str, None]:
     """Return the bare stats table name for *entity* (e.g. 'player' -> 'player_seasons')."""
     for table_name, meta in TABLES.items():
-        if meta.get('schema') == 'stats' and TABLE_ENTITY.get(table_name) == entity:
+        if meta.get("schema") == "stats" and TABLE_ENTITY.get(table_name) == entity:
             return table_name
     return None
 
@@ -60,18 +59,18 @@ def _collect_domain_columns(entity: str) -> Dict[str, List[str]]:
         return {}
     out: Dict[str, List[str]] = {}
     for col_name, col_meta in DB_COLUMNS.items():
-        tables = col_meta.get('tables', [])
+        tables = col_meta.get("tables", [])
         if isinstance(tables, str):
             tables = [tables]
         if target_table not in tables:
             continue
-        domain = col_meta.get('domain')
+        domain = col_meta.get("domain")
         if not domain or domain not in STAT_DOMAINS:
             continue
         domain_cfg = STAT_DOMAINS[domain]
-        if domain_cfg.get('primary', True):
+        if domain_cfg.get("primary", True):
             continue
-        if col_name == domain_cfg['minutes_col']:
+        if col_name == domain_cfg["minutes_col"]:
             continue
         out.setdefault(domain, []).append(col_name)
     return out
@@ -98,7 +97,7 @@ def normalize_stats_domains(
     stats_bare = _stats_table_for_entity(entity)
     if not stats_bare:
         return 0
-    table = f'stats.{stats_bare}'
+    table = f"stats.{stats_bare}"
     domain_cols = _collect_domain_columns(entity)
     if not domain_cols:
         return 0
@@ -107,10 +106,10 @@ def normalize_stats_domains(
     with db_connection() as conn:
         with conn.cursor() as cur:
             for domain, cols in domain_cols.items():
-                minutes_col = quote_col(STAT_DOMAINS[domain]['minutes_col'])
+                minutes_col = quote_col(STAT_DOMAINS[domain]["minutes_col"])
 
-                set_to_zero = ', '.join(
-                    f'{quote_col(c)} = COALESCE({quote_col(c)}, 0)' for c in cols
+                set_to_zero = ", ".join(
+                    f"{quote_col(c)} = COALESCE({quote_col(c)}, 0)" for c in cols
                 )
                 cur.execute(
                     f"UPDATE {table} SET {set_to_zero} "
@@ -119,7 +118,7 @@ def normalize_stats_domains(
                 )
                 affected += cur.rowcount
 
-                set_to_null = ', '.join(f'{quote_col(c)} = NULL' for c in cols)
+                set_to_null = ", ".join(f"{quote_col(c)} = NULL" for c in cols)
                 cur.execute(
                     f"UPDATE {table} SET {set_to_null} "
                     f"WHERE season = ANY(%s) AND season_type = %s "
@@ -129,10 +128,16 @@ def normalize_stats_domains(
                 affected += cur.rowcount
 
     if affected:
-        seasons_str = ','.join(seasons) if len(seasons) <= 3 else f"{len(seasons)} seasons"
+        seasons_str = (
+            ",".join(seasons) if len(seasons) <= 3 else f"{len(seasons)} seasons"
+        )
         logger.info(
-            'Domain cleanup %s/%s [%s] %s: %d rows updated',
-            league_key, entity, seasons_str, season_type, affected,
+            "Domain cleanup %s/%s [%s] %s: %d rows updated",
+            league_key,
+            entity,
+            seasons_str,
+            season_type,
+            affected,
         )
     return affected
 
@@ -140,6 +145,7 @@ def normalize_stats_domains(
 # ---------------------------------------------------------------------------
 # PHASE A.2 -- per-league stats retention pruning
 # ---------------------------------------------------------------------------
+
 
 def prune_stats_retention(league_key: str, current_season: str) -> int:
     """Delete stats rows older than the league's retention window.
@@ -155,7 +161,7 @@ def prune_stats_retention(league_key: str, current_season: str) -> int:
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f'SELECT sts_id FROM profiles.leagues WHERE code = %s',
+                f"SELECT sts_id FROM profiles.leagues WHERE code = %s",
                 (league_key,),
             )
             row = cur.fetchone()
@@ -164,7 +170,7 @@ def prune_stats_retention(league_key: str, current_season: str) -> int:
                 return 0
 
             for table_name, meta in TABLES.items():
-                if meta.get('schema') != 'stats':
+                if meta.get("schema") != "stats":
                     continue
                 entity = TABLE_ENTITY.get(table_name)
                 if not entity:
@@ -175,8 +181,10 @@ def prune_stats_retention(league_key: str, current_season: str) -> int:
                 )
                 if cur.rowcount:
                     logger.info(
-                        'Pruned %d rows from stats.%s (season < %s)',
-                        cur.rowcount, table_name, oldest,
+                        "Pruned %d rows from stats.%s (season < %s)",
+                        cur.rowcount,
+                        table_name,
+                        oldest,
                     )
                     pruned += cur.rowcount
     return pruned
@@ -186,6 +194,7 @@ def prune_stats_retention(league_key: str, current_season: str) -> int:
 # PHASE B -- cross-league entity pruning
 # ---------------------------------------------------------------------------
 
+
 def _profile_has_stats_predicate(entity: str) -> str:
     """Build a SQL EXISTS predicate that's TRUE if a profile has stats in any league.
 
@@ -193,9 +202,9 @@ def _profile_has_stats_predicate(entity: str) -> str:
     aliases the profile table as ``p``.
     """
     sub_selects: List[str] = []
-    entity_id_col = f'{entity}_id'
+    entity_id_col = f"{entity}_id"
     for table_name, meta in TABLES.items():
-        if meta.get('schema') != 'stats':
+        if meta.get("schema") != "stats":
             continue
         if TABLE_ENTITY.get(table_name) != entity:
             continue
@@ -204,20 +213,20 @@ def _profile_has_stats_predicate(entity: str) -> str:
             f"WHERE s.{quote_col(entity_id_col)} = p.{quote_col('sts_id')}"
         )
     if not sub_selects:
-        return 'FALSE'
-    return ' UNION ALL '.join(sub_selects)
+        return "FALSE"
+    return " UNION ALL ".join(sub_selects)
 
 
 def _delete_pruned_players(cur) -> int:
     """Delete player profiles with no stats anywhere and no roster history."""
-    stats_pred = _profile_has_stats_predicate('player')
+    stats_pred = _profile_has_stats_predicate("player")
     cur.execute(
         f"""
         DELETE FROM profiles.players p
         WHERE NOT EXISTS ({stats_pred})
           AND NOT EXISTS (
               SELECT 1 FROM rosters.teams_players tr
-              WHERE tr.player_id = p.{quote_col('sts_id')}
+              WHERE tr.player_id = p.{quote_col("sts_id")}
           )
         """
     )
@@ -226,18 +235,18 @@ def _delete_pruned_players(cur) -> int:
 
 def _delete_pruned_teams(cur) -> int:
     """Delete team profiles with no stats anywhere and no league/team-roster history."""
-    stats_pred = _profile_has_stats_predicate('team')
+    stats_pred = _profile_has_stats_predicate("team")
     cur.execute(
         f"""
         DELETE FROM profiles.teams p
         WHERE NOT EXISTS ({stats_pred})
           AND NOT EXISTS (
               SELECT 1 FROM rosters.leagues_teams lr
-              WHERE lr.team_id = p.{quote_col('sts_id')}
+              WHERE lr.team_id = p.{quote_col("sts_id")}
           )
           AND NOT EXISTS (
               SELECT 1 FROM rosters.teams_players tr
-              WHERE tr.team_id = p.{quote_col('sts_id')}
+              WHERE tr.team_id = p.{quote_col("sts_id")}
           )
         """
     )
@@ -250,23 +259,21 @@ def prune_entities() -> Dict[str, int]:
 
     Returns ``{'players': n, 'teams': n}``.
     """
-    logger.info('Phase B: prune_entities')
+    logger.info("Phase B: prune_entities")
     conn = get_db_connection()
-    out = {'players': 0, 'teams': 0}
+    out = {"players": 0, "teams": 0}
     try:
         with conn.cursor() as cur:
-            out['players'] = _delete_pruned_players(cur)
-            out['teams'] = _delete_pruned_teams(cur)
+            out["players"] = _delete_pruned_players(cur)
+            out["teams"] = _delete_pruned_teams(cur)
         conn.commit()
-        if out['players']:
-            logger.info('Deleted %d unreferenced player profiles', out['players'])
-        if out['teams']:
-            logger.info('Deleted %d unreferenced team profiles', out['teams'])
+        if out["players"]:
+            logger.info("Deleted %d unreferenced player profiles", out["players"])
+        if out["teams"]:
+            logger.info("Deleted %d unreferenced team profiles", out["teams"])
         return out
     except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
-
-

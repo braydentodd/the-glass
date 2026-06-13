@@ -1,10 +1,11 @@
 Short term:
-- [ ] add wnba and g league as leagues
+- [ ] review dataset names
 - [ ] move season format to sources, ensure does not conflict with league season format naming conventions
 - [ ] add roster_maintainer and season_detector datasets (do we need roles for datasets?)
 - [ ] set up per_poss table and per_min table with domain normalization and rating
 - [ ] set up staging/mapping to core tables
 - [ ] set up matching
+- [ ] do since 2000 for stats?
 
 Long term:
 - [ ] redesign sheet layout for better visibility and new use-cases (more number context, more condensed, multi-team stats)
@@ -15,4 +16,5 @@ Long term:
 - [ ] Find a contracts source
 - [ ] Find an injuries source
 - [ ] set up db column comments
+- [ ] make my own pbp parser to replace pbp_stats
 - [ ] rewrite all comments/documentation

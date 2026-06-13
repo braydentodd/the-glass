@@ -27,23 +27,26 @@ from functools import partial
 from pathlib import Path
 from typing import Union
 
-from src.core.lib.terminal import progress
-from src.core.lib.logging import phase_marker
-from src.core.lib.postgres import get_db_connection
 from src.core.definitions.leagues import LEAGUES
-from src.core.lib.league_resolver import (
+from src.core.lib.leagues_resolver import (
     format_season_label,
     get_current_season,
     get_current_season_year,
+    get_regular_season_types,
 )
+from src.core.lib.logging import phase_marker
+from src.core.lib.postgres import get_db_connection
+from src.core.lib.terminal import progress
 from src.publish.definitions.destinations import DESTINATIONS
 from src.publish.definitions.layout import AGGREGATE_SHEETS, SECTIONS_CONFIG
-from src.publish.definitions.stats import HISTORICAL_TIMEFRAMES
+
+HISTORICAL_TIMEFRAMES = [1, 3, 5]
+from src.publish.destinations.google_sheets.client import get_sheets_client
 from src.publish.destinations.google_sheets.config import (
     GOOGLE_SHEETS_CONFIG,
     SHEETS_FORMATTING,
 )
-from src.publish.destinations.google_sheets.client import get_sheets_client
+from src.publish.destinations.google_sheets.config_exporter import export_config
 from src.publish.lib.calculations import compute_pct_by_rate, derive_db_fields
 from src.publish.lib.executor import (
     SyncContext,
@@ -51,7 +54,6 @@ from src.publish.lib.executor import (
     sync_team_sheet,
     sync_teams_sheet,
 )
-from src.publish.destinations.google_sheets.config_exporter import export_config
 from src.publish.lib.progress_tracker import (
     complete_run,
     fail_run,
@@ -81,34 +83,33 @@ def _push_apps_script_config(league: str, destination: str) -> None:
     should not invalidate the upstream work.
     """
     dest_cfg = DESTINATIONS.get(destination, {})
-    apps_script_cfg = dest_cfg.get('apps_script', {})
-    if not apps_script_cfg.get('enabled', False):
+    apps_script_cfg = dest_cfg.get("apps_script", {})
+    if not apps_script_cfg.get("enabled", False):
         return
 
-    apps_script_dir = (
-        Path(__file__).resolve().parents[2] / apps_script_cfg['directory']
-    )
+    apps_script_dir = Path(__file__).resolve().parents[2] / apps_script_cfg["directory"]
 
     try:
         path = export_config(league)
-        logger.info('Apps Script config exported to %s', path)
+        logger.info("Apps Script config exported to %s", path)
     except Exception:
-        logger.exception('Apps Script config export failed.')
+        logger.exception("Apps Script config export failed.")
         return
 
-    logger.info('Running clasp push from %s', apps_script_dir)
+    logger.info("Running clasp push from %s", apps_script_dir)
     try:
-        subprocess.run(['clasp', 'push', '-f'], cwd=apps_script_dir, check=True)
-        logger.info('clasp push succeeded')
+        subprocess.run(["clasp", "push", "-f"], cwd=apps_script_dir, check=True)
+        logger.info("clasp push succeeded")
     except subprocess.CalledProcessError as exc:
-        logger.error('clasp push failed: %s', exc)
+        logger.error("clasp push failed: %s", exc)
     except FileNotFoundError:
-        logger.error('The clasp CLI is not installed or not in PATH.')
+        logger.error("The clasp CLI is not installed or not in PATH.")
 
 
 # ---------------------------------------------------------------------------
 # Percentile pre-computation  (one-shot, used by every sheet below)
 # ---------------------------------------------------------------------------
+
 
 def _precompute_percentiles(
     ctx: SyncContext,
@@ -120,8 +121,8 @@ def _precompute_percentiles(
     the same population baselines (consistency + speed).
     """
     current_season = ctx.league_config[ctx.season_key]
-    current_season_year = ctx.league_config['current_season_year']
-    season_type_val = ctx.league_config.get('season_type', 'rs')
+    current_season_year = ctx.league_config["current_season_year"]
+    season_type_val = ctx.league_config.get("season_type", "rs")
 
     query_kw = dict(
         historical_config=historical_config,
@@ -136,17 +137,19 @@ def _precompute_percentiles(
     needs_postseason = True
 
     supported_years = list(HISTORICAL_TIMEFRAMES.keys())
-    empty_teams = {'teams': [], 'opponents': []}
+    empty_teams = {"teams": [], "opponents": []}
 
     conn = get_db_connection()
     try:
         all_players_curr = (
-            fetch_all_players(conn, 'current_stats', **query_kw)
-            if needs_current else []
+            fetch_all_players(conn, "current_stats", **query_kw)
+            if needs_current
+            else []
         )
         all_teams_curr = (
-            fetch_all_teams(conn, 'current_stats', **query_kw)
-            if needs_current else empty_teams
+            fetch_all_teams(conn, "current_stats", **query_kw)
+            if needs_current
+            else empty_teams
         )
 
         all_players_hist: dict = {}
@@ -156,22 +159,26 @@ def _precompute_percentiles(
 
         for y in supported_years:
             hist_kw = query_kw.copy()
-            hist_kw['historical_config'] = {'mode': 'seasons', 'value': y}
+            hist_kw["historical_config"] = {"mode": "seasons", "value": y}
             all_players_hist[y] = (
-                fetch_all_players(conn, 'historical_stats', **hist_kw)
-                if needs_historical else []
+                fetch_all_players(conn, "historical_stats", **hist_kw)
+                if needs_historical
+                else []
             )
             all_players_post[y] = (
-                fetch_all_players(conn, 'postseason_stats', **hist_kw)
-                if needs_postseason else []
+                fetch_all_players(conn, "postseason_stats", **hist_kw)
+                if needs_postseason
+                else []
             )
             all_teams_hist[y] = (
-                fetch_all_teams(conn, 'historical_stats', **hist_kw)
-                if needs_historical else empty_teams
+                fetch_all_teams(conn, "historical_stats", **hist_kw)
+                if needs_historical
+                else empty_teams
             )
             all_teams_post[y] = (
-                fetch_all_teams(conn, 'postseason_stats', **hist_kw)
-                if needs_postseason else empty_teams
+                fetch_all_teams(conn, "postseason_stats", **hist_kw)
+                if needs_postseason
+                else empty_teams
             )
 
         # Build player groups for team_average context in team percentiles.
@@ -183,33 +190,35 @@ def _precompute_percentiles(
 
         def _team_context_fn(entity):
             abbr = entity.get(ctx.team_abbr_field)
-            return {'team_players': player_groups.get(abbr, [])}
+            return {"team_players": player_groups.get(abbr, [])}
 
-        player_dict = {'current_stats': all_players_curr}
-        team_dict = {'current_stats': all_teams_curr['teams']}
-        opp_dict = {'current_stats': all_teams_curr['opponents']}
+        player_dict = {"current_stats": all_players_curr}
+        team_dict = {"current_stats": all_teams_curr["teams"]}
+        opp_dict = {"current_stats": all_teams_curr["opponents"]}
 
         for y in supported_years:
-            player_dict[f'historical_stats_{y}yr'] = all_players_hist[y]
-            player_dict[f'postseason_stats_{y}yr'] = all_players_post[y]
-            team_dict[f'historical_stats_{y}yr'] = all_teams_hist[y]['teams']
-            team_dict[f'postseason_stats_{y}yr'] = all_teams_post[y]['teams']
-            opp_dict[f'historical_stats_{y}yr'] = all_teams_hist[y]['opponents']
-            opp_dict[f'postseason_stats_{y}yr'] = all_teams_post[y]['opponents']
+            player_dict[f"historical_stats_{y}yr"] = all_players_hist[y]
+            player_dict[f"postseason_stats_{y}yr"] = all_players_post[y]
+            team_dict[f"historical_stats_{y}yr"] = all_teams_hist[y]["teams"]
+            team_dict[f"postseason_stats_{y}yr"] = all_teams_post[y]["teams"]
+            opp_dict[f"historical_stats_{y}yr"] = all_teams_hist[y]["opponents"]
+            opp_dict[f"postseason_stats_{y}yr"] = all_teams_post[y]["opponents"]
 
         precomputed = {
-            'player': compute_pct_by_rate(player_dict, 'player'),
-            'team': compute_pct_by_rate(
-                team_dict, 'team', context_fn=_team_context_fn,
+            "player": compute_pct_by_rate(player_dict, "player"),
+            "team": compute_pct_by_rate(
+                team_dict,
+                "team",
+                context_fn=_team_context_fn,
             ),
-            'opponents': compute_pct_by_rate(opp_dict, 'opponents'),
-            'data': {
-                'player': player_dict,
-                'team': team_dict,
-                'opponents': opp_dict,
+            "opponents": compute_pct_by_rate(opp_dict, "opponents"),
+            "data": {
+                "player": player_dict,
+                "team": team_dict,
+                "opponents": opp_dict,
             },
         }
-        logger.info('Percentile populations ready')
+        logger.info("Percentile populations ready")
         return precomputed
     finally:
         conn.close()
@@ -218,6 +227,7 @@ def _precompute_percentiles(
 # ---------------------------------------------------------------------------
 # sheet-loop helper
 # ---------------------------------------------------------------------------
+
 
 def _sync_all_sheets(
     ctx,
@@ -244,7 +254,9 @@ def _sync_all_sheets(
     )
     failed_sheets = []
 
-    with progress(total=total_pending, desc='publish', unit='sheet', leave=False) as bar:
+    with progress(
+        total=total_pending, desc="publish", unit="sheet", leave=False
+    ) as bar:
         for sheet in team_sheets:
             if sheet not in pending_lookup:
                 continue
@@ -253,7 +265,10 @@ def _sync_all_sheets(
             mark_sheet_started(conn, db_schema, pid)
             try:
                 sync_team_sheet(
-                    ctx, client, spreadsheet, sheet,
+                    ctx,
+                    client,
+                    spreadsheet,
+                    sheet,
                     team_name=team_names.get(sheet, sheet),
                     precomputed=precomputed,
                     **sync_kwargs,
@@ -261,7 +276,7 @@ def _sync_all_sheets(
                 mark_sheet_completed(conn, db_schema, pid)
                 update_run_completed_sheets(conn, db_schema, run_id)
             except Exception as exc:
-                logger.error('%s sheet failed: %s', sheet, exc, exc_info=True)
+                logger.error("%s sheet failed: %s", sheet, exc, exc_info=True)
                 failed_sheets.append(sheet)
                 mark_sheet_failed(conn, db_schema, pid, str(exc))
             bar.update(1)
@@ -274,20 +289,26 @@ def _sync_all_sheets(
             bar.set_postfix_str(sheet, refresh=False)
             mark_sheet_started(conn, db_schema, pid)
             try:
-                if sheet == 'all_players':
+                if sheet == "all_players":
                     sync_players_sheet(
-                        ctx, client, spreadsheet,
-                        precomputed=precomputed, **sync_kwargs,
+                        ctx,
+                        client,
+                        spreadsheet,
+                        precomputed=precomputed,
+                        **sync_kwargs,
                     )
                 else:
                     sync_teams_sheet(
-                        ctx, client, spreadsheet,
-                        precomputed=precomputed, **sync_kwargs,
+                        ctx,
+                        client,
+                        spreadsheet,
+                        precomputed=precomputed,
+                        **sync_kwargs,
                     )
                 mark_sheet_completed(conn, db_schema, pid)
                 update_run_completed_sheets(conn, db_schema, run_id)
             except Exception as exc:
-                logger.error('%s sheet failed: %s', sheet, exc, exc_info=True)
+                logger.error("%s sheet failed: %s", sheet, exc, exc_info=True)
                 failed_sheets.append(sheet)
                 mark_sheet_failed(conn, db_schema, pid, str(exc))
             bar.update(1)
@@ -300,6 +321,7 @@ def _sync_all_sheets(
 # Public entry
 # ---------------------------------------------------------------------------
 
+
 def run_publish(
     league: str,
     stat_rate: str,
@@ -308,7 +330,7 @@ def run_publish(
     data_only: bool,
     priority_sheet: Union[str, None],
     config_export: bool = True,
-    destination: str = 'google_sheets',
+    destination: str = "google_sheets",
 ) -> None:
     """Run a full sync for a league to the specified destination.
 
@@ -321,20 +343,20 @@ def run_publish(
     db_schema = league
 
     league_config = {
-        'current_season':      get_current_season(league),
-        'current_season_year': get_current_season_year(league),
-        'season_type':         LEAGUES[league]['regular_season_types'][0],
+        "current_season": get_current_season(league),
+        "current_season_year": get_current_season_year(league),
+        "season_type": get_regular_season_types(league)[0],
     }
 
     # Bind format_season_label to the league's season_format so downstream
     # consumers (queries, header formatters) can call it with just an end-year.
     season_format_fn = partial(
-        format_season_label, league_season_format=LEAGUES[league]['season_format'],
+        format_season_label,
+        league_season_format=LEAGUES[league]["season_format"],
     )
 
     stats_sections = frozenset(
-        name for name, cfg in SECTIONS_CONFIG.items()
-        if cfg.get('stats_timeframe')
+        name for name, cfg in SECTIONS_CONFIG.items() if cfg.get("stats_timeframe")
     )
     db_fields = derive_db_fields(league, stats_sections, set())
 
@@ -344,30 +366,30 @@ def run_publish(
         sheet_formatting=SHEETS_FORMATTING,
         league_config=league_config,
         db_schema=db_schema,
-        player_entity_table='profiles.players',
-        team_entity_table='profiles.teams',
-        player_stats_table='stats.player_seasons',
-        team_stats_table='stats.team_seasons',
-        player_entity_fields=db_fields['player_entity_fields'],
-        team_entity_fields=db_fields['team_entity_fields'],
-        stat_fields=db_fields['stat_fields'],
-        team_stat_fields=db_fields['team_stat_fields'],
+        player_entity_table="profiles.players",
+        team_entity_table="profiles.teams",
+        player_stats_table="stats.player_seasons",
+        team_stats_table="stats.team_seasons",
+        player_entity_fields=db_fields["player_entity_fields"],
+        team_entity_fields=db_fields["team_entity_fields"],
+        stat_fields=db_fields["stat_fields"],
+        team_stat_fields=db_fields["team_stat_fields"],
         primary_minutes_col=(
-            'mins_x10' if 'mins_x10' in db_fields['stat_fields'] else 'minutes'
+            "mins_x10" if "mins_x10" in db_fields["stat_fields"] else "minutes"
         ),
         season_format_fn=season_format_fn,
     )
 
-    logger.info(phase_marker('publish', f'league={league} rate={stat_rate}'))
-    logger.info('Starting %s sync', 'partial update' if data_only else 'full')
+    logger.info(phase_marker("publish", f"league={league} rate={stat_rate}"))
+    logger.info("Starting %s sync", "partial update" if data_only else "full")
     delay = (
-        ctx.sheet_formatting.get('data_only_sync_delay_seconds', 0)
+        ctx.sheet_formatting.get("data_only_sync_delay_seconds", 0)
         if data_only
-        else ctx.sheet_formatting.get('sync_delay_seconds', 0)
+        else ctx.sheet_formatting.get("sync_delay_seconds", 0)
     )
 
     client = get_sheets_client(ctx.google_sheets_config)
-    spreadsheet = client.open_by_key(ctx.google_sheets_config['spreadsheet_id'])
+    spreadsheet = client.open_by_key(ctx.google_sheets_config["spreadsheet_id"])
 
     sync_kwargs = dict(
         mode=stat_rate,
@@ -376,7 +398,7 @@ def run_publish(
         data_only=data_only,
     )
 
-    logger.info(phase_marker('precompute_percentiles'))
+    logger.info(phase_marker("precompute_percentiles"))
     precomputed = _precompute_percentiles(ctx, historical_config)
 
     teams_db = get_teams_from_db(ctx.db_schema)
@@ -399,7 +421,11 @@ def run_publish(
     conn = get_db_connection()
     try:
         run_process_id, pending_items = resolve_work(
-            conn, db_schema, league, all_sheets, auto_resume=_AUTO_RESUME,
+            conn,
+            db_schema,
+            league,
+            all_sheets,
+            auto_resume=_AUTO_RESUME,
         )
     except Exception:
         conn.close()
@@ -408,32 +434,46 @@ def run_publish(
     pending_lookup = {sheet: pid for sheet, pid in pending_items}
     total_pending = len(pending_items)
     logger.info(
-        phase_marker('publish_sheets', f'{total_pending} pending of {len(all_sheets)} total'),
+        phase_marker(
+            "publish_sheets", f"{total_pending} pending of {len(all_sheets)} total"
+        ),
     )
 
     # Build team_gids for aggregate sheets (needed for hyperlink resolution)
     team_gids = {ws.title: ws.id for ws in spreadsheet.worksheets()}
-    sync_kwargs['team_gids'] = team_gids
+    sync_kwargs["team_gids"] = team_gids
 
     failed_sheets = _sync_all_sheets(
-        ctx, client, spreadsheet, conn, run_process_id,
-        team_sheets=abbrs, aggregate_sheets=aggregate_order,
-        pending_lookup=pending_lookup, team_names=team_names,
-        precomputed=precomputed, delay=delay, sync_kwargs=sync_kwargs,
+        ctx,
+        client,
+        spreadsheet,
+        conn,
+        run_process_id,
+        team_sheets=abbrs,
+        aggregate_sheets=aggregate_order,
+        pending_lookup=pending_lookup,
+        team_names=team_names,
+        precomputed=precomputed,
+        delay=delay,
+        sync_kwargs=sync_kwargs,
     )
 
     if failed_sheets:
-        failed_list = ', '.join(failed_sheets)
-        logger.error('Sync finished with failures: %s', failed_list)
-        fail_run(conn, db_schema, run_process_id, f'Sync failed for sheet(s): {failed_list}')
+        failed_list = ", ".join(failed_sheets)
+        logger.error("Sync finished with failures: %s", failed_list)
+        fail_run(
+            conn, db_schema, run_process_id, f"Sync failed for sheet(s): {failed_list}"
+        )
         conn.close()
-        raise RuntimeError(f'Sync failed for sheet(s): {failed_list}')
+        raise RuntimeError(f"Sync failed for sheet(s): {failed_list}")
 
-    logger.info('Sync complete')
+    logger.info("Sync complete")
     complete_run(conn, db_schema, run_process_id)
     conn.close()
 
     # Apps Script config export is driven by destination config
-    if config_export and DESTINATIONS.get(destination, {}).get('apps_script', {}).get('enabled', False):
-        logger.info(phase_marker('apps_script_push'))
+    if config_export and DESTINATIONS.get(destination, {}).get("apps_script", {}).get(
+        "enabled", False
+    ):
+        logger.info(phase_marker("apps_script_push"))
         _push_apps_script_config(league, destination)

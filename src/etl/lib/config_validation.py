@@ -21,15 +21,18 @@ from typing import Dict, List, Union
 
 from src.etl.lib.source_resolver import get_identity_entities
 
-VALID_ENTITY_TYPES = frozenset({'league', 'player', 'team', 'country'})
+VALID_ENTITY_TYPES = frozenset({"league", "player", "team", "country"})
 
 
 logger = logging.getLogger(__name__)
 
 
 VALID_TRANSFORMS = {
-    'safe_int', 'safe_str',
-    'parse_height', 'parse_birthdate', 'format_season',
+    "safe_int",
+    "safe_str",
+    "parse_height",
+    "parse_birthdate",
+    "format_season",
 }
 
 
@@ -37,14 +40,15 @@ VALID_TRANSFORMS = {
 # CROSS-REFERENCE VALIDATORS
 # ============================================================================
 
+
 def _validate_pg_types(db_columns: Dict[str, Dict]) -> List[str]:
     """Validate that all DB_COLUMNS types are valid PostgreSQL types."""
     from src.core.definitions.schema import VALID_PG_TYPES
 
     errors = []
     for col_name, meta in db_columns.items():
-        col_type = meta.get('type', '')
-        base = col_type.split('(')[0].upper()
+        col_type = meta.get("type", "")
+        base = col_type.split("(")[0].upper()
         if base not in VALID_PG_TYPES:
             errors.append(f"DB_COLUMNS['{col_name}']: unknown type '{col_type}'")
     return errors
@@ -65,7 +69,7 @@ def _validate_source_structure(
 
     errors = []
     for col_name, meta in db_columns.items():
-        col_sources = meta.get('dataset_mapping')
+        col_sources = meta.get("dataset_mapping")
         if col_sources is None:
             continue
 
@@ -82,11 +86,15 @@ def _validate_source_structure(
 
             for identity, entities in identity_dict.items():
                 if identity not in DATASETS:
-                    errors.append(f"{prefix}: dataset_mapping['{league}']['{identity}'] not registered in DATASETS")
+                    errors.append(
+                        f"{prefix}: dataset_mapping['{league}']['{identity}'] not registered in DATASETS"
+                    )
                     continue
                 entity_types = get_identity_entities(identity)
                 if not isinstance(entities, dict):
-                    errors.append(f"{prefix}: dataset_mapping['{league}']['{identity}'] must be dict")
+                    errors.append(
+                        f"{prefix}: dataset_mapping['{league}']['{identity}'] must be dict"
+                    )
                     continue
                 for entity_name, source_def in entities.items():
                     if entity_name not in VALID_ENTITY_TYPES:
@@ -117,7 +125,7 @@ def _validate_dataset_refs(
 
     errors = []
     for col_name, meta in db_columns.items():
-        sources = meta.get('dataset_mapping')
+        sources = meta.get("dataset_mapping")
         if not sources or not isinstance(sources, dict):
             continue
 
@@ -136,10 +144,9 @@ def _validate_dataset_refs(
                         continue
                     if not isinstance(source_def, dict):
                         continue
-                    ds = (
-                        source_def.get('dataset')
-                        or source_def.get('pipeline', {}).get('dataset')
-                    )
+                    ds = source_def.get("dataset") or source_def.get(
+                        "pipeline", {}
+                    ).get("dataset")
                     if ds and ds not in source_datasets:
                         errors.append(
                             f"{prefix}: references unknown dataset '{ds}' "
@@ -160,22 +167,27 @@ def _validate_table_definitions(
         VALID_FK_ACTIONS,
         VALID_FK_STRATEGIES,
     )
+
     errors = []
 
     for table_name, meta in tables.items():
         prefix = f"TABLES['{table_name}']"
 
         # Collect columns declared on this table (both database columns and FK columns)
-        fk_columns = {fk.get('column') for fk in (meta.get('foreign_keys') or []) if fk.get('column')}
-        surrogate_pks = {'process_id', 'id'}
-        
+        fk_columns = {
+            fk.get("column")
+            for fk in (meta.get("foreign_keys") or [])
+            if fk.get("column")
+        }
+        surrogate_pks = {"process_id", "id"}
+
         # 2. Primary Key validation
-        pk_cols = meta.get('primary_key', [])
+        pk_cols = meta.get("primary_key", [])
         if not isinstance(pk_cols, list):
             errors.append(f"{prefix}: primary_key must be a list")
         else:
             for col in pk_cols:
-                if col == 'sts_id':
+                if col == "sts_id":
                     continue
                 if col in surrogate_pks:
                     continue
@@ -185,68 +197,80 @@ def _validate_table_definitions(
                     )
 
         # 3. Foreign Key validation
-        fks = meta.get('foreign_keys') or []
+        fks = meta.get("foreign_keys") or []
         if not isinstance(fks, list):
             errors.append(f"{prefix}: foreign_keys must be a list")
         else:
             for idx, fk in enumerate(fks):
                 fk_prefix = f"{prefix}.foreign_keys[{idx}]"
-                col = fk.get('column')
-                ref_table = fk.get('ref_table')
-                ref_col = fk.get('ref_column')
-                
+                col = fk.get("column")
+                ref_table = fk.get("ref_table")
+                ref_col = fk.get("ref_column")
+
                 if not col:
                     errors.append(f"{fk_prefix}: missing 'column'")
                 if not ref_table:
                     errors.append(f"{fk_prefix}: missing 'ref_table'")
                 elif ref_table not in tables:
                     errors.append(f"{fk_prefix}: ref_table '{ref_table}' not in TABLES")
-                
+
                 if not ref_col:
                     errors.append(f"{fk_prefix}: missing 'ref_column'")
-                
-                for action in ('on_update', 'on_delete'):
+
+                for action in ("on_update", "on_delete"):
                     act = fk.get(action)
                     if act and act not in VALID_FK_ACTIONS:
                         errors.append(
                             f"{fk_prefix}: {action} '{act}' not in {sorted(VALID_FK_ACTIONS)}"
                         )
                 # Validate strategy vocabulary when present
-                strat = fk.get('strategy')
+                strat = fk.get("strategy")
                 if strat and strat not in VALID_FK_STRATEGIES:
                     errors.append(
                         f"{fk_prefix}: strategy '{strat}' not in {sorted(VALID_FK_STRATEGIES)}"
                     )
 
         # 4. Unique Constraints validation
-        ucs = meta.get('unique_constraints')
+        ucs = meta.get("unique_constraints")
         if ucs is not None:
             if not isinstance(ucs, list):
-                errors.append(f"{prefix}: unique_constraints must be a list of lists or None")
+                errors.append(
+                    f"{prefix}: unique_constraints must be a list of lists or None"
+                )
             else:
                 for uc_idx, uc in enumerate(ucs):
                     if not isinstance(uc, list):
-                        errors.append(f"{prefix}.unique_constraints[{uc_idx}]: must be a list of column names")
+                        errors.append(
+                            f"{prefix}.unique_constraints[{uc_idx}]: must be a list of column names"
+                        )
                     else:
                         for col in uc:
-                            if col not in db_columns and col not in fk_columns and col not in surrogate_pks:
+                            if (
+                                col not in db_columns
+                                and col not in fk_columns
+                                and col not in surrogate_pks
+                            ):
                                 errors.append(
                                     f"{prefix}.unique_constraints[{uc_idx}]: references unknown column '{col}'"
                                 )
 
         # 5. Indexes validation
-        idxs = meta.get('indexes') or []
+        idxs = meta.get("indexes") or []
         if not isinstance(idxs, list):
             errors.append(f"{prefix}: indexes must be a list")
         else:
             for idx_idx, index in enumerate(idxs):
                 idx_prefix = f"{prefix}.indexes[{idx_idx}]"
-                cols = index.get('columns', [])
+                cols = index.get("columns", [])
                 if not isinstance(cols, list) or not cols:
                     errors.append(f"{idx_prefix}: missing or empty 'columns'")
                 else:
                     for col in cols:
-                        if col not in db_columns and col not in fk_columns and col not in surrogate_pks:
+                        if (
+                            col not in db_columns
+                            and col not in fk_columns
+                            and col not in surrogate_pks
+                        ):
                             errors.append(
                                 f"{idx_prefix}: index column '{col}' is unknown"
                             )
@@ -256,21 +280,25 @@ def _validate_table_definitions(
 
 def _validate_domain_primaries() -> List[str]:
     from src.core.definitions.stats import STAT_DOMAINS
+
     errors = []
     primaries = [k for k, v in STAT_DOMAINS.items() if v.get("primary")]
     if len(primaries) != 1:
-        errors.append(f"STAT_DOMAINS: expected exactly one entry with primary=True, got {primaries!r}")
+        errors.append(
+            f"STAT_DOMAINS: expected exactly one entry with primary=True, got {primaries!r}"
+        )
     return errors
+
 
 def _validate_domain_coverage(db_columns: Dict[str, Dict]) -> List[str]:
     """Every non-primary domain in STAT_DOMAINS must be referenced by at
     least one DB_COLUMNS entry (otherwise the domain is dead config)."""
     from src.core.definitions.stats import STAT_DOMAINS
 
-    used = {meta.get('domain') for meta in db_columns.values() if meta.get('domain')}
+    used = {meta.get("domain") for meta in db_columns.values() if meta.get("domain")}
     errors: List[str] = []
     for domain, cfg in STAT_DOMAINS.items():
-        if cfg.get('primary'):
+        if cfg.get("primary"):
             continue
         if domain not in used:
             errors.append(
@@ -288,9 +316,9 @@ def _validate_fk_targets(tables: Dict[str, Dict]) -> List[str]:
     errors: List[str] = []
 
     for tname, meta in tables.items():
-        for fk in (meta.get('foreign_keys') or []):
+        for fk in meta.get("foreign_keys") or []:
             prefix = f"TABLES['{tname}'] FK on '{fk.get('column', '?')}'"
-            for action_key in ('on_update', 'on_delete'):
+            for action_key in ("on_update", "on_delete"):
                 action = fk.get(action_key)
                 if action and action not in VALID_FK_ACTIONS:
                     errors.append(
@@ -311,9 +339,7 @@ def _validate_league_stage_definitions() -> List[str]:
     errors: List[str] = []
 
     if not isinstance(PIPELINE_PHASES, dict):
-        return [
-            f"PIPELINE_PHASES: expected dict, got {type(PIPELINE_PHASES).__name__}"
-        ]
+        return [f"PIPELINE_PHASES: expected dict, got {type(PIPELINE_PHASES).__name__}"]
 
     unsupported_phases = sorted(
         phase for phase in PIPELINE_PHASES if phase not in VALID_ETL_PHASES
@@ -327,14 +353,14 @@ def _validate_league_stage_definitions() -> List[str]:
         phase for phase in VALID_ETL_PHASES if phase not in PIPELINE_PHASES
     )
     if missing_phases:
-        errors.append(
-            f"PIPELINE_PHASES: missing required phases {missing_phases}"
-        )
+        errors.append(f"PIPELINE_PHASES: missing required phases {missing_phases}")
 
     for phase, handlers in PIPELINE_PHASES.items():
         phase_prefix = f"PIPELINE_PHASES['{phase}']"
         if not isinstance(handlers, list):
-            errors.append(f"{phase_prefix}: expected list, got {type(handlers).__name__}")
+            errors.append(
+                f"{phase_prefix}: expected list, got {type(handlers).__name__}"
+            )
             continue
         if not handlers:
             errors.append(f"{phase_prefix}: must not be empty")
@@ -376,7 +402,7 @@ def validate_config() -> List[str]:
     errors.extend(_validate_table_definitions(TABLES, DB_COLUMNS))
     errors.extend(_validate_fk_targets(TABLES))
     errors.extend(_validate_league_stage_definitions())
-    
+
     return errors
 
 
@@ -401,20 +427,20 @@ def validate_all() -> List[str]:
     aggregated: List[str] = []
     for source_key in sorted(SOURCES):
         source_meta = SOURCES[source_key]
-        if source_meta.get('external_id') is None:
+        if source_meta.get("external_id") is None:
             continue
-        aggregated.extend(_validate_dataset_refs(
-            DB_COLUMNS,
-            provider_filter=source_key,
-        ))
+        aggregated.extend(
+            _validate_dataset_refs(
+                DB_COLUMNS,
+                provider_filter=source_key,
+            )
+        )
 
     if aggregated:
         for err in aggregated:
-            logger.error('Source config validation: %s', err)
+            logger.error("Source config validation: %s", err)
         raise RuntimeError(
             f"Source config validation failed with {len(aggregated)} error(s)"
         )
 
     return []
-
-

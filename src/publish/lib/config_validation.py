@@ -13,7 +13,6 @@ Add a new config?  Define a schema dict next to the data in
 import logging
 from typing import List
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -21,19 +20,21 @@ logger = logging.getLogger(__name__)
 # CROSS-REFERENCE VALIDATORS
 # ============================================================================
 
+
 def _validate_section_subsection(sheets_columns: dict) -> List[str]:
     """Stats columns require a subsection for ordering and header display."""
     from src.publish.definitions.layout import SECTIONS_CONFIG
 
     stats_sections = {
-        s for s, meta in SECTIONS_CONFIG.items()
-        if meta.get('stats_timeframe') is not None
+        s
+        for s, meta in SECTIONS_CONFIG.items()
+        if meta.get("stats_timeframe") is not None
     }
     errors: List[str] = []
 
     for col_name, col_def in sheets_columns.items():
-        sections = col_def.get('sections', [])
-        subsection = col_def.get('subsection')
+        sections = col_def.get("sections", [])
+        subsection = col_def.get("subsection")
         is_stats = any(s in stats_sections for s in sections)
 
         if is_stats and subsection is None:
@@ -72,7 +73,7 @@ def _validate_width_classes(sheets_columns: dict) -> List[str]:
 
     errors: List[str] = []
     for col_name, col_def in sheets_columns.items():
-        wc = col_def.get('width_class')
+        wc = col_def.get("width_class")
         if isinstance(wc, int) and not isinstance(wc, bool):
             if wc <= 0:
                 errors.append(
@@ -101,7 +102,7 @@ def _validate_column_section_refs(sheets_columns: dict) -> List[str]:
     errors: List[str] = []
     known_sections = set(SECTIONS_CONFIG)
     for col_name, col_def in sheets_columns.items():
-        for section in col_def.get('sections', []):
+        for section in col_def.get("sections", []):
             if section not in known_sections:
                 errors.append(
                     f"VIEW_COLUMNS['{col_name}']: references unknown "
@@ -117,18 +118,17 @@ def _validate_subsection_section_refs() -> List[str]:
     errors: List[str] = []
     known_sections = set(SECTIONS_CONFIG)
     for sub_name, meta in SUBSECTIONS.items():
-        for section in meta.get('sections', []):
+        for section in meta.get("sections", []):
             if section not in known_sections:
                 errors.append(
-                    f"SUBSECTIONS['{sub_name}']: references unknown "
-                    f"section '{section}'"
+                    f"SUBSECTIONS['{sub_name}']: references unknown section '{section}'"
                 )
     return errors
 
 
 def _validate_stat_rates_default_unique(stat_rates: dict) -> List[str]:
     """STAT_RATES must declare exactly one default."""
-    defaults = [k for k, v in stat_rates.items() if v.get('default')]
+    defaults = [k for k, v in stat_rates.items() if v.get("default")]
     if len(defaults) != 1:
         return [
             f"STAT_RATES: expected exactly one entry with default=True, "
@@ -139,37 +139,37 @@ def _validate_stat_rates_default_unique(stat_rates: dict) -> List[str]:
 
 def _validate_field_prefixes(sheets_columns: dict) -> List[str]:
     """All fields in values[key]['fields'] must have explicit SQL alias prefixes.
-    
+
     Valid prefixes: 'p.' (player_profiles), 't.' (team_profiles),
     's.' (stats), 'tr.' (team_rosters).
     """
     import re
-    
+
     errors: List[str] = []
-    valid_prefixes = {'p.', 't.', 's.', 'tr.'}
-    prefix_pattern = re.compile(r'^(p|t|s|tr)\.')
-    
+    valid_prefixes = {"p.", "t.", "s.", "tr."}
+    prefix_pattern = re.compile(r"^(p|t|s|tr)\.")
+
     for col_name, col_def in sheets_columns.items():
-        values = col_def.get('values', {})
+        values = col_def.get("values", {})
         if not isinstance(values, dict):
             continue
-            
+
         for values_key, spec in values.items():
             if not isinstance(spec, dict):
                 continue
-                
-            fields = spec.get('fields', ())
+
+            fields = spec.get("fields", ())
             for field in fields:
                 if not isinstance(field, str):
                     continue
-                    
+
                 if not prefix_pattern.match(field):
                     errors.append(
                         f"VIEW_COLUMNS['{col_name}']['values']['{values_key}']: "
                         f"field '{field}' missing required prefix (must start with "
                         f"one of {sorted(valid_prefixes)})"
                     )
-    
+
     return errors
 
 
@@ -179,8 +179,9 @@ def _validate_field_prefixes(sheets_columns: dict) -> List[str]:
 
 
 def validate_config(league_key: str = None) -> List[str]:
+    from src.core.definitions.stats import STAT_RATES
     from src.publish.definitions.view_columns import VIEW_COLUMNS
-    from src.publish.definitions.stats import STAT_RATES
+
     errors: List[str] = []
     errors.extend(_validate_sheet_column_schema_uniformity(VIEW_COLUMNS))
     errors.extend(_validate_section_subsection(VIEW_COLUMNS))
@@ -190,7 +191,6 @@ def validate_config(league_key: str = None) -> List[str]:
     errors.extend(_validate_stat_rates_default_unique(STAT_RATES))
     errors.extend(_validate_field_prefixes(VIEW_COLUMNS))
     return errors
-
 
 
 def validate_all() -> List[str]:

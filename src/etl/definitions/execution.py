@@ -12,3 +12,9 @@ ENTITY_CHUNK_SIZE = 500
 
 # Maximum rows per execute_values batch in bulk_upsert operations.
 DEFAULT_BATCH_SIZE = 500
+
+# Number of days the season detector looks back when checking for recent
+# game activity.  If any games were played within this window, the league
+# is considered active and stats columns are refreshed.  Otherwise,
+# only profile / roster columns are updated.
+GAME_LOOKBACK_DAYS = 8

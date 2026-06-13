@@ -7,10 +7,10 @@ Declarative registry of every external data source.
 (e.g. NBA API league_id ``00`` for the NBA).
 
 Helpers that resolve source assignments per league/entity live in
-:mod:`src.core.lib.sources`.
+:mod:`src.etl.lib.source_resolver`.
 """
 
-from typing import TypedDict, Dict, Union
+from typing import Dict, TypedDict, Union
 
 
 class RateLimitsDef(TypedDict, total=False):
@@ -21,47 +21,47 @@ class RateLimitsDef(TypedDict, total=False):
     timeout_bulk: Union[float, int]
     max_consecutive_failures: int
 
+
 class SourceDef(TypedDict):
     leagues: Dict[str, str]
-    external_id: Union[str, None]
     id_type: str
     rate_limits: RateLimitsDef
 
-SOURCES: Dict[str, SourceDef] = {
 
-    'nba_api': {
-        'leagues': {'NBA': '00'},
-        'id_type': 'BIGINT',
-        'rate_limits': {
-            'requests_per_second': 0.8,
-            'max_retries': 3,
-            'backoff_base': 30,
-            'timeout_default': 30,
-            'timeout_bulk': 120,
+SOURCES: Dict[str, SourceDef] = {
+    "nba_api": {
+        "leagues": {"NBA": "00", "WNBA": "10", "GLG": "20"},
+        "id_type": "BIGINT",
+        "rate_limits": {
+            "requests_per_second": 0.8,
+            "max_retries": 3,
+            "backoff_base": 30,
+            "timeout_default": 30,
+            "timeout_bulk": 120,
         },
     },
-    'pbp_stats': {
-        'leagues': {'NBA': 'nba'},
-        'id_type': 'BIGINT',
-        'rate_limits': {
-            'requests_per_second': 0.5,
-            'max_retries': 3,
-            'backoff_base': 30,
-            'timeout_default': 30,
-            'timeout_bulk': 120,
-            'max_consecutive_failures': 5,
+    "pbp_stats": {
+        "leagues": {"NBA": "nba", "WNBA": "wnba"},
+        "id_type": "BIGINT",
+        "rate_limits": {
+            "requests_per_second": 0.5,
+            "max_retries": 3,
+            "backoff_base": 30,
+            "timeout_default": 30,
+            "timeout_bulk": 120,
+            "max_consecutive_failures": 5,
         },
     },
-    'shoot_the_sheet': {
-        'leagues': {'NBA': 'nba'},
-        'id_type': 'BIGINT',
-        'rate_limits': {
-            'requests_per_second': 1.0,
-            'max_retries': 3,
-            'backoff_base': 30,
-            'timeout_default': 30,
-            'timeout_bulk': 120,
-            'max_consecutive_failures': 5,
+    "shoot_the_sheet": {
+        "leagues": {"NBA": "nba", "WNBA": "wnba", "GLG": "gleague"},
+        "id_type": "BIGINT",
+        "rate_limits": {
+            "requests_per_second": 1.0,
+            "max_retries": 3,
+            "backoff_base": 30,
+            "timeout_default": 30,
+            "timeout_bulk": 120,
+            "max_consecutive_failures": 5,
         },
     },
 }
